@@ -1,19 +1,43 @@
 # ni_site
 Проект сайта Невский Интеграл
 
-ni_site/
-│
-├── backend/
-│   ├── app/
-│   ├── main.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── teacher/
-│   └── student/
-│
-├── docs/
-│   └── architecture.md
-│
-├── .gitignore
-└── README.md
+backend/
+  app/
+    main.py
+    api/
+      v1/
+        router.py
+        health.py
+        auth.py
+        olympiads.py
+        attempts.py
+        teacher.py
+    core/
+      config.py
+      security.py
+      deps.py
+      logging.py
+    db/
+      session.py
+      base.py
+    models/
+      user.py
+      olympiad.py
+      attempt.py
+    schemas/
+      auth.py
+      user.py
+      olympiad.py
+      attempt.py
+    repos/
+      users.py
+      olympiads.py
+      attempts.py
+    services/
+      auth.py
+      olympiads.py
+      attempts.py
+  alembic/
+  alembic.ini
+  requirements.txt
+  Dockerfile
