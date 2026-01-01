@@ -8,6 +8,6 @@ from .teacher import router as teacher_router
 router = APIRouter(prefix="/api/v1")
 router.include_router(health_router)
 router.include_router(auth_router)
-router.include_router(olympiads_router)
+router.include_router(olympiads_router, tags=["olympiads"])
 router.include_router(attempts_router)
 router.include_router(teacher_router)
