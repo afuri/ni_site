@@ -1,15 +1,19 @@
-"""Authentication schemas."""
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional
+
+
+LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    login: str = Field(pattern=LOGIN_RE)
     password: str = Field(min_length=8, max_length=128)
     role: str = Field(pattern="^(student|teacher|parent|admin)$")
+    email: Optional[EmailStr] = None
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    login: str = Field(pattern=LOGIN_RE)
     password: str
 
 
