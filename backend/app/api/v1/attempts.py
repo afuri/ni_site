@@ -1,4 +1,128 @@
 """Attempts endpoints."""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/attempts", tags=["attempts"])
+from app.core.deps import get_db
+from app.core.deps_auth import require_role, get_current_user
+from app.models.user import UserRole, User
+from app.repos.attempts import AttemptsRepo
+from app.services.attempts import AttemptsService
+from app.schemas.attempt import (
+    AttemptStartRequest,
+    AttemptRead,
+    AttemptView,
+    AttemptAnswerUpsertRequest,
+    SubmitResponse,
+)
+
+router = APIRouter(prefix="/attempts")
+
+
+@router.post("/start", response_model=AttemptRead, status_code=201)
+async def start_attempt(
+    payload: AttemptStartRequest,
+    db: AsyncSession = Depends(get_db),
+    student: User = Depends(require_role(UserRole.student)),
+):
+    service = AttemptsService(AttemptsRepo(db))
+    try:
+        attempt, _olympiad = await service.start_attempt(user=student, olympiad_id=payload.olympiad_id)
+        return attempt
+    except ValueError as e:
+        code = str(e)
+        if code == "olympiad_not_found":
+            raise HTTPException(status_code=404, detail="olympiad_not_found")
+        if code == "olympiad_not_published":
+            raise HTTPException(status_code=409, detail="olympiad_not_published")
+        if code == "olympiad_has_no_tasks":
+            raise HTTPException(status_code=409, detail="olympiad_has_no_tasks")
+        raise
+
+
+@router.get("/{attempt_id}", response_model=AttemptView)
+async def get_attempt_view(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    service = AttemptsService(AttemptsRepo(db))
+    try:
+        attempt, olympiad, tasks, answers_by_task = await service.get_attempt_view(user=user, attempt_id=attempt_id)
+    except ValueError as e:
+        code = str(e)
+        if code == "attempt_not_found":
+            raise HTTPException(status_code=404, detail="attempt_not_found")
+        if code == "forbidden":
+            raise HTTPException(status_code=403, detail="forbidden")
+        raise
+
+    tasks_view = []
+    for t in tasks:
+        a = answers_by_task.get(t.id)
+        tasks_view.append(
+            {
+                "task_id": t.id,
+                "prompt": t.prompt,
+                "answer_max_len": t.answer_max_len,
+                "sort_order": t.sort_order,
+                "current_answer": None if a is None else {"task_id": a.task_id, "answer_text": a.answer_text, "updated_at": a.updated_at},
+            }
+        )
+
+    return {
+        "attempt": attempt,
+        "olympiad_title": olympiad.title,
+        "tasks": tasks_view,
+    }
+
+
+@router.post("/{attempt_id}/answers", status_code=200)
+async def upsert_answer(
+    attempt_id: int,
+    payload: AttemptAnswerUpsertRequest,
+    db: AsyncSession = Depends(get_db),
+    student: User = Depends(require_role(UserRole.student)),
+):
+    service = AttemptsService(AttemptsRepo(db))
+    try:
+        return await service.upsert_answer(
+            user=student,
+            attempt_id=attempt_id,
+            task_id=payload.task_id,
+            answer_text=payload.answer_text,
+        )
+    except ValueError as e:
+        code = str(e)
+        if code == "attempt_not_found":
+            raise HTTPException(status_code=404, detail="attempt_not_found")
+        if code in ("forbidden",):
+            raise HTTPException(status_code=403, detail="forbidden")
+        if code in ("attempt_not_active",):
+            raise HTTPException(status_code=409, detail="attempt_not_active")
+        if code in ("attempt_expired",):
+            raise HTTPException(status_code=409, detail="attempt_expired")
+        if code == "task_not_found":
+            raise HTTPException(status_code=404, detail="task_not_found")
+        if code == "answer_too_long":
+            raise HTTPException(status_code=422, detail="answer_too_long")
+        raise
+
+
+@router.post("/{attempt_id}/submit", response_model=SubmitResponse)
+async def submit_attempt(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_db),
+    student: User = Depends(require_role(UserRole.student)),
+):
+    service = AttemptsService(AttemptsRepo(db))
+    try:
+        status_value = await service.submit(user=student, attempt_id=attempt_id)
+        return {"status": status_value}
+    except ValueError as e:
+        code = str(e)
+        if code == "attempt_not_found":
+            raise HTTPException(status_code=404, detail="attempt_not_found")
+        if code == "forbidden":
+            raise HTTPException(status_code=403, detail="forbidden")
+        raise
+
