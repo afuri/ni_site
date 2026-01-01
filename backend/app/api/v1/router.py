@@ -6,6 +6,7 @@ from .attempts import router as attempts_router
 from .teacher import router as teacher_router
 from app.api.v1.users import router as users_router
 from app.api.v1.teacher_students import router as teacher_students_router
+from app.api.v1.admin_tasks import router as admin_tasks_router
 
 
 
@@ -18,3 +19,4 @@ router.include_router(attempts_router)
 router.include_router(teacher_router, tags=["teacher"])
 router.include_router(users_router, tags=["users"])
 router.include_router(teacher_students_router, tags=["teacher_students"])
+router.include_router(admin_tasks_router, tags=["admin"])
