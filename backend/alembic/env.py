@@ -10,6 +10,7 @@ from app.models.user import User  # noqa
 from app.models.olympiad import Olympiad, OlympiadTask  # noqa
 from app.models.attempt import Attempt, AttemptAnswer  # noqa
 from app.core.config import settings
+from app.models.social_account import SocialAccount  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

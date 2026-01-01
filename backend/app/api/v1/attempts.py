@@ -1,6 +1,11 @@
 """Attempts endpoints."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Response
+from app.core.rate_limit import token_bucket_rate_limit
+from app.core.redis import get_redis
+from app.core.config import settings
+
 
 from app.core.deps import get_db
 from app.core.deps_auth import require_role, get_current_user
@@ -80,9 +85,38 @@ async def get_attempt_view(
 async def upsert_answer(
     attempt_id: int,
     payload: AttemptAnswerUpsertRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     student: User = Depends(require_role(UserRole.student)),
 ):
+    # Rate limit: per (user_id, attempt_id)
+    redis = await get_redis()
+    rl_key = f"rl:answers:u{student.id}:a{attempt_id}"
+
+    rl = await token_bucket_rate_limit(
+        redis,
+        key=rl_key,
+        capacity=settings.ANSWERS_RL_LIMIT,
+        window_sec=settings.ANSWERS_RL_WINDOW_SEC,
+        cost=1,
+    )
+
+    response.headers["X-RateLimit-Limit"] = str(settings.ANSWERS_RL_LIMIT)
+    response.headers["X-RateLimit-Remaining"] = str(rl.remaining)
+
+    if not rl.allowed:
+        response.headers["Retry-After"] = str(rl.retry_after_sec)
+        raise HTTPException(status_code=429, detail="rate_limited")
+
+
+    # Заголовки для дебага и фронта
+    response.headers["X-RateLimit-Limit"] = str(settings.ANSWERS_RL_LIMIT)
+    response.headers["X-RateLimit-Remaining"] = str(rl.remaining)
+
+    if not rl.allowed:
+        response.headers["Retry-After"] = str(rl.retry_after_sec)
+        raise HTTPException(status_code=429, detail="rate_limited")
+
     service = AttemptsService(AttemptsRepo(db))
     try:
         return await service.upsert_answer(
@@ -106,6 +140,7 @@ async def upsert_answer(
         if code == "answer_too_long":
             raise HTTPException(status_code=422, detail="answer_too_long")
         raise
+
 
 
 @router.post("/{attempt_id}/submit", response_model=SubmitResponse)
