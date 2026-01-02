@@ -2,7 +2,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
-from app.models.olympiad import Olympiad, OlympiadTask
+from app.models.olympiad import Olympiad
+from app.models.olympiad_task import OlympiadTask
 from app.models.attempt import Attempt, AttemptAnswer
 
 

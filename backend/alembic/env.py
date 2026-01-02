@@ -7,7 +7,8 @@ from alembic import context
 
 from app.db.base import Base
 from app.models.user import User  # noqa
-from app.models.olympiad import Olympiad, OlympiadTask  # noqa
+from app.models.olympiad import Olympiad  # noqa
+from app.models.olympiad_task import OlympiadTask  # noqa
 from app.models.attempt import Attempt, AttemptAnswer  # noqa
 from app.core.config import settings
 from app.models.social_account import SocialAccount  # noqa
@@ -82,5 +83,4 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-
 

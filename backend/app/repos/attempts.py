@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
 from app.models.attempt import Attempt, AttemptAnswer, AttemptStatus
-from app.models.olympiad import Olympiad, OlympiadTask
+from app.models.olympiad import Olympiad
+from app.models.olympiad_task import OlympiadTask
 
 
 class AttemptsRepo:

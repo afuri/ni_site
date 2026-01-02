@@ -1,26 +1,49 @@
-"""Olympiad model."""
-from sqlalchemy import String, Text, Integer, Boolean, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+import enum
+from datetime import datetime, timezone
+from sqlalchemy import String, Boolean, Integer, DateTime, Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
+
+class OlympiadScope(str, enum.Enum):
+    global_ = "global"  # global — зарезервировано словом в python, поэтому global_
+
+class AgeGroup(str, enum.Enum):
+    g1 = "1"
+    g2 = "2"
+    g34 = "3-4"
+    g56 = "5-6"
+    g78 = "7-8"
+
+enum_values = lambda obj: [e.value for e in obj]
 
 
 class Olympiad(Base):
     __tablename__ = "olympiads"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column(String(255), index=True)
-    description: Mapped[str] = mapped_column(Text, default="")
-    duration_sec: Mapped[int] = mapped_column(Integer)  # время на попытку
-    is_published: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
+    scope: Mapped[OlympiadScope] = mapped_column(
+        SAEnum(OlympiadScope, values_callable=enum_values, name="olympiadscope"),
+        index=True,
+        default=OlympiadScope.global_,
+    )
+    age_group: Mapped[AgeGroup] = mapped_column(
+        SAEnum(AgeGroup, values_callable=enum_values, name="agegroup"),
+        index=True,
+    )
 
-class OlympiadTask(Base):
-    __tablename__ = "olympiad_tasks"
+    attempts_limit: Mapped[int] = mapped_column(Integer, default=1)
+    duration_sec: Mapped[int] = mapped_column(Integer)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    olympiad_id: Mapped[int] = mapped_column(ForeignKey("olympiads.id", ondelete="CASCADE"), index=True)
-    prompt: Mapped[str] = mapped_column(Text)
-    answer_max_len: Mapped[int] = mapped_column(Integer, default=20)
-    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    available_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    available_to: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    pass_percent: Mapped[int] = mapped_column(Integer, default=60)
+    is_published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    created_by_user_id: Mapped[int] = mapped_column(Integer, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
