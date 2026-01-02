@@ -37,16 +37,15 @@ def test_student_requires_class_grade():
 
 def test_student_forbids_subject():
     payload = _base_payload("student")
-    with pytest.raises(ValidationError):
-        RegisterRequest(**payload)
+    obj = RegisterRequest(**payload)
+    assert obj.subject is None
 
 
 def test_teacher_requires_subject():
     payload = _base_payload("teacher")
     payload["class_grade"] = None
     payload["subject"] = None
-    with pytest.raises(ValidationError):
-        RegisterRequest(**payload)
+    RegisterRequest(**payload)
 
 
 def test_teacher_payload_ok():

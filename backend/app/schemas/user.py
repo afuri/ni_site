@@ -36,7 +36,7 @@ class UserUpdate(BaseModel):
 
     country: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    school: Optional[str] = Field(default=None, max_length=255, pattern=CYRILLIC_RE)
-    class_grade: Optional[int] = Field(default=None, ge=0, le=11)
+    school: Optional[str] = None
+    class_grade: Optional[int] = Field(default=None)
 
-    subject: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
+    subject: Optional[str] = Field(default=None, max_length=120)

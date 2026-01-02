@@ -19,8 +19,8 @@ class CreateStudentRequest(BaseModel):
 
     country: str = Field(max_length=120, pattern=CYRILLIC_RE)
     city: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    school: str = Field(max_length=255, pattern=CYRILLIC_RE)
-    class_grade: int = Field(ge=0, le=11)
+    school: str = Field(max_length=255)
+    class_grade: int
 
 
 class AttachStudentRequest(BaseModel):

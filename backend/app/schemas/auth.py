@@ -18,21 +18,18 @@ class RegisterRequest(BaseModel):
 
     country: str = Field(max_length=120, pattern=CYRILLIC_RE)
     city: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    school: str = Field(max_length=255, pattern=CYRILLIC_RE)
+    school: str | None = None
 
-    class_grade: Optional[int] = Field(default=None, ge=0, le=11)
-    subject: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
+    class_grade: Optional[int] = None
+    subject: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_role_fields(self):
         if self.role == "student":
             if self.class_grade is None:
                 raise ValueError("class_grade_required")
-            if self.subject is not None:
-                raise ValueError("subject_not_allowed_for_student")
+            self.subject = None
         if self.role == "teacher":
-            if self.subject is None:
-                raise ValueError("subject_required")
             if self.class_grade is not None:
                 raise ValueError("class_grade_not_allowed_for_teacher")
         return self
