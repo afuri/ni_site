@@ -39,6 +39,7 @@ class AuthVKService:
                 email=norm_email,
                 password_hash=password_hash,
                 role=UserRole.student,
+                is_email_verified=True,
                 surname="Неизвестно",
                 name="Неизвестно",
                 father_name=None,

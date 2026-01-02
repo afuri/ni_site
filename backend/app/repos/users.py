@@ -26,6 +26,7 @@ class UsersRepo:
         email: str,
         password_hash: str,
         role,
+        is_email_verified: bool,
         surname: str,
         name: str,
         father_name: str | None,
@@ -41,6 +42,7 @@ class UsersRepo:
             password_hash=password_hash,
             role=role,
             is_active=True,
+            is_email_verified=is_email_verified,
             surname=surname,
             name=name,
             father_name=father_name,
@@ -58,6 +60,18 @@ class UsersRepo:
     async def update_profile(self, user: User, data: dict) -> User:
         for k, v in data.items():
             setattr(user, k, v)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def set_email_verified(self, user: User) -> User:
+        user.is_email_verified = True
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def set_password(self, user: User, password_hash: str) -> User:
+        user.password_hash = password_hash
         await self.db.commit()
         await self.db.refresh(user)
         return user

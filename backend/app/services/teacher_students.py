@@ -1,5 +1,6 @@
 from app.models.user import User, UserRole
 from app.repos.users import UsersRepo
+from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.services.auth import AuthService
 from app.models.teacher_student import TeacherStudentStatus
@@ -12,7 +13,7 @@ class TeacherStudentsService:
     def __init__(self, users_repo: UsersRepo, links_repo: TeacherStudentsRepo):
         self.users_repo = users_repo
         self.links_repo = links_repo
-        self.auth = AuthService(users_repo)
+        self.auth = AuthService(users_repo, AuthTokensRepo(users_repo.db))
 
     async def attach_existing(self, *, teacher: User, student_login: str):
         student = await self.users_repo.get_by_login(student_login)

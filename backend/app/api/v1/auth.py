@@ -3,8 +3,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.repos.users import UsersRepo
+from app.repos.auth_tokens import AuthTokensRepo
 from app.services.auth import AuthService
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenPair
+from app.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    TokenPair,
+    EmailVerificationRequest,
+    EmailVerificationConfirm,
+    PasswordResetRequest,
+    PasswordResetConfirm,
+    MessageResponse,
+)
 from app.schemas.user import UserRead
 from app.core.deps_auth import get_current_user
 
@@ -13,7 +23,7 @@ router = APIRouter(prefix="/auth")
 
 @router.post("/register", response_model=UserRead, status_code=201)
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    service = AuthService(UsersRepo(db))
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         user = await service.register(
             payload.login,
@@ -49,10 +59,12 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login", response_model=TokenPair)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    service = AuthService(UsersRepo(db))
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         access, refresh = await service.login(payload.login, payload.password)
-    except ValueError:
+    except ValueError as e:
+        if str(e) == "email_not_verified":
+            raise HTTPException(status_code=403, detail="email_not_verified")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
     return TokenPair(access_token=access, refresh_token=refresh)
 
@@ -60,3 +72,49 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserRead)
 async def me(user=Depends(get_current_user)):
     return user
+
+
+@router.post("/verify/request", response_model=MessageResponse)
+async def request_email_verification(
+    payload: EmailVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
+    await service.request_email_verification(email=payload.email)
+    return {"status": "ok"}
+
+
+@router.post("/verify/confirm", response_model=MessageResponse)
+async def confirm_email_verification(
+    payload: EmailVerificationConfirm,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
+    try:
+        await service.verify_email(token=payload.token)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="invalid_token")
+    return {"status": "ok"}
+
+
+@router.post("/password/reset/request", response_model=MessageResponse)
+async def request_password_reset(
+    payload: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
+    await service.request_password_reset(email=payload.email)
+    return {"status": "ok"}
+
+
+@router.post("/password/reset/confirm", response_model=MessageResponse)
+async def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
+    try:
+        await service.confirm_password_reset(token=payload.token, new_password=payload.new_password)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="invalid_token")
+    return {"status": "ok"}

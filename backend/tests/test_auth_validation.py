@@ -53,3 +53,11 @@ def test_teacher_payload_ok():
     payload = _base_payload("teacher")
     payload["class_grade"] = None
     RegisterRequest(**payload)
+
+
+def test_cyrillic_validation():
+    payload = _base_payload("teacher")
+    payload["class_grade"] = None
+    payload["surname"] = "Ivanov"
+    with pytest.raises(ValidationError):
+        RegisterRequest(**payload)

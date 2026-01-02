@@ -17,6 +17,21 @@ class Settings(BaseSettings):
     JWT_ACCESS_TTL_MIN: int = 30
     JWT_REFRESH_TTL_DAYS: int = 30
 
+    EMAIL_BASE_URL: str = "http://localhost:3000"
+    EMAIL_FROM: str = "no-reply@example.com"
+    EMAIL_VERIFY_TTL_HOURS: int = 24
+    PASSWORD_RESET_TTL_HOURS: int = 2
+    EMAIL_SEND_ENABLED: bool = False
+
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = True
+
+    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+
     VK_CLIENT_ID: str | None = None
     VK_CLIENT_SECRET: str | None = None
     VK_REDIRECT_URI: str | None = None
@@ -25,6 +40,8 @@ class Settings(BaseSettings):
     # rate limit for saving answers
     ANSWERS_RL_LIMIT: int = 20
     ANSWERS_RL_WINDOW_SEC: int = 10
+
+    AUDIT_LOG_ENABLED: bool = True
 
 
 settings = Settings()

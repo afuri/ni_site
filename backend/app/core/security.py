@@ -1,5 +1,8 @@
 """Security utilities."""
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
+import secrets
 import jwt
 from passlib.context import CryptContext
 from app.core.config import settings
@@ -24,3 +27,12 @@ def create_refresh_token(sub: str) -> str:
 
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
+
+def generate_token() -> str:
+    return secrets.token_urlsafe(32)
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+def verify_token_hash(token: str, token_hash: str) -> bool:
+    return hmac.compare_digest(hash_token(token), token_hash)

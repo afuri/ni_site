@@ -13,6 +13,7 @@ class UserRead(BaseModel):
     email: EmailStr
     role: UserRole
     is_active: bool
+    is_email_verified: bool
 
     surname: Optional[str] = None
     name: Optional[str] = None
