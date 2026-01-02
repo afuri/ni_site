@@ -39,6 +39,8 @@ async def start_attempt(
             raise HTTPException(status_code=404, detail="olympiad_not_found")
         if code == "olympiad_not_published":
             raise HTTPException(status_code=409, detail="olympiad_not_published")
+        if code == "olympiad_not_available":
+            raise HTTPException(status_code=409, detail="olympiad_not_available")
         if code == "olympiad_has_no_tasks":
             raise HTTPException(status_code=409, detail="olympiad_has_no_tasks")
         raise
@@ -57,20 +59,28 @@ async def get_attempt_view(
         code = str(e)
         if code == "attempt_not_found":
             raise HTTPException(status_code=404, detail="attempt_not_found")
+        if code == "olympiad_not_found":
+            raise HTTPException(status_code=404, detail="olympiad_not_found")
         if code == "forbidden":
             raise HTTPException(status_code=403, detail="forbidden")
         raise
 
     tasks_view = []
-    for t in tasks:
-        a = answers_by_task.get(t.id)
+    for olymp_task, task in tasks:
+        a = answers_by_task.get(task.id)
         tasks_view.append(
             {
-                "task_id": t.id,
-                "prompt": t.prompt,
-                "answer_max_len": t.answer_max_len,
-                "sort_order": t.sort_order,
-                "current_answer": None if a is None else {"task_id": a.task_id, "answer_text": a.answer_text, "updated_at": a.updated_at},
+                "task_id": task.id,
+                "title": task.title,
+                "content": task.content,
+                "task_type": task.task_type,
+                "image_key": task.image_key,
+                "payload": service._sanitize_task_payload(task.task_type, task.payload),
+                "sort_order": olymp_task.sort_order,
+                "max_score": olymp_task.max_score,
+                "current_answer": None
+                if a is None
+                else {"task_id": a.task_id, "answer_payload": a.answer_payload, "updated_at": a.updated_at},
             }
         )
 
@@ -108,22 +118,13 @@ async def upsert_answer(
         response.headers["Retry-After"] = str(rl.retry_after_sec)
         raise HTTPException(status_code=429, detail="rate_limited")
 
-
-    # Заголовки для дебага и фронта
-    response.headers["X-RateLimit-Limit"] = str(settings.ANSWERS_RL_LIMIT)
-    response.headers["X-RateLimit-Remaining"] = str(rl.remaining)
-
-    if not rl.allowed:
-        response.headers["Retry-After"] = str(rl.retry_after_sec)
-        raise HTTPException(status_code=429, detail="rate_limited")
-
     service = AttemptsService(AttemptsRepo(db))
     try:
         return await service.upsert_answer(
             user=student,
             attempt_id=attempt_id,
             task_id=payload.task_id,
-            answer_text=payload.answer_text,
+            answer_payload=payload.answer_payload,
         )
     except ValueError as e:
         code = str(e)
@@ -137,8 +138,8 @@ async def upsert_answer(
             raise HTTPException(status_code=409, detail="attempt_expired")
         if code == "task_not_found":
             raise HTTPException(status_code=404, detail="task_not_found")
-        if code == "answer_too_long":
-            raise HTTPException(status_code=422, detail="answer_too_long")
+        if code == "invalid_answer_payload":
+            raise HTTPException(status_code=422, detail="invalid_answer_payload")
         raise
 
 
@@ -160,4 +161,3 @@ async def submit_attempt(
         if code == "forbidden":
             raise HTTPException(status_code=403, detail="forbidden")
         raise
-

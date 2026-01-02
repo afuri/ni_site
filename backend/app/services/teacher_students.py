@@ -38,12 +38,20 @@ class TeacherStudentsService:
         password = payload["password"]
 
         # роль строго student
-        user = await self.auth.register(login=login, password=password, role="student", email=None)
-
-        # профиль — если передали
-        profile_fields = {k: v for k, v in payload.items() if k not in ("login", "password") and v is not None}
-        if profile_fields:
-            await self.users_repo.update_profile(user, profile_fields)
+        user = await self.auth.register(
+            login=login,
+            password=password,
+            role="student",
+            email=payload["email"],
+            surname=payload["surname"],
+            name=payload["name"],
+            father_name=payload.get("father_name"),
+            country=payload["country"],
+            city=payload["city"],
+            school=payload["school"],
+            class_grade=payload["class_grade"],
+            subject=None,
+        )
 
         link = await self.links_repo.create_link(teacher.id, user.id)
         return link, user

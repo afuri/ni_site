@@ -27,12 +27,6 @@ async def update_me(
     if user.role != UserRole.teacher:
         data.pop("subject", None)
 
-    if user.role != UserRole.student:
-        data.pop("teacher_math", None)
-        data.pop("teacher_cs", None)
-        data.pop("teacher_math_link", None)
-        data.pop("teacher_cs_link", None)
-
     repo = UsersRepo(db)
     user = await repo.get_by_id(user.id)
     if not user:
@@ -40,4 +34,3 @@ async def update_me(
 
     updated = await repo.update_profile(user, data)
     return updated
-

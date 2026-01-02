@@ -17,7 +17,7 @@ class OlympiadCreate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
 
     age_group: AgeGroup
-    attempts_limit: int = Field(ge=1, le=20)
+    attempts_limit: int = Field(default=1, ge=1, le=1)
     duration_sec: int = Field(ge=60, le=6 * 60 * 60)  # 1 min .. 6h
 
     available_from: datetime
@@ -34,7 +34,7 @@ class OlympiadUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
 
     age_group: AgeGroup | None = None
-    attempts_limit: int | None = Field(default=None, ge=1, le=20)
+    attempts_limit: int | None = Field(default=None, ge=1, le=1)
     duration_sec: int | None = Field(default=None, ge=60, le=6 * 60 * 60)
 
     available_from: datetime | None = None

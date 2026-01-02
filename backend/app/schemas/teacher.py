@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, EmailStr
 from app.models.attempt import AttemptStatus
+from app.models.task import TaskType
 from app.models.user import UserRole
 
 
@@ -24,6 +25,10 @@ class TeacherAttemptRead(BaseModel):
     deadline_at: datetime
     duration_sec: int
     status: AttemptStatus
+    score_total: int
+    score_max: int
+    passed: Optional[bool] = None
+    graded_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -31,11 +36,15 @@ class TeacherAttemptRead(BaseModel):
 
 class TeacherAttemptTask(BaseModel):
     task_id: int
-    prompt: str
-    answer_max_len: int
+    title: str
+    content: str
+    task_type: TaskType
     sort_order: int
-    answer_text: Optional[str] = None
+    max_score: int
+    answer_payload: Optional[dict[str, Any]] = None
     updated_at: Optional[datetime] = None
+    is_correct: Optional[bool] = None
+    score: Optional[int] = None
 
 
 class TeacherAttemptView(BaseModel):
@@ -54,3 +63,7 @@ class TeacherOlympiadAttemptRow(BaseModel):
     started_at: datetime
     deadline_at: datetime
     duration_sec: int
+    score_total: int
+    score_max: int
+    passed: Optional[bool] = None
+    graded_at: Optional[datetime] = None

@@ -1,23 +1,30 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 from app.models.teacher_student import TeacherStudentStatus
 
 
+LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
+CYRILLIC_RE = r"^[А-ЯЁ][а-яё]+$"
+
+
 class CreateStudentRequest(BaseModel):
-    login: str = Field(min_length=5, max_length=64)
+    login: str = Field(pattern=LOGIN_RE)
     password: str = Field(min_length=8, max_length=128)
-    # опционально — базовые поля профиля
-    surname: str | None = None
-    name: str | None = None
-    father_name: str | None = None
-    city: str | None = None
-    school: str | None = None
-    class_grade: int | None = Field(default=None, ge=1, le=11)
+    email: EmailStr
+
+    surname: str = Field(max_length=120, pattern=CYRILLIC_RE)
+    name: str = Field(max_length=120, pattern=CYRILLIC_RE)
+    father_name: str | None = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
+
+    country: str = Field(max_length=120, pattern=CYRILLIC_RE)
+    city: str = Field(max_length=120, pattern=CYRILLIC_RE)
+    school: str = Field(max_length=255, pattern=CYRILLIC_RE)
+    class_grade: int = Field(ge=0, le=11)
 
 
 class AttachStudentRequest(BaseModel):
-    student_login: str = Field(min_length=5, max_length=64)
+    student_login: str = Field(pattern=LOGIN_RE)
 
 
 class TeacherStudentCreateRequest(BaseModel):

@@ -31,7 +31,23 @@ class AuthVKService:
         if not user:
             # пароль не нужен, но поле обязательное — кладём случайный хэш
             password_hash = hash_password("vk:" + provider_user_id)
-            user = await self.users.create(email=norm_email, password_hash=password_hash, role=UserRole.student)
+            login = f"vk{provider_user_id}"
+            if len(login) < 5:
+                login = login.ljust(5, "0")
+            user = await self.users.create(
+                login=login,
+                email=norm_email,
+                password_hash=password_hash,
+                role=UserRole.student,
+                surname="Неизвестно",
+                name="Неизвестно",
+                father_name=None,
+                country="Неизвестно",
+                city="Неизвестно",
+                school="Неизвестно",
+                class_grade=0,
+                subject=None,
+            )
 
         await self.socials.create(provider="vk", provider_user_id=provider_user_id, user_id=user.id)
         return create_access_token(str(user.id)), create_refresh_token(str(user.id))

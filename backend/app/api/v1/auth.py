@@ -15,12 +15,34 @@ router = APIRouter(prefix="/auth")
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
     service = AuthService(UsersRepo(db))
     try:
-        user = await service.register(payload.login, payload.password, payload.role, payload.email)
+        user = await service.register(
+            payload.login,
+            payload.password,
+            payload.role,
+            payload.email,
+            surname=payload.surname,
+            name=payload.name,
+            father_name=payload.father_name,
+            country=payload.country,
+            city=payload.city,
+            school=payload.school,
+            class_grade=payload.class_grade,
+            subject=payload.subject,
+        )
     except ValueError as e:
         if str(e) == "login_taken":
             raise HTTPException(status_code=409, detail="login_taken")
+        if str(e) == "email_taken":
+            raise HTTPException(status_code=409, detail="email_taken")
         if str(e) == "invalid_role":
             raise HTTPException(status_code=422, detail="invalid_role")
+        if str(e) in (
+            "class_grade_required",
+            "subject_required",
+            "subject_not_allowed_for_student",
+            "class_grade_not_allowed_for_teacher",
+        ):
+            raise HTTPException(status_code=422, detail=str(e))
         raise
     return user
 

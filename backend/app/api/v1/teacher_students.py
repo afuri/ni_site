@@ -46,6 +46,15 @@ async def create_or_attach_student(
             raise HTTPException(status_code=409, detail="already_attached")
         if code == "login_taken":
             raise HTTPException(status_code=409, detail="login_taken")
+        if code == "email_taken":
+            raise HTTPException(status_code=409, detail="email_taken")
+        if code in (
+            "class_grade_required",
+            "subject_required",
+            "subject_not_allowed_for_student",
+            "class_grade_not_allowed_for_teacher",
+        ):
+            raise HTTPException(status_code=422, detail=code)
         raise
 
 

@@ -1,7 +1,8 @@
 """Attempt schemas."""
 from datetime import datetime
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from app.models.task import TaskType
 
 from app.models.attempt import AttemptStatus
 
@@ -18,6 +19,10 @@ class AttemptRead(BaseModel):
     deadline_at: datetime
     duration_sec: int
     status: AttemptStatus
+    score_total: int
+    score_max: int
+    passed: Optional[bool] = None
+    graded_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -25,12 +30,12 @@ class AttemptRead(BaseModel):
 
 class AttemptAnswerUpsertRequest(BaseModel):
     task_id: int
-    answer_text: str = Field(max_length=200)  # фактически ограничим по task.answer_max_len
+    answer_payload: dict[str, Any]
 
 
 class AttemptAnswerRead(BaseModel):
     task_id: int
-    answer_text: str
+    answer_payload: dict[str, Any]
     updated_at: datetime
 
     class Config:
@@ -39,9 +44,13 @@ class AttemptAnswerRead(BaseModel):
 
 class AttemptTaskView(BaseModel):
     task_id: int
-    prompt: str
-    answer_max_len: int
+    title: str
+    content: str
+    task_type: TaskType
+    image_key: Optional[str] = None
+    payload: dict[str, Any]
     sort_order: int
+    max_score: int
     current_answer: Optional[AttemptAnswerRead] = None
 
 
