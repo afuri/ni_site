@@ -20,7 +20,13 @@ from app.schemas.tasks import TaskRead
 router = APIRouter(prefix="/admin/olympiads")
 
 
-@router.post("", response_model=OlympiadRead, status_code=201)
+@router.post(
+    "",
+    response_model=OlympiadRead,
+    status_code=201,
+    tags=["admin"],
+    description="Создать олимпиаду (админ)",
+)
 async def create_olympiad(
     payload: OlympiadCreate,
     db: AsyncSession = Depends(get_db),
@@ -35,7 +41,12 @@ async def create_olympiad(
         raise
 
 
-@router.get("", response_model=list[OlympiadRead])
+@router.get(
+    "",
+    response_model=list[OlympiadRead],
+    tags=["admin"],
+    description="Список олимпиад админа",
+)
 async def list_olympiads(
     mine: bool = Query(default=True, description="If true, only olympiads created by current admin"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -48,7 +59,12 @@ async def list_olympiads(
     return await repo.list(created_by_user_id=created_by, limit=limit, offset=offset)
 
 
-@router.get("/{olympiad_id}", response_model=OlympiadRead)
+@router.get(
+    "/{olympiad_id}",
+    response_model=OlympiadRead,
+    tags=["admin"],
+    description="Получить олимпиаду (админ)",
+)
 async def get_olympiad(
     olympiad_id: int,
     db: AsyncSession = Depends(get_db),
@@ -61,7 +77,12 @@ async def get_olympiad(
     return obj
 
 
-@router.put("/{olympiad_id}", response_model=OlympiadRead)
+@router.put(
+    "/{olympiad_id}",
+    response_model=OlympiadRead,
+    tags=["admin"],
+    description="Обновить олимпиаду (админ)",
+)
 async def update_olympiad(
     olympiad_id: int,
     payload: OlympiadUpdate,
@@ -85,7 +106,13 @@ async def update_olympiad(
         raise
 
 
-@router.post("/{olympiad_id}/tasks", response_model=OlympiadTaskRead, status_code=201)
+@router.post(
+    "/{olympiad_id}/tasks",
+    response_model=OlympiadTaskRead,
+    status_code=201,
+    tags=["admin"],
+    description="Добавить задание в олимпиаду",
+)
 async def add_task_to_olympiad(
     olympiad_id: int,
     payload: OlympiadTaskAdd,
@@ -116,7 +143,12 @@ async def add_task_to_olympiad(
         raise
 
 
-@router.get("/{olympiad_id}/tasks", response_model=list[OlympiadTaskRead])
+@router.get(
+    "/{olympiad_id}/tasks",
+    response_model=list[OlympiadTaskRead],
+    tags=["admin"],
+    description="Список заданий олимпиады",
+)
 async def list_olympiad_tasks(
     olympiad_id: int,
     db: AsyncSession = Depends(get_db),
@@ -131,7 +163,12 @@ async def list_olympiad_tasks(
     return await repo.list_by_olympiad(olympiad_id)
 
 
-@router.get("/{olympiad_id}/tasks/full", response_model=list[OlympiadTaskFullRead])
+@router.get(
+    "/{olympiad_id}/tasks/full",
+    response_model=list[OlympiadTaskFullRead],
+    tags=["admin"],
+    description="Список заданий олимпиады с деталями",
+)
 async def list_olympiad_tasks_full(
     olympiad_id: int,
     db: AsyncSession = Depends(get_db),
@@ -159,7 +196,12 @@ async def list_olympiad_tasks_full(
     return out
 
 
-@router.delete("/{olympiad_id}/tasks/{task_id}", status_code=204)
+@router.delete(
+    "/{olympiad_id}/tasks/{task_id}",
+    status_code=204,
+    tags=["admin"],
+    description="Удалить задание из олимпиады",
+)
 async def remove_task_from_olympiad(
     olympiad_id: int,
     task_id: int,
@@ -184,7 +226,12 @@ async def remove_task_from_olympiad(
         raise
 
 
-@router.post("/{olympiad_id}/publish", response_model=OlympiadRead)
+@router.post(
+    "/{olympiad_id}/publish",
+    response_model=OlympiadRead,
+    tags=["admin"],
+    description="Опубликовать или снять с публикации",
+)
 async def set_publish(
     olympiad_id: int,
     publish: bool = Query(..., description="true to publish, false to unpublish"),

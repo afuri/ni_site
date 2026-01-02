@@ -62,3 +62,14 @@ class AttemptView(BaseModel):
 
 class SubmitResponse(BaseModel):
     status: AttemptStatus
+
+
+class AttemptResult(BaseModel):
+    attempt_id: int
+    olympiad_id: int
+    status: AttemptStatus
+    score_total: int
+    score_max: int
+    percent: int
+    passed: Optional[bool] = None
+    graded_at: Optional[datetime] = None

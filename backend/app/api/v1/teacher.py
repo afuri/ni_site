@@ -14,7 +14,12 @@ from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow
 router = APIRouter(prefix="/teacher")
 
 
-@router.get("/olympiads/{olympiad_id}/attempts", response_model=list[TeacherOlympiadAttemptRow])
+@router.get(
+    "/olympiads/{olympiad_id}/attempts",
+    response_model=list[TeacherOlympiadAttemptRow],
+    tags=["teacher"],
+    description="Список попыток по олимпиаде для учителя",
+)
 async def list_attempts_for_olympiad(
     olympiad_id: int,
     db: AsyncSession = Depends(get_db),
@@ -52,7 +57,12 @@ async def list_attempts_for_olympiad(
     return result
 
 
-@router.get("/attempts/{attempt_id}", response_model=TeacherAttemptView)
+@router.get(
+    "/attempts/{attempt_id}",
+    response_model=TeacherAttemptView,
+    tags=["teacher"],
+    description="Просмотр попытки ученика для учителя",
+)
 async def get_attempt_for_review(
     attempt_id: int,
     db: AsyncSession = Depends(get_db),

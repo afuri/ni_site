@@ -153,3 +153,9 @@ class AttemptsRepo:
     async def list_attempts_for_olympiad_with_users(self, olympiad_id: int):
         # Оставим на будущее join с users; сейчас минимально — попытки.
         return await self.list_attempts_for_olympiad(olympiad_id)
+
+    async def list_attempts_for_user(self, user_id: int) -> list[Attempt]:
+        res = await self.db.execute(
+            select(Attempt).where(Attempt.user_id == user_id).order_by(Attempt.id.desc())
+        )
+        return list(res.scalars().all())

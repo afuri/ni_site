@@ -2,6 +2,9 @@
 from datetime import datetime, timedelta, timezone
 import math
 
+from app.core.config import settings
+from app.core.redis import get_redis
+from app.core.security import generate_token
 from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
 from app.models.user import User, UserRole
@@ -158,8 +161,10 @@ class AttemptsService:
         if not attempt:
             raise ValueError("attempt_not_found")
 
-        # студент видит только свою попытку; учитель/админ — позже через отдельные эндпоинты
+        # студент видит только свою попытку; учитель — через отдельные эндпоинты
         if user.role == UserRole.student and attempt.user_id != user.id:
+            raise ValueError("forbidden")
+        if user.role == UserRole.teacher:
             raise ValueError("forbidden")
         return attempt
 
@@ -218,53 +223,118 @@ class AttemptsService:
         if attempt.status == AttemptStatus.submitted:
             return attempt.status  # идемпотентно
 
+        lock_key = f"lock:submit:{attempt.id}"
+        lock_token = generate_token()
+        redis = None
+        locked = False
+        try:
+            redis = await get_redis()
+            locked = await redis.set(lock_key, lock_token, nx=True, ex=settings.SUBMIT_LOCK_TTL_SEC)
+        except Exception:
+            locked = True  # fallback without lock if Redis is unavailable
+
+        if not locked:
+            attempt = await self.repo.get_attempt(attempt_id)
+            if attempt and attempt.status == AttemptStatus.submitted:
+                return AttemptStatus.submitted
+            return attempt.status if attempt else AttemptStatus.expired
+
         now = self._now_utc()
-        if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
-            await self.repo.mark_expired(attempt.id)
-            return AttemptStatus.expired
+        try:
+            if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
+                await self.repo.mark_expired(attempt.id)
+                return AttemptStatus.expired
 
-        # иначе закрываем как submitted + оцениваем
-        if attempt.status == AttemptStatus.active:
-            olympiad = await self.repo.get_olympiad(attempt.olympiad_id)
-            if not olympiad:
-                raise ValueError("olympiad_not_found")
+            # иначе закрываем как submitted + оцениваем
+            if attempt.status == AttemptStatus.active:
+                olympiad = await self.repo.get_olympiad(attempt.olympiad_id)
+                if not olympiad:
+                    raise ValueError("olympiad_not_found")
 
-            tasks = await self.repo.list_tasks(attempt.olympiad_id)
-            answers = await self.repo.list_answers(attempt.id)
-            answers_by_task = {a.task_id: a for a in answers}
+                tasks = await self.repo.list_tasks(attempt.olympiad_id)
+                answers = await self.repo.list_answers(attempt.id)
+                answers_by_task = {a.task_id: a for a in answers}
 
-            score_total = 0
-            score_max = 0
-            now_ts = self._now_utc()
+                score_total = 0
+                score_max = 0
+                now_ts = self._now_utc()
 
-            await self.repo.delete_grades(attempt.id)
-            for olymp_task, task in tasks:
-                score_max += int(olymp_task.max_score)
-                answer = answers_by_task.get(task.id)
-                answer_payload = None if answer is None else answer.answer_payload
-                is_correct = self._grade_task(task.task_type, task.payload, answer_payload)
-                score = int(olymp_task.max_score) if is_correct else 0
-                score_total += score
+                await self.repo.delete_grades(attempt.id)
+                for olymp_task, task in tasks:
+                    score_max += int(olymp_task.max_score)
+                    answer = answers_by_task.get(task.id)
+                    answer_payload = None if answer is None else answer.answer_payload
+                    is_correct = self._grade_task(task.task_type, task.payload, answer_payload)
+                    score = int(olymp_task.max_score) if is_correct else 0
+                    score_total += score
 
-                await self.repo.add_grade(
+                    await self.repo.add_grade(
+                        attempt_id=attempt.id,
+                        task_id=task.id,
+                        is_correct=is_correct,
+                        score=score,
+                        max_score=int(olymp_task.max_score),
+                        graded_at=now_ts,
+                    )
+
+                pass_score = math.ceil(score_max * int(olympiad.pass_percent) / 100) if score_max > 0 else 0
+                passed = score_total >= pass_score
+
+                await self.repo.mark_submitted_with_grade(
                     attempt_id=attempt.id,
-                    task_id=task.id,
-                    is_correct=is_correct,
-                    score=score,
-                    max_score=int(olymp_task.max_score),
+                    score_total=score_total,
+                    score_max=score_max,
+                    passed=passed,
                     graded_at=now_ts,
                 )
+                return AttemptStatus.submitted
 
-            pass_score = math.ceil(score_max * int(olympiad.pass_percent) / 100) if score_max > 0 else 0
-            passed = score_total >= pass_score
+            return attempt.status
+        finally:
+            if redis is not None:
+                try:
+                    current = await redis.get(lock_key)
+                    if current == lock_token:
+                        await redis.delete(lock_key)
+                except Exception:
+                    pass
 
-            await self.repo.mark_submitted_with_grade(
-                attempt_id=attempt.id,
-                score_total=score_total,
-                score_max=score_max,
-                passed=passed,
-                graded_at=now_ts,
+    @staticmethod
+    def _result_percent(score_total: int, score_max: int) -> int:
+        if score_max <= 0:
+            return 0
+        return int(round((score_total / score_max) * 100))
+
+    async def get_result(self, *, user: User, attempt_id: int):
+        attempt = await self._ensure_attempt_access(user=user, attempt_id=attempt_id)
+        percent = self._result_percent(attempt.score_total, attempt.score_max)
+        return {
+            "attempt_id": attempt.id,
+            "olympiad_id": attempt.olympiad_id,
+            "status": attempt.status,
+            "score_total": attempt.score_total,
+            "score_max": attempt.score_max,
+            "percent": percent,
+            "passed": attempt.passed,
+            "graded_at": attempt.graded_at,
+        }
+
+    async def list_results(self, *, user: User):
+        if user.role != UserRole.student:
+            raise ValueError("forbidden")
+        attempts = await self.repo.list_attempts_for_user(user.id)
+        results = []
+        for attempt in attempts:
+            results.append(
+                {
+                    "attempt_id": attempt.id,
+                    "olympiad_id": attempt.olympiad_id,
+                    "status": attempt.status,
+                    "score_total": attempt.score_total,
+                    "score_max": attempt.score_max,
+                    "percent": self._result_percent(attempt.score_total, attempt.score_max),
+                    "passed": attempt.passed,
+                    "graded_at": attempt.graded_at,
+                }
             )
-            return AttemptStatus.submitted
-
-        return attempt.status
+        return results

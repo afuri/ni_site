@@ -40,8 +40,11 @@ class Settings(BaseSettings):
     # rate limit for saving answers
     ANSWERS_RL_LIMIT: int = 20
     ANSWERS_RL_WINDOW_SEC: int = 10
+    SUBMIT_LOCK_TTL_SEC: int = 15
 
     AUDIT_LOG_ENABLED: bool = True
+    SENTRY_DSN: str | None = None
+    PROMETHEUS_ENABLED: bool = False
 
 
 settings = Settings()

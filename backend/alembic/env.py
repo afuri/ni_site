@@ -9,7 +9,9 @@ from app.db.base import Base
 from app.models.user import User  # noqa
 from app.models.olympiad import Olympiad  # noqa
 from app.models.olympiad_task import OlympiadTask  # noqa
-from app.models.attempt import Attempt, AttemptAnswer  # noqa
+from app.models.attempt import Attempt, AttemptAnswer, AttemptTaskGrade  # noqa
+from app.models.auth_token import EmailVerification, PasswordResetToken  # noqa
+from app.models.audit_log import AuditLog  # noqa
 from app.core.config import settings
 from app.models.social_account import SocialAccount  # noqa
 
@@ -83,4 +85,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-

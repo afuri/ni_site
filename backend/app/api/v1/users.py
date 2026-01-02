@@ -10,12 +10,22 @@ from app.schemas.user import UserRead, UserUpdate
 router = APIRouter(prefix="/users")
 
 
-@router.get("/me", response_model=UserRead)
+@router.get(
+    "/me",
+    response_model=UserRead,
+    tags=["users"],
+    description="Получить профиль пользователя",
+)
 async def get_me(user: User = Depends(get_current_user)):
     return user
 
 
-@router.put("/me", response_model=UserRead)
+@router.put(
+    "/me",
+    response_model=UserRead,
+    tags=["users"],
+    description="Обновить профиль пользователя",
+)
 async def update_me(
     payload: UserUpdate,
     db: AsyncSession = Depends(get_db),

@@ -13,7 +13,13 @@ from app.schemas.teacher_students import TeacherStudentCreateRequest, TeacherStu
 router = APIRouter(prefix="/teacher/students")
 
 
-@router.post("", response_model=TeacherStudentRead, status_code=201)
+@router.post(
+    "",
+    response_model=TeacherStudentRead,
+    status_code=201,
+    tags=["teacher"],
+    description="Создать или прикрепить ученика к учителю",
+)
 async def create_or_attach_student(
     payload: TeacherStudentCreateRequest,
     db: AsyncSession = Depends(get_db),
@@ -58,7 +64,12 @@ async def create_or_attach_student(
         raise
 
 
-@router.post("/{student_id}/confirm", response_model=TeacherStudentRead)
+@router.post(
+    "/{student_id}/confirm",
+    response_model=TeacherStudentRead,
+    tags=["teacher"],
+    description="Подтвердить связь учитель-ученик",
+)
 async def confirm_student(
     student_id: int,
     db: AsyncSession = Depends(get_db),
@@ -76,7 +87,12 @@ async def confirm_student(
         raise
 
 
-@router.get("", response_model=list[TeacherStudentRead])
+@router.get(
+    "",
+    response_model=list[TeacherStudentRead],
+    tags=["teacher"],
+    description="Список учеников учителя",
+)
 async def list_students(
     status: str | None = Query(default=None, description="pending|confirmed"),
     db: AsyncSession = Depends(get_db),

@@ -18,12 +18,19 @@ from app.schemas.attempt import (
     AttemptView,
     AttemptAnswerUpsertRequest,
     SubmitResponse,
+    AttemptResult,
 )
 
 router = APIRouter(prefix="/attempts")
 
 
-@router.post("/start", response_model=AttemptRead, status_code=201)
+@router.post(
+    "/start",
+    response_model=AttemptRead,
+    status_code=201,
+    tags=["attempts"],
+    description="Старт попытки прохождения олимпиады",
+)
 async def start_attempt(
     payload: AttemptStartRequest,
     db: AsyncSession = Depends(get_db),
@@ -46,7 +53,14 @@ async def start_attempt(
         raise
 
 
-@router.get("/{attempt_id}", response_model=AttemptView)
+
+
+@router.get(
+    "/{attempt_id}",
+    response_model=AttemptView,
+    tags=["attempts"],
+    description="Просмотр попытки и ответов",
+)
 async def get_attempt_view(
     attempt_id: int,
     db: AsyncSession = Depends(get_db),
@@ -91,7 +105,12 @@ async def get_attempt_view(
     }
 
 
-@router.post("/{attempt_id}/answers", status_code=200)
+@router.post(
+    "/{attempt_id}/answers",
+    status_code=200,
+    tags=["attempts"],
+    description="Сохранить ответ на задание",
+)
 async def upsert_answer(
     attempt_id: int,
     payload: AttemptAnswerUpsertRequest,
@@ -144,7 +163,12 @@ async def upsert_answer(
 
 
 
-@router.post("/{attempt_id}/submit", response_model=SubmitResponse)
+@router.post(
+    "/{attempt_id}/submit",
+    response_model=SubmitResponse,
+    tags=["attempts"],
+    description="Отправить попытку на проверку",
+)
 async def submit_attempt(
     attempt_id: int,
     db: AsyncSession = Depends(get_db),
@@ -159,5 +183,47 @@ async def submit_attempt(
         if code == "attempt_not_found":
             raise HTTPException(status_code=404, detail="attempt_not_found")
         if code == "forbidden":
+            raise HTTPException(status_code=403, detail="forbidden")
+        raise
+
+
+@router.get(
+    "/{attempt_id}/result",
+    response_model=AttemptResult,
+    tags=["attempts"],
+    description="Получить результат попытки",
+)
+async def get_attempt_result(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_db),
+    student: User = Depends(require_role(UserRole.student)),
+):
+    service = AttemptsService(AttemptsRepo(db))
+    try:
+        return await service.get_result(user=student, attempt_id=attempt_id)
+    except ValueError as e:
+        code = str(e)
+        if code == "attempt_not_found":
+            raise HTTPException(status_code=404, detail="attempt_not_found")
+        if code == "forbidden":
+            raise HTTPException(status_code=403, detail="forbidden")
+        raise
+
+
+@router.get(
+    "/results/my",
+    response_model=list[AttemptResult],
+    tags=["attempts"],
+    description="Список результатов текущего ученика",
+)
+async def list_my_results(
+    db: AsyncSession = Depends(get_db),
+    student: User = Depends(require_role(UserRole.student)),
+):
+    service = AttemptsService(AttemptsRepo(db))
+    try:
+        return await service.list_results(user=student)
+    except ValueError as e:
+        if str(e) == "forbidden":
             raise HTTPException(status_code=403, detail="forbidden")
         raise

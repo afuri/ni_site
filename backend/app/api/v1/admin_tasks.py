@@ -12,7 +12,13 @@ from app.schemas.tasks import TaskCreate, TaskUpdate, TaskRead
 router = APIRouter(prefix="/admin/tasks")
 
 
-@router.post("", response_model=TaskRead, status_code=201)
+@router.post(
+    "",
+    response_model=TaskRead,
+    status_code=201,
+    tags=["admin"],
+    description="Создать задание в банке",
+)
 async def create_task(
     payload: TaskCreate,
     db: AsyncSession = Depends(get_db),
@@ -22,7 +28,12 @@ async def create_task(
     return await service.create(payload=payload, created_by_user_id=admin.id)
 
 
-@router.get("", response_model=list[TaskRead])
+@router.get(
+    "",
+    response_model=list[TaskRead],
+    tags=["admin"],
+    description="Список заданий банка",
+)
 async def list_tasks(
     subject: Subject | None = Query(default=None),
     task_type: TaskType | None = Query(default=None),
@@ -35,7 +46,12 @@ async def list_tasks(
     return await repo.list(subject=subject, task_type=task_type, limit=limit, offset=offset)
 
 
-@router.get("/{task_id}", response_model=TaskRead)
+@router.get(
+    "/{task_id}",
+    response_model=TaskRead,
+    tags=["admin"],
+    description="Получить задание банка",
+)
 async def get_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
@@ -48,7 +64,12 @@ async def get_task(
     return task
 
 
-@router.put("/{task_id}", response_model=TaskRead)
+@router.put(
+    "/{task_id}",
+    response_model=TaskRead,
+    tags=["admin"],
+    description="Обновить задание банка",
+)
 async def update_task(
     task_id: int,
     payload: TaskUpdate,
@@ -68,7 +89,12 @@ async def update_task(
         raise HTTPException(status_code=422, detail=str(e))
 
 
-@router.delete("/{task_id}", status_code=204)
+@router.delete(
+    "/{task_id}",
+    status_code=204,
+    tags=["admin"],
+    description="Удалить задание банка",
+)
 async def delete_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),

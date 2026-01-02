@@ -21,7 +21,13 @@ from app.core.deps_auth import get_current_user
 router = APIRouter(prefix="/auth")
 
 
-@router.post("/register", response_model=UserRead, status_code=201)
+@router.post(
+    "/register",
+    response_model=UserRead,
+    status_code=201,
+    tags=["auth"],
+    description="Регистрация пользователя",
+)
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
@@ -57,7 +63,12 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     return user
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post(
+    "/login",
+    response_model=TokenPair,
+    tags=["auth"],
+    description="Вход по логину и паролю",
+)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
@@ -69,12 +80,22 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     return TokenPair(access_token=access, refresh_token=refresh)
 
 
-@router.get("/me", response_model=UserRead)
+@router.get(
+    "/me",
+    response_model=UserRead,
+    tags=["auth"],
+    description="Получить профиль текущего пользователя",
+)
 async def me(user=Depends(get_current_user)):
     return user
 
 
-@router.post("/verify/request", response_model=MessageResponse)
+@router.post(
+    "/verify/request",
+    response_model=MessageResponse,
+    tags=["auth"],
+    description="Запросить письмо для подтверждения email",
+)
 async def request_email_verification(
     payload: EmailVerificationRequest,
     db: AsyncSession = Depends(get_db),
@@ -84,7 +105,12 @@ async def request_email_verification(
     return {"status": "ok"}
 
 
-@router.post("/verify/confirm", response_model=MessageResponse)
+@router.post(
+    "/verify/confirm",
+    response_model=MessageResponse,
+    tags=["auth"],
+    description="Подтвердить email по токену",
+)
 async def confirm_email_verification(
     payload: EmailVerificationConfirm,
     db: AsyncSession = Depends(get_db),
@@ -97,7 +123,12 @@ async def confirm_email_verification(
     return {"status": "ok"}
 
 
-@router.post("/password/reset/request", response_model=MessageResponse)
+@router.post(
+    "/password/reset/request",
+    response_model=MessageResponse,
+    tags=["auth"],
+    description="Запросить сброс пароля по email",
+)
 async def request_password_reset(
     payload: PasswordResetRequest,
     db: AsyncSession = Depends(get_db),
@@ -107,7 +138,12 @@ async def request_password_reset(
     return {"status": "ok"}
 
 
-@router.post("/password/reset/confirm", response_model=MessageResponse)
+@router.post(
+    "/password/reset/confirm",
+    response_model=MessageResponse,
+    tags=["auth"],
+    description="Сбросить пароль по токену",
+)
 async def confirm_password_reset(
     payload: PasswordResetConfirm,
     db: AsyncSession = Depends(get_db),
