@@ -36,3 +36,19 @@ class PasswordResetToken(Base):
         Index("ix_password_resets_user_expires", "user_id", "expires_at"),
         UniqueConstraint("user_id", "token_hash", name="uq_password_resets_user_token"),
     )
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_refresh_tokens_user_expires", "user_id", "expires_at"),
+        UniqueConstraint("user_id", "token_hash", name="uq_refresh_tokens_user_token"),
+    )

@@ -13,7 +13,7 @@ from app.schemas.auth import RegisterRequest
 def _base_payload(role: str) -> dict:
     return {
         "login": "Test1",
-        "password": "password123",
+        "password": "Password123",
         "role": role,
         "email": "test@example.com",
         "surname": "Иванов",

@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.errors import http_error
+from app.core.redis import get_redis
+from app.core.rate_limit import token_bucket_rate_limit
+from app.core.config import settings
 from app.repos.users import UsersRepo
 from app.repos.auth_tokens import AuthTokensRepo
 from app.services.auth import AuthService
@@ -15,11 +18,44 @@ from app.schemas.auth import (
     PasswordResetRequest,
     PasswordResetConfirm,
     MessageResponse,
+    RefreshTokenRequest,
 )
 from app.schemas.user import UserRead
 from app.core.deps_auth import get_current_user
 
 router = APIRouter(prefix="/auth")
+
+
+async def _apply_rate_limit(
+    request: Request,
+    *,
+    key_prefix: str,
+    limit: int,
+    window_sec: int,
+    identity: str | None = None,
+) -> None:
+    try:
+        redis = await get_redis()
+    except Exception:
+        return
+
+    ip = request.client.host if request.client else "unknown"
+    ident = identity or "anon"
+    key = f"rl:{key_prefix}:{ip}:{ident}"
+
+    try:
+        rl = await token_bucket_rate_limit(
+            redis,
+            key=key,
+            capacity=limit,
+            window_sec=window_sec,
+            cost=1,
+        )
+    except Exception:
+        return
+
+    if not rl.allowed:
+        raise http_error(status.HTTP_429_TOO_MANY_REQUESTS, "rate_limited")
 
 
 @router.post(
@@ -29,7 +65,18 @@ router = APIRouter(prefix="/auth")
     tags=["auth"],
     description="Регистрация пользователя",
 )
-async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(
+    payload: RegisterRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:register",
+        limit=settings.AUTH_REGISTER_RL_LIMIT,
+        window_sec=settings.AUTH_REGISTER_RL_WINDOW_SEC,
+        identity=payload.login,
+    )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         user = await service.register(
@@ -58,6 +105,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
             "subject_required",
             "subject_not_allowed_for_student",
             "class_grade_not_allowed_for_teacher",
+            "weak_password",
         ):
             raise http_error(422, str(e))
         raise
@@ -70,7 +118,18 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     tags=["auth"],
     description="Вход по логину и паролю",
 )
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(
+    payload: LoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:login",
+        limit=settings.AUTH_LOGIN_RL_LIMIT,
+        window_sec=settings.AUTH_LOGIN_RL_WINDOW_SEC,
+        identity=payload.login,
+    )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         access, refresh = await service.login(payload.login, payload.password)
@@ -99,8 +158,16 @@ async def me(user=Depends(get_current_user)):
 )
 async def request_email_verification(
     payload: EmailVerificationRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:verify",
+        limit=settings.AUTH_VERIFY_RL_LIMIT,
+        window_sec=settings.AUTH_VERIFY_RL_WINDOW_SEC,
+        identity=payload.email,
+    )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     await service.request_email_verification(email=payload.email)
     return {"status": "ok"}
@@ -132,8 +199,16 @@ async def confirm_email_verification(
 )
 async def request_password_reset(
     payload: PasswordResetRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:reset",
+        limit=settings.AUTH_RESET_RL_LIMIT,
+        window_sec=settings.AUTH_RESET_RL_WINDOW_SEC,
+        identity=payload.email,
+    )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     await service.request_password_reset(email=payload.email)
     return {"status": "ok"}
@@ -147,11 +222,73 @@ async def request_password_reset(
 )
 async def confirm_password_reset(
     payload: PasswordResetConfirm,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:reset-confirm",
+        limit=settings.AUTH_RESET_RL_LIMIT,
+        window_sec=settings.AUTH_RESET_RL_WINDOW_SEC,
+        identity="token",
+    )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         await service.confirm_password_reset(token=payload.token, new_password=payload.new_password)
-    except ValueError:
+    except ValueError as e:
+        if str(e) == "weak_password":
+            raise http_error(422, "weak_password")
         raise http_error(422, "invalid_token")
+    return {"status": "ok"}
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenPair,
+    tags=["auth"],
+    description="Обновить access и refresh токены",
+)
+async def refresh_tokens(
+    payload: RefreshTokenRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:refresh",
+        limit=settings.AUTH_LOGIN_RL_LIMIT,
+        window_sec=settings.AUTH_LOGIN_RL_WINDOW_SEC,
+        identity="refresh",
+    )
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
+    try:
+        access, refresh = await service.refresh_tokens(refresh_token=payload.refresh_token)
+    except ValueError as e:
+        code = str(e)
+        if code == "invalid_token_type":
+            raise http_error(422, "invalid_token_type")
+        raise http_error(422, "invalid_token")
+    return TokenPair(access_token=access, refresh_token=refresh)
+
+
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    tags=["auth"],
+    description="Отозвать refresh токен",
+)
+async def logout(
+    payload: RefreshTokenRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:logout",
+        limit=settings.AUTH_LOGIN_RL_LIMIT,
+        window_sec=settings.AUTH_LOGIN_RL_WINDOW_SEC,
+        identity="logout",
+    )
+    service = AuthService(UsersRepo(db), AuthTokensRepo(db))
+    await service.logout(refresh_token=payload.refresh_token)
     return {"status": "ok"}

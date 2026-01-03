@@ -7,8 +7,10 @@ from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    decode_token,
     generate_token,
     hash_token,
+    validate_password_policy,
 )
 from app.models.user import UserRole
 from app.repos.auth_tokens import AuthTokensRepo
@@ -68,6 +70,7 @@ class AuthService:
             if class_grade is not None:
                 raise ValueError("class_grade_not_allowed_for_teacher")
 
+        validate_password_policy(password)
         password_hash = hash_password(password)
         user = await self.users_repo.create(
             login=login,
@@ -100,7 +103,66 @@ class AuthService:
 
         access = create_access_token(str(user.id))
         refresh = create_refresh_token(str(user.id))
+
+        now = self._now_utc()
+        token_hash = hash_token(refresh)
+        expires_at = now + timedelta(days=settings.JWT_REFRESH_TTL_DAYS)
+        await self.tokens_repo.create_refresh_token(
+            user_id=user.id,
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=expires_at,
+        )
         return access, refresh
+
+    async def refresh_tokens(self, *, refresh_token: str):
+        try:
+            payload = decode_token(refresh_token)
+        except Exception:
+            raise ValueError("invalid_token")
+
+        if payload.get("type") != "refresh":
+            raise ValueError("invalid_token_type")
+
+        sub = payload.get("sub")
+        if not sub:
+            raise ValueError("invalid_token")
+
+        token_hash = hash_token(refresh_token)
+        record = await self.tokens_repo.get_refresh_by_hash(token_hash)
+        if not record:
+            raise ValueError("invalid_token")
+
+        now = self._now_utc()
+        if record.revoked_at is not None or record.expires_at < now:
+            raise ValueError("invalid_token")
+
+        user = await self.users_repo.get_by_id(record.user_id)
+        if not user or not user.is_active:
+            raise ValueError("invalid_token")
+
+        await self.tokens_repo.revoke_refresh_token(record, now)
+
+        access = create_access_token(str(user.id))
+        refresh = create_refresh_token(str(user.id))
+        new_hash = hash_token(refresh)
+        expires_at = now + timedelta(days=settings.JWT_REFRESH_TTL_DAYS)
+        await self.tokens_repo.create_refresh_token(
+            user_id=user.id,
+            token_hash=new_hash,
+            created_at=now,
+            expires_at=expires_at,
+        )
+        return access, refresh
+
+    async def logout(self, *, refresh_token: str) -> None:
+        token_hash = hash_token(refresh_token)
+        record = await self.tokens_repo.get_refresh_by_hash(token_hash)
+        if not record:
+            return
+        if record.revoked_at is not None:
+            return
+        await self.tokens_repo.revoke_refresh_token(record, self._now_utc())
 
     async def request_email_verification(self, *, email: str) -> None:
         user = await self.users_repo.get_by_email(email)
@@ -168,6 +230,7 @@ class AuthService:
             send_email_task.delay(user.email, "Сброс пароля", body)
 
     async def confirm_password_reset(self, *, token: str, new_password: str) -> None:
+        validate_password_policy(new_password)
         token_hash = hash_token(token)
         record = await self.tokens_repo.get_password_reset_by_hash(token_hash)
         if not record:

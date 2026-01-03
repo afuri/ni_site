@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     ANSWERS_RL_WINDOW_SEC: int = 10
     SUBMIT_LOCK_TTL_SEC: int = 15
 
+    AUTH_LOGIN_RL_LIMIT: int = 10
+    AUTH_LOGIN_RL_WINDOW_SEC: int = 60
+    AUTH_REGISTER_RL_LIMIT: int = 5
+    AUTH_REGISTER_RL_WINDOW_SEC: int = 60
+    AUTH_VERIFY_RL_LIMIT: int = 5
+    AUTH_VERIFY_RL_WINDOW_SEC: int = 60
+    AUTH_RESET_RL_LIMIT: int = 5
+    AUTH_RESET_RL_WINDOW_SEC: int = 60
+
     AUDIT_LOG_ENABLED: bool = True
     SENTRY_DSN: str | None = None
     PROMETHEUS_ENABLED: bool = False

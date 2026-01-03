@@ -36,3 +36,11 @@ def hash_token(token: str) -> str:
 
 def verify_token_hash(token: str, token_hash: str) -> bool:
     return hmac.compare_digest(hash_token(token), token_hash)
+
+
+def validate_password_policy(password: str) -> None:
+    has_upper = any(c.isupper() for c in password)
+    has_lower = any(c.islower() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    if not (has_upper and has_lower and has_digit):
+        raise ValueError("weak_password")
