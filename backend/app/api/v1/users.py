@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.deps_auth import get_current_user
+from app.core.errors import http_error
 from app.models.user import User, UserRole
 from app.repos.users import UsersRepo
 from app.schemas.user import UserRead, UserUpdate
@@ -40,7 +41,7 @@ async def update_me(
     repo = UsersRepo(db)
     user = await repo.get_by_id(user.id)
     if not user:
-        raise HTTPException(status_code=404, detail="user_not_found")
+        raise http_error(404, "user_not_found")
 
     updated = await repo.update_profile(user, data)
     return updated

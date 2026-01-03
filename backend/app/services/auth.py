@@ -133,7 +133,9 @@ class AuthService:
             raise ValueError("invalid_token")
 
         now = self._now_utc()
-        if record.used_at is not None or record.expires_at < now:
+        if record.used_at is not None:
+            return
+        if record.expires_at < now:
             raise ValueError("invalid_token")
 
         user = await self.users_repo.get_by_id(record.user_id)
@@ -172,7 +174,9 @@ class AuthService:
             raise ValueError("invalid_token")
 
         now = self._now_utc()
-        if record.used_at is not None or record.expires_at < now:
+        if record.used_at is not None:
+            return
+        if record.expires_at < now:
             raise ValueError("invalid_token")
 
         user = await self.users_repo.get_by_id(record.user_id)

@@ -1,7 +1,8 @@
 """Attempts endpoints."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Response
+from app.core.errors import http_error
 from app.core.rate_limit import token_bucket_rate_limit
 from app.core.redis import get_redis
 from app.core.config import settings
@@ -43,13 +44,13 @@ async def start_attempt(
     except ValueError as e:
         code = str(e)
         if code == "olympiad_not_found":
-            raise HTTPException(status_code=404, detail="olympiad_not_found")
+            raise http_error(404, "olympiad_not_found")
         if code == "olympiad_not_published":
-            raise HTTPException(status_code=409, detail="olympiad_not_published")
+            raise http_error(409, "olympiad_not_published")
         if code == "olympiad_not_available":
-            raise HTTPException(status_code=409, detail="olympiad_not_available")
+            raise http_error(409, "olympiad_not_available")
         if code == "olympiad_has_no_tasks":
-            raise HTTPException(status_code=409, detail="olympiad_has_no_tasks")
+            raise http_error(409, "olympiad_has_no_tasks")
         raise
 
 
@@ -72,11 +73,11 @@ async def get_attempt_view(
     except ValueError as e:
         code = str(e)
         if code == "attempt_not_found":
-            raise HTTPException(status_code=404, detail="attempt_not_found")
+            raise http_error(404, "attempt_not_found")
         if code == "olympiad_not_found":
-            raise HTTPException(status_code=404, detail="olympiad_not_found")
+            raise http_error(404, "olympiad_not_found")
         if code == "forbidden":
-            raise HTTPException(status_code=403, detail="forbidden")
+            raise http_error(403, "forbidden")
         raise
 
     tasks_view = []
@@ -135,7 +136,7 @@ async def upsert_answer(
 
     if not rl.allowed:
         response.headers["Retry-After"] = str(rl.retry_after_sec)
-        raise HTTPException(status_code=429, detail="rate_limited")
+        raise http_error(429, "rate_limited")
 
     service = AttemptsService(AttemptsRepo(db))
     try:
@@ -148,17 +149,17 @@ async def upsert_answer(
     except ValueError as e:
         code = str(e)
         if code == "attempt_not_found":
-            raise HTTPException(status_code=404, detail="attempt_not_found")
+            raise http_error(404, "attempt_not_found")
         if code in ("forbidden",):
-            raise HTTPException(status_code=403, detail="forbidden")
+            raise http_error(403, "forbidden")
         if code in ("attempt_not_active",):
-            raise HTTPException(status_code=409, detail="attempt_not_active")
+            raise http_error(409, "attempt_not_active")
         if code in ("attempt_expired",):
-            raise HTTPException(status_code=409, detail="attempt_expired")
+            raise http_error(409, "attempt_expired")
         if code == "task_not_found":
-            raise HTTPException(status_code=404, detail="task_not_found")
+            raise http_error(404, "task_not_found")
         if code == "invalid_answer_payload":
-            raise HTTPException(status_code=422, detail="invalid_answer_payload")
+            raise http_error(422, "invalid_answer_payload")
         raise
 
 
@@ -181,9 +182,9 @@ async def submit_attempt(
     except ValueError as e:
         code = str(e)
         if code == "attempt_not_found":
-            raise HTTPException(status_code=404, detail="attempt_not_found")
+            raise http_error(404, "attempt_not_found")
         if code == "forbidden":
-            raise HTTPException(status_code=403, detail="forbidden")
+            raise http_error(403, "forbidden")
         raise
 
 
@@ -204,9 +205,9 @@ async def get_attempt_result(
     except ValueError as e:
         code = str(e)
         if code == "attempt_not_found":
-            raise HTTPException(status_code=404, detail="attempt_not_found")
+            raise http_error(404, "attempt_not_found")
         if code == "forbidden":
-            raise HTTPException(status_code=403, detail="forbidden")
+            raise http_error(403, "forbidden")
         raise
 
 
@@ -225,5 +226,5 @@ async def list_my_results(
         return await service.list_results(user=student)
     except ValueError as e:
         if str(e) == "forbidden":
-            raise HTTPException(status_code=403, detail="forbidden")
+            raise http_error(403, "forbidden")
         raise

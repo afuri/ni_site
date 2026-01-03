@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
+from app.core.errors import http_error
 from app.repos.users import UsersRepo
 from app.repos.auth_tokens import AuthTokensRepo
 from app.services.auth import AuthService
@@ -47,18 +48,18 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
         )
     except ValueError as e:
         if str(e) == "login_taken":
-            raise HTTPException(status_code=409, detail="login_taken")
+            raise http_error(409, "login_taken")
         if str(e) == "email_taken":
-            raise HTTPException(status_code=409, detail="email_taken")
+            raise http_error(409, "email_taken")
         if str(e) == "invalid_role":
-            raise HTTPException(status_code=422, detail="invalid_role")
+            raise http_error(422, "invalid_role")
         if str(e) in (
             "class_grade_required",
             "subject_required",
             "subject_not_allowed_for_student",
             "class_grade_not_allowed_for_teacher",
         ):
-            raise HTTPException(status_code=422, detail=str(e))
+            raise http_error(422, str(e))
         raise
     return user
 
@@ -75,8 +76,8 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
         access, refresh = await service.login(payload.login, payload.password)
     except ValueError as e:
         if str(e) == "email_not_verified":
-            raise HTTPException(status_code=403, detail="email_not_verified")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
+            raise http_error(403, "email_not_verified")
+        raise http_error(status.HTTP_401_UNAUTHORIZED, "invalid_credentials")
     return TokenPair(access_token=access, refresh_token=refresh)
 
 
@@ -119,7 +120,7 @@ async def confirm_email_verification(
     try:
         await service.verify_email(token=payload.token)
     except ValueError:
-        raise HTTPException(status_code=422, detail="invalid_token")
+        raise http_error(422, "invalid_token")
     return {"status": "ok"}
 
 
@@ -152,5 +153,5 @@ async def confirm_password_reset(
     try:
         await service.confirm_password_reset(token=payload.token, new_password=payload.new_password)
     except ValueError:
-        raise HTTPException(status_code=422, detail="invalid_token")
+        raise http_error(422, "invalid_token")
     return {"status": "ok"}

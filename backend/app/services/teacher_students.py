@@ -28,7 +28,7 @@ class TeacherStudentsService:
 
         existing = await self.links_repo.get_link(teacher.id, student.id)
         if existing:
-            raise ValueError("already_attached")
+            return existing
 
         link = await self.links_repo.create_link(teacher.id, student.id)
         return link
@@ -63,7 +63,7 @@ class TeacherStudentsService:
             raise ValueError("link_not_found")
 
         if link.status == TeacherStudentStatus.confirmed:
-            raise ValueError("already_confirmed")
+            return link
 
         return await self.links_repo.confirm_link(link)
 

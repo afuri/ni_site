@@ -15,5 +15,54 @@ services:
     ports:
       - "6379:6379"
 
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:changethis@db:5432/ni_site
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      EMAIL_SEND_ENABLED: "false"
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      SMTP_USE_TLS: "true"
+      EMAIL_FROM: no-reply@example.com
+      EMAIL_BASE_URL: http://localhost:3000
+      EMAIL_VERIFY_TTL_HOURS: "24"
+      PASSWORD_RESET_TTL_HOURS: "2"
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=INFO
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:changethis@db:5432/ni_site
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      EMAIL_SEND_ENABLED: "false"
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      SMTP_USE_TLS: "true"
+      EMAIL_FROM: no-reply@example.com
+      EMAIL_BASE_URL: http://localhost:3000
+      EMAIL_VERIFY_TTL_HOURS: "24"
+      PASSWORD_RESET_TTL_HOURS: "2"
+    depends_on:
+      - db
+      - redis
+
 volumes:
   pgdata:

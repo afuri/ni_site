@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.deps_auth import require_role
+from app.core.errors import http_error
 from app.models.user import UserRole, User
 from app.repos.users import UsersRepo
 from app.schemas.user import UserRead, ModeratorStatusUpdate
@@ -25,7 +26,7 @@ async def set_moderator_status(
     repo = UsersRepo(db)
     user = await repo.get_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="user_not_found")
+        raise http_error(404, "user_not_found")
     if user.role != UserRole.teacher:
-        raise HTTPException(status_code=409, detail="user_not_teacher")
+        raise http_error(409, "user_not_teacher")
     return await repo.set_moderator_status(user, payload.is_moderator)

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.deps_auth import require_role
+from app.core.errors import http_error
 from app.models.user import UserRole, User
 from app.repos.olympiads import OlympiadsRepo
 from app.repos.olympiad_tasks import OlympiadTasksRepo
@@ -37,7 +38,7 @@ async def create_olympiad(
         return await service.create(data=payload.model_dump(), admin_id=admin.id)
     except ValueError as e:
         if str(e) == "invalid_availability":
-            raise HTTPException(status_code=422, detail="invalid_availability")
+            raise http_error(422, "invalid_availability")
         raise
 
 
@@ -73,7 +74,7 @@ async def get_olympiad(
     repo = OlympiadsRepo(db)
     obj = await repo.get(olympiad_id)
     if not obj:
-        raise HTTPException(status_code=404, detail="olympiad_not_found")
+        raise http_error(404, "olympiad_not_found")
     return obj
 
 
@@ -92,7 +93,7 @@ async def update_olympiad(
     repo = OlympiadsRepo(db)
     obj = await repo.get(olympiad_id)
     if not obj:
-        raise HTTPException(status_code=404, detail="olympiad_not_found")
+        raise http_error(404, "olympiad_not_found")
 
     service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
@@ -100,9 +101,9 @@ async def update_olympiad(
     except ValueError as e:
         code = str(e)
         if code == "invalid_availability":
-            raise HTTPException(status_code=422, detail="invalid_availability")
+            raise http_error(422, "invalid_availability")
         if code == "cannot_change_published_rules":
-            raise HTTPException(status_code=409, detail="cannot_change_published_rules")
+            raise http_error(409, "cannot_change_published_rules")
         raise
 
 
@@ -122,7 +123,7 @@ async def add_task_to_olympiad(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise HTTPException(status_code=404, detail="olympiad_not_found")
+        raise http_error(404, "olympiad_not_found")
 
     service = AdminOlympiadsService(o_repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
@@ -135,11 +136,9 @@ async def add_task_to_olympiad(
     except ValueError as e:
         code = str(e)
         if code == "cannot_modify_published":
-            raise HTTPException(status_code=409, detail="cannot_modify_published")
+            raise http_error(409, "cannot_modify_published")
         if code == "task_not_found":
-            raise HTTPException(status_code=404, detail="task_not_found")
-        if code == "task_already_added":
-            raise HTTPException(status_code=409, detail="task_already_added")
+            raise http_error(404, "task_not_found")
         raise
 
 
@@ -157,7 +156,7 @@ async def list_olympiad_tasks(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise HTTPException(status_code=404, detail="olympiad_not_found")
+        raise http_error(404, "olympiad_not_found")
 
     repo = OlympiadTasksRepo(db)
     return await repo.list_by_olympiad(olympiad_id)
@@ -177,7 +176,7 @@ async def list_olympiad_tasks_full(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise HTTPException(status_code=404, detail="olympiad_not_found")
+        raise http_error(404, "olympiad_not_found")
 
     repo = OlympiadTasksRepo(db)
     rows = await repo.list_full_by_olympiad(olympiad_id)
@@ -211,7 +210,7 @@ async def remove_task_from_olympiad(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise HTTPException(status_code=404, detail="olympiad_not_found")
+        raise http_error(404, "olympiad_not_found")
 
     service = AdminOlympiadsService(o_repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
@@ -220,9 +219,7 @@ async def remove_task_from_olympiad(
     except ValueError as e:
         code = str(e)
         if code == "cannot_modify_published":
-            raise HTTPException(status_code=409, detail="cannot_modify_published")
-        if code == "task_not_in_olympiad":
-            raise HTTPException(status_code=404, detail="task_not_in_olympiad")
+            raise http_error(409, "cannot_modify_published")
         raise
 
 
@@ -241,12 +238,12 @@ async def set_publish(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise HTTPException(status_code=404, detail="olympiad_not_found")
+        raise http_error(404, "olympiad_not_found")
 
     service = AdminOlympiadsService(o_repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
         return await service.publish(olympiad=obj, publish=publish)
     except ValueError as e:
         if str(e) == "cannot_publish_empty":
-            raise HTTPException(status_code=409, detail="cannot_publish_empty")
+            raise http_error(409, "cannot_publish_empty")
         raise

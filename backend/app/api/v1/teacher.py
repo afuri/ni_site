@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.deps_auth import require_role
+from app.core.errors import http_error
 from app.models.user import UserRole, User
 
 from app.repos.olympiads import OlympiadsRepo
@@ -33,9 +34,9 @@ async def list_attempts_for_olympiad(
     except ValueError as e:
         code = str(e)
         if code == "olympiad_not_found":
-            raise HTTPException(status_code=404, detail="olympiad_not_found")
+            raise http_error(404, "olympiad_not_found")
         if code == "forbidden":
-            raise HTTPException(status_code=403, detail="forbidden")
+            raise http_error(403, "forbidden")
         raise
 
     result = []
@@ -79,11 +80,11 @@ async def get_attempt_for_review(
     except ValueError as e:
         code = str(e)
         if code == "attempt_not_found":
-            raise HTTPException(status_code=404, detail="attempt_not_found")
+            raise http_error(404, "attempt_not_found")
         if code == "olympiad_not_found":
-            raise HTTPException(status_code=404, detail="olympiad_not_found")
+            raise http_error(404, "olympiad_not_found")
         if code == "forbidden":
-            raise HTTPException(status_code=403, detail="forbidden")
+            raise http_error(403, "forbidden")
         raise
 
     tasks_view = []
@@ -121,12 +122,12 @@ async def request_moderator_status(
     teacher: User = Depends(require_role(UserRole.teacher)),
 ):
     if teacher.is_moderator:
-        raise HTTPException(status_code=409, detail="already_moderator")
+        raise http_error(409, "already_moderator")
 
     repo = UsersRepo(db)
     user = await repo.get_by_id(teacher.id)
     if not user:
-        raise HTTPException(status_code=404, detail="user_not_found")
+        raise http_error(404, "user_not_found")
 
     if not user.moderator_requested:
         await repo.set_moderator_request(user, True)

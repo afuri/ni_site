@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.deps_auth import require_admin_or_moderator
+from app.core.errors import http_error
 from app.models.user import User
 from app.models.task import Subject, TaskType
 from app.repos.tasks import TasksRepo
@@ -60,7 +61,7 @@ async def get_task(
     repo = TasksRepo(db)
     task = await repo.get(task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="task_not_found")
+        raise http_error(404, "task_not_found")
     return task
 
 
@@ -79,14 +80,14 @@ async def update_task(
     repo = TasksRepo(db)
     task = await repo.get(task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="task_not_found")
+        raise http_error(404, "task_not_found")
 
     patch = payload.model_dump(exclude_unset=True)
     service = TasksService(repo)
     try:
         return await service.update(task=task, patch=patch)
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise http_error(422, str(e))
 
 
 @router.delete(
@@ -103,6 +104,6 @@ async def delete_task(
     repo = TasksRepo(db)
     task = await repo.get(task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="task_not_found")
+        raise http_error(404, "task_not_found")
     await repo.delete(task)
     return None

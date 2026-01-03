@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.deps_auth import require_role
+from app.core.errors import http_error
 from app.models.user import UserRole, User
 from app.models.teacher_student import TeacherStudentStatus
 from app.repos.users import UsersRepo
@@ -29,7 +30,7 @@ async def create_or_attach_student(
 
     # validate mode
     if (payload.create is None and payload.attach is None) or (payload.create is not None and payload.attach is not None):
-        raise HTTPException(status_code=422, detail="provide_create_or_attach")
+        raise http_error(422, "provide_create_or_attach")
 
     try:
         if payload.attach is not None:
@@ -43,24 +44,22 @@ async def create_or_attach_student(
     except ValueError as e:
         code = str(e)
         if code == "student_not_found":
-            raise HTTPException(status_code=404, detail="student_not_found")
+            raise http_error(404, "student_not_found")
         if code == "cannot_attach_self":
-            raise HTTPException(status_code=409, detail="cannot_attach_self")
+            raise http_error(409, "cannot_attach_self")
         if code == "not_a_student":
-            raise HTTPException(status_code=409, detail="not_a_student")
-        if code == "already_attached":
-            raise HTTPException(status_code=409, detail="already_attached")
+            raise http_error(409, "not_a_student")
         if code == "login_taken":
-            raise HTTPException(status_code=409, detail="login_taken")
+            raise http_error(409, "login_taken")
         if code == "email_taken":
-            raise HTTPException(status_code=409, detail="email_taken")
+            raise http_error(409, "email_taken")
         if code in (
             "class_grade_required",
             "subject_required",
             "subject_not_allowed_for_student",
             "class_grade_not_allowed_for_teacher",
         ):
-            raise HTTPException(status_code=422, detail=code)
+            raise http_error(422, code)
         raise
 
 
@@ -81,9 +80,7 @@ async def confirm_student(
     except ValueError as e:
         code = str(e)
         if code == "link_not_found":
-            raise HTTPException(status_code=404, detail="link_not_found")
-        if code == "already_confirmed":
-            raise HTTPException(status_code=409, detail="already_confirmed")
+            raise http_error(404, "link_not_found")
         raise
 
 
@@ -103,7 +100,7 @@ async def list_students(
     status_enum = None
     if status is not None:
         if status not in ("pending", "confirmed"):
-            raise HTTPException(status_code=422, detail="invalid_status")
+            raise http_error(422, "invalid_status")
         status_enum = TeacherStudentStatus(status)
 
     return await service.list(teacher=teacher, status=status_enum)

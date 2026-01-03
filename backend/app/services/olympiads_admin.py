@@ -62,7 +62,7 @@ class AdminOlympiadsService:
 
         existing = await self.olympiad_tasks.get_by_olympiad_task(olympiad.id, task_id)
         if existing:
-            raise ValueError("task_already_added")
+            return existing
 
         obj = OlympiadTask(olympiad_id=olympiad.id, task_id=task_id, sort_order=sort_order, max_score=max_score)
         return await self.olympiad_tasks.add(obj)
@@ -73,7 +73,7 @@ class AdminOlympiadsService:
 
         existing = await self.olympiad_tasks.get_by_olympiad_task(olympiad.id, task_id)
         if not existing:
-            raise ValueError("task_not_in_olympiad")
+            return
         await self.olympiad_tasks.delete(existing)
 
     async def publish(self, *, olympiad: Olympiad, publish: bool) -> Olympiad:

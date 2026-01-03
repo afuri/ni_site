@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
 import sentry_sdk
 from app.core.config import settings
+from app.core.errors import api_error
 from app.core.logging import setup_logging
 from app.middleware.audit import AuditMiddleware
 from app.api.v1.router import router as v1_router
@@ -17,3 +20,30 @@ app.include_router(v1_router)
 
 if settings.PROMETHEUS_ENABLED:
     app.mount("/metrics", make_asgi_app())
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException):
+    detail = exc.detail
+    if isinstance(detail, dict) and "code" in detail:
+        payload = detail
+    else:
+        code = str(detail)
+        if exc.status_code == 404 and code == "Not Found":
+            code = "not_found"
+        if exc.status_code == 405 and code == "Method Not Allowed":
+            code = "method_not_allowed"
+        payload = api_error(code)
+    return JSONResponse(status_code=exc.status_code, content={"error": payload})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(_request: Request, exc: RequestValidationError):
+    payload = api_error("validation_error", details=exc.errors())
+    return JSONResponse(status_code=422, content={"error": payload})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_request: Request, _exc: Exception):
+    payload = api_error("internal_error")
+    return JSONResponse(status_code=500, content={"error": payload})
