@@ -27,6 +27,12 @@ class AttemptsRepo:
         )
         return list(res.all())
 
+    async def list_tasks_full(
+        self,
+        olympiad_id: int,
+    ) -> list[tuple[OlympiadTask, Task]]:
+        return await self.list_tasks(olympiad_id)
+
     async def get_attempt(self, attempt_id: int) -> Attempt | None:
         res = await self.db.execute(select(Attempt).where(Attempt.id == attempt_id))
         return res.scalar_one_or_none()

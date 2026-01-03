@@ -1,9 +1,11 @@
 """Attempts service."""
 from datetime import datetime, timedelta, timezone
 import math
+import json
+from types import SimpleNamespace
 
 from app.core.config import settings
-from app.core.redis import get_redis
+from app.core.redis import get_redis, safe_redis
 from app.core.security import generate_token
 from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
@@ -31,6 +33,87 @@ class AttemptsService:
                 "case_insensitive": payload.get("case_insensitive", True),
             }
         return {}
+
+    @staticmethod
+    def _tasks_cache_key(olympiad_id: int) -> str:
+        return f"cache:olympiad:{olympiad_id}:tasks:v1"
+
+    async def _get_tasks_cached(self, olympiad_id: int) -> list[dict]:
+        redis = await safe_redis()
+        if redis is None:
+            return await self.repo.list_tasks_full(olympiad_id)
+
+        cache_key = self._tasks_cache_key(olympiad_id)
+        try:
+            cached = await redis.get(cache_key)
+        except Exception:
+            cached = None
+
+        if cached:
+            try:
+                data = json.loads(cached)
+                return data
+            except Exception:
+                pass
+
+        rows = await self.repo.list_tasks_full(olympiad_id)
+        payload = []
+        for olymp_task, task in rows:
+            payload.append(
+                {
+                    "olymp_task": {
+                        "task_id": olymp_task.task_id,
+                        "sort_order": olymp_task.sort_order,
+                        "max_score": olymp_task.max_score,
+                    },
+                    "task": {
+                        "id": task.id,
+                        "title": task.title,
+                        "content": task.content,
+                        "task_type": task.task_type,
+                        "image_key": task.image_key,
+                        "payload": task.payload,
+                    },
+                }
+            )
+
+        try:
+            await redis.set(
+                cache_key,
+                json.dumps(payload),
+                ex=settings.OLYMPIAD_TASKS_CACHE_TTL_SEC,
+            )
+        except Exception:
+            pass
+
+        return payload
+
+    @staticmethod
+    def _inflate_tasks(
+        rows: list[dict],
+    ) -> list[tuple]:
+        inflated = []
+        for row in rows:
+            ot = row["olymp_task"]
+            t = row["task"]
+            inflated.append(
+                (
+                    SimpleNamespace(
+                        task_id=ot["task_id"],
+                        sort_order=ot["sort_order"],
+                        max_score=ot["max_score"],
+                    ),
+                    SimpleNamespace(
+                        id=t["id"],
+                        title=t["title"],
+                        content=t["content"],
+                        task_type=TaskType(t["task_type"]),
+                        image_key=t.get("image_key"),
+                        payload=t["payload"],
+                    ),
+                )
+            )
+        return inflated
 
     @staticmethod
     def _validate_answer_payload(task_type: TaskType, task_payload: dict, answer_payload: dict) -> dict:
@@ -141,7 +224,8 @@ class AttemptsService:
         if now < olympiad.available_from or now > olympiad.available_to:
             raise ValueError("olympiad_not_available")
 
-        tasks = await self.repo.list_tasks(olympiad_id)
+        cached = await self._get_tasks_cached(olympiad_id)
+        tasks = self._inflate_tasks(cached)
         if len(tasks) == 0:
             # защищаемся от "пустой" опубликованной олимпиады
             raise ValueError("olympiad_has_no_tasks")
@@ -175,7 +259,8 @@ class AttemptsService:
         if not olympiad:
             raise ValueError("olympiad_not_found")
 
-        tasks = await self.repo.list_tasks(attempt.olympiad_id)
+        cached = await self._get_tasks_cached(attempt.olympiad_id)
+        tasks = self._inflate_tasks(cached)
         answers = await self.repo.list_answers(attempt.id)
         answers_by_task = {a.task_id: a for a in answers}
 
@@ -200,7 +285,8 @@ class AttemptsService:
             raise ValueError("attempt_expired")
 
         # убедимся, что task принадлежит олимпиаде попытки
-        tasks = await self.repo.list_tasks(attempt.olympiad_id)
+        cached = await self._get_tasks_cached(attempt.olympiad_id)
+        tasks = self._inflate_tasks(cached)
         match = next(((ot, t) for ot, t in tasks if ot.task_id == task_id), None)
         if not match:
             raise ValueError("task_not_found")
@@ -251,7 +337,8 @@ class AttemptsService:
                 if not olympiad:
                     raise ValueError("olympiad_not_found")
 
-                tasks = await self.repo.list_tasks(attempt.olympiad_id)
+                cached = await self._get_tasks_cached(attempt.olympiad_id)
+                tasks = self._inflate_tasks(cached)
                 answers = await self.repo.list_answers(attempt.id)
                 answers_by_task = {a.task_id: a for a in answers}
 
