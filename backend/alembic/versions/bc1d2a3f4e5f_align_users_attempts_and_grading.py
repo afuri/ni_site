@@ -25,10 +25,10 @@ def upgrade() -> None:
     op.execute("UPDATE users SET email = CONCAT('legacy_', id, '@example.invalid') WHERE email IS NULL")
     op.alter_column("users", "email", existing_type=sa.String(length=255), nullable=False)
     op.create_unique_constraint("uq_users_email", "users", ["email"])
-    op.drop_column("users", "teacher_math")
-    op.drop_column("users", "teacher_cs")
-    op.drop_column("users", "teacher_math_link")
-    op.drop_column("users", "teacher_cs_link")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS teacher_math")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS teacher_cs")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS teacher_math_link")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS teacher_cs_link")
 
     # attempts
     op.add_column("attempts", sa.Column("score_total", sa.Integer(), server_default="0", nullable=False))
@@ -42,35 +42,69 @@ def upgrade() -> None:
     op.alter_column("attempt_answers", "answer_payload", nullable=False)
     op.execute("ALTER TABLE attempt_answers DROP CONSTRAINT IF EXISTS attempt_answers_task_id_fkey")
     op.execute(
-        "UPDATE attempt_answers aa "
-        "SET task_id = ot.task_id "
-        "FROM olympiad_tasks ot "
-        "WHERE aa.task_id = ot.id"
+        """
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_name = 'olympiad_tasks' AND column_name = 'task_id'
+          ) THEN
+            UPDATE attempt_answers aa
+            SET task_id = ot.task_id
+            FROM olympiad_tasks ot
+            WHERE aa.task_id = ot.id;
+          END IF;
+        END $$;
+        """
     )
-    op.create_foreign_key(
-        "attempt_answers_task_id_fkey",
-        "attempt_answers",
-        "tasks",
-        ["task_id"],
-        ["id"],
-        ondelete="CASCADE",
+    op.execute(
+        """
+        DO $$
+        BEGIN
+          IF to_regclass('tasks') IS NOT NULL
+             AND EXISTS (
+               SELECT 1
+               FROM information_schema.columns
+               WHERE table_name = 'olympiad_tasks' AND column_name = 'task_id'
+             ) THEN
+            EXECUTE 'ALTER TABLE attempt_answers ADD CONSTRAINT attempt_answers_task_id_fkey '
+                    'FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE';
+          END IF;
+        END $$;
+        """
     )
     op.drop_column("attempt_answers", "answer_text")
 
-    op.create_table(
-        "attempt_task_grades",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("attempt_id", sa.Integer(), nullable=False),
-        sa.Column("task_id", sa.Integer(), nullable=False),
-        sa.Column("is_correct", sa.Boolean(), nullable=False),
-        sa.Column("score", sa.Integer(), nullable=False),
-        sa.Column("max_score", sa.Integer(), nullable=False),
-        sa.Column("graded_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["attempt_id"], ["attempts.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["task_id"], ["tasks.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("attempt_id", "task_id", name="uq_attempt_task_grade"),
-    )
+    if op.get_bind().dialect.has_table(op.get_bind(), "tasks"):
+        op.create_table(
+            "attempt_task_grades",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("attempt_id", sa.Integer(), nullable=False),
+            sa.Column("task_id", sa.Integer(), nullable=False),
+            sa.Column("is_correct", sa.Boolean(), nullable=False),
+            sa.Column("score", sa.Integer(), nullable=False),
+            sa.Column("max_score", sa.Integer(), nullable=False),
+            sa.Column("graded_at", sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(["attempt_id"], ["attempts.id"], ondelete="CASCADE"),
+            sa.ForeignKeyConstraint(["task_id"], ["tasks.id"], ondelete="CASCADE"),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("attempt_id", "task_id", name="uq_attempt_task_grade"),
+        )
+    else:
+        op.create_table(
+            "attempt_task_grades",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("attempt_id", sa.Integer(), nullable=False),
+            sa.Column("task_id", sa.Integer(), nullable=False),
+            sa.Column("is_correct", sa.Boolean(), nullable=False),
+            sa.Column("score", sa.Integer(), nullable=False),
+            sa.Column("max_score", sa.Integer(), nullable=False),
+            sa.Column("graded_at", sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(["attempt_id"], ["attempts.id"], ondelete="CASCADE"),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("attempt_id", "task_id", name="uq_attempt_task_grade"),
+        )
 
 
 def downgrade() -> None:
@@ -80,18 +114,32 @@ def downgrade() -> None:
     op.execute("UPDATE attempt_answers SET answer_text = COALESCE(answer_payload->>'text', '')")
     op.execute("ALTER TABLE attempt_answers DROP CONSTRAINT IF EXISTS attempt_answers_task_id_fkey")
     op.execute(
-        "UPDATE attempt_answers aa "
-        "SET task_id = ot.id "
-        "FROM olympiad_tasks ot "
-        "WHERE aa.task_id = ot.task_id"
+        """
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_name = 'olympiad_tasks' AND column_name = 'task_id'
+          ) THEN
+            UPDATE attempt_answers aa
+            SET task_id = ot.id
+            FROM olympiad_tasks ot
+            WHERE aa.task_id = ot.task_id;
+          END IF;
+        END $$;
+        """
     )
-    op.create_foreign_key(
-        "attempt_answers_task_id_fkey",
-        "attempt_answers",
-        "olympiad_tasks",
-        ["task_id"],
-        ["id"],
-        ondelete="CASCADE",
+    op.execute(
+        """
+        DO $$
+        BEGIN
+          IF to_regclass('olympiad_tasks') IS NOT NULL THEN
+            EXECUTE 'ALTER TABLE attempt_answers ADD CONSTRAINT attempt_answers_task_id_fkey '
+                    'FOREIGN KEY (task_id) REFERENCES olympiad_tasks (id) ON DELETE CASCADE';
+          END IF;
+        END $$;
+        """
     )
     op.drop_column("attempt_answers", "answer_payload")
 

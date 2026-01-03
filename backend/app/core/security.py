@@ -23,7 +23,17 @@ def create_access_token(sub: str) -> str:
 def create_refresh_token(sub: str) -> str:
     now = datetime.now(timezone.utc)
     exp = now + timedelta(days=settings.JWT_REFRESH_TTL_DAYS)
-    return jwt.encode({"sub": sub, "type": "refresh", "iat": int(now.timestamp()), "exp": exp}, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
+    return jwt.encode(
+        {
+            "sub": sub,
+            "type": "refresh",
+            "iat": int(now.timestamp()),
+            "exp": exp,
+            "jti": secrets.token_urlsafe(16),
+        },
+        settings.JWT_SECRET,
+        algorithm=settings.JWT_ALG,
+    )
 
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
