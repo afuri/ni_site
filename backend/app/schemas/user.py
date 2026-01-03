@@ -14,6 +14,8 @@ class UserRead(BaseModel):
     role: UserRole
     is_active: bool
     is_email_verified: bool
+    is_moderator: bool
+    moderator_requested: bool
 
     surname: Optional[str] = None
     name: Optional[str] = None
@@ -40,3 +42,11 @@ class UserUpdate(BaseModel):
     class_grade: Optional[int] = Field(default=None)
 
     subject: Optional[str] = Field(default=None, max_length=120)
+
+
+class ModeratorRequestResponse(BaseModel):
+    status: str
+
+
+class ModeratorStatusUpdate(BaseModel):
+    is_moderator: bool

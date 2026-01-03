@@ -8,8 +8,10 @@ from app.models.user import UserRole, User
 from app.repos.olympiads import OlympiadsRepo
 from app.repos.teacher import TeacherRepo
 from app.repos.teacher_students import TeacherStudentsRepo
+from app.repos.users import UsersRepo
 from app.services.teacher import TeacherService
 from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow
+from app.schemas.user import ModeratorRequestResponse
 
 router = APIRouter(prefix="/teacher")
 
@@ -70,7 +72,7 @@ async def get_attempt_for_review(
 ):
     service = TeacherService(TeacherRepo(db), OlympiadsRepo(db), TeacherStudentsRepo(db))
     try:
-        attempt, user, olympiad, tasks, answers_by_task, grades_by_task = await service.get_attempt_view(
+        attempt, user, olympiad, tasks, answers_by_task = await service.get_attempt_view(
             teacher=teacher,
             attempt_id=attempt_id,
         )
@@ -87,7 +89,6 @@ async def get_attempt_for_review(
     tasks_view = []
     for olymp_task, task in tasks:
         a = answers_by_task.get(task.id)
-        g = grades_by_task.get(task.id)
         tasks_view.append(
             {
                 "task_id": task.id,
@@ -98,8 +99,6 @@ async def get_attempt_for_review(
                 "max_score": olymp_task.max_score,
                 "answer_payload": None if a is None else a.answer_payload,
                 "updated_at": None if a is None else a.updated_at,
-                "is_correct": None if g is None else g.is_correct,
-                "score": None if g is None else g.score,
             }
         )
 
@@ -109,3 +108,27 @@ async def get_attempt_for_review(
         "olympiad_title": olympiad.title,
         "tasks": tasks_view,
     }
+
+
+@router.post(
+    "/moderator/request",
+    response_model=ModeratorRequestResponse,
+    tags=["teacher"],
+    description="Запросить статус модератора",
+)
+async def request_moderator_status(
+    db: AsyncSession = Depends(get_db),
+    teacher: User = Depends(require_role(UserRole.teacher)),
+):
+    if teacher.is_moderator:
+        raise HTTPException(status_code=409, detail="already_moderator")
+
+    repo = UsersRepo(db)
+    user = await repo.get_by_id(teacher.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="user_not_found")
+
+    if not user.moderator_requested:
+        await repo.set_moderator_request(user, True)
+
+    return {"status": "requested"}

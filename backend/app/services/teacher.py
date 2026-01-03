@@ -31,11 +31,9 @@ class TeacherService:
 
         tasks = await self.teacher_repo.list_tasks(attempt.olympiad_id)
         answers = await self.teacher_repo.list_answers(attempt.id)
-        grades = await self.teacher_repo.list_grades(attempt.id)
         answers_by_task = {a.task_id: a for a in answers}
-        grades_by_task = {g.task_id: g for g in grades}
 
-        return attempt, user, olympiad, tasks, answers_by_task, grades_by_task
+        return attempt, user, olympiad, tasks, answers_by_task
 
     async def list_olympiad_attempts(self, *, teacher: User, olympiad_id: int):
         olympiad = await self._ensure_olympiad(olympiad_id=olympiad_id)

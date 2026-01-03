@@ -43,8 +43,6 @@ class TeacherAttemptTask(BaseModel):
     max_score: int
     answer_payload: Optional[dict[str, Any]] = None
     updated_at: Optional[datetime] = None
-    is_correct: Optional[bool] = None
-    score: Optional[int] = None
 
 
 class TeacherAttemptView(BaseModel):

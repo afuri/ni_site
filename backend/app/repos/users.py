@@ -75,3 +75,16 @@ class UsersRepo:
         await self.db.commit()
         await self.db.refresh(user)
         return user
+
+    async def set_moderator_request(self, user: User, requested: bool) -> User:
+        user.moderator_requested = requested
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+
+    async def set_moderator_status(self, user: User, is_moderator: bool) -> User:
+        user.is_moderator = is_moderator
+        user.moderator_requested = False
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user

@@ -44,3 +44,13 @@ def require_role(*roles: UserRole):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
         return user
     return _guard
+
+
+def require_admin_or_moderator():
+    async def _guard(user: User = Depends(get_current_user)) -> User:
+        if user.role == UserRole.admin:
+            return user
+        if user.role == UserRole.teacher and user.is_moderator:
+            return user
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    return _guard

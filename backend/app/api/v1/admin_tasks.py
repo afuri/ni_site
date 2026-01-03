@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
-from app.core.deps_auth import require_role
-from app.models.user import UserRole, User
+from app.core.deps_auth import require_admin_or_moderator
+from app.models.user import User
 from app.models.task import Subject, TaskType
 from app.repos.tasks import TasksRepo
 from app.services.tasks import TasksService
@@ -22,10 +22,10 @@ router = APIRouter(prefix="/admin/tasks")
 async def create_task(
     payload: TaskCreate,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_admin_or_moderator()),
 ):
     service = TasksService(TasksRepo(db))
-    return await service.create(payload=payload, created_by_user_id=admin.id)
+    return await service.create(payload=payload, created_by_user_id=user.id)
 
 
 @router.get(
@@ -40,7 +40,7 @@ async def list_tasks(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_admin_or_moderator()),
 ):
     repo = TasksRepo(db)
     return await repo.list(subject=subject, task_type=task_type, limit=limit, offset=offset)
@@ -55,7 +55,7 @@ async def list_tasks(
 async def get_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_admin_or_moderator()),
 ):
     repo = TasksRepo(db)
     task = await repo.get(task_id)
@@ -74,7 +74,7 @@ async def update_task(
     task_id: int,
     payload: TaskUpdate,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_admin_or_moderator()),
 ):
     repo = TasksRepo(db)
     task = await repo.get(task_id)
@@ -98,7 +98,7 @@ async def update_task(
 async def delete_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    user: User = Depends(require_admin_or_moderator()),
 ):
     repo = TasksRepo(db)
     task = await repo.get(task_id)
