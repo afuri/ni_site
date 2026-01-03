@@ -6,6 +6,7 @@ from starlette.requests import Request
 
 from app.core.config import settings
 from app.core.security import decode_token
+import sentry_sdk
 from app.db.session import SessionLocal
 from app.repos.audit_logs import AuditLogsRepo
 
@@ -31,6 +32,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     user_id = int(payload.get("sub"))
             except Exception:
                 pass
+
+        sentry_sdk.set_tag("path", path)
+        sentry_sdk.set_tag("method", request.method)
+        if user_id is not None:
+            sentry_sdk.set_user({"id": user_id})
 
         status_code = 500
         try:

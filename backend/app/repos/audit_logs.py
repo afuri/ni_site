@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
@@ -36,3 +37,31 @@ class AuditLogsRepo:
         await self.db.commit()
         await self.db.refresh(obj)
         return obj
+
+    async def list(
+        self,
+        *,
+        user_id: int | None,
+        action: str | None,
+        status_code: int | None,
+        from_dt: datetime | None,
+        to_dt: datetime | None,
+        limit: int,
+        offset: int,
+    ) -> list[AuditLog]:
+        stmt = select(AuditLog)
+
+        if user_id is not None:
+            stmt = stmt.where(AuditLog.user_id == user_id)
+        if action is not None:
+            stmt = stmt.where(AuditLog.action == action)
+        if status_code is not None:
+            stmt = stmt.where(AuditLog.status_code == status_code)
+        if from_dt is not None:
+            stmt = stmt.where(AuditLog.created_at >= from_dt)
+        if to_dt is not None:
+            stmt = stmt.where(AuditLog.created_at <= to_dt)
+
+        stmt = stmt.order_by(AuditLog.id.desc()).limit(limit).offset(offset)
+        res = await self.db.execute(stmt)
+        return list(res.scalars().all())
