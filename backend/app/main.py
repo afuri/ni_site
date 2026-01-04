@@ -13,7 +13,7 @@ from app.api.v1.router import router as v1_router
 setup_logging()
 
 if settings.SENTRY_DSN:
-    sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENV)
+    sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENV, release=settings.APP_VERSION)
 
 app = FastAPI(title=settings.APP_NAME)
 app.add_middleware(AuditMiddleware)

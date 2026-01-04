@@ -6,6 +6,7 @@ from app.core.errors import http_error
 from app.core.redis import get_redis
 from app.core.rate_limit import token_bucket_rate_limit
 from app.core.config import settings
+from app.core.metrics import RATE_LIMIT_BLOCKS
 from app.repos.users import UsersRepo
 from app.repos.auth_tokens import AuthTokensRepo
 from app.services.auth import AuthService
@@ -55,6 +56,7 @@ async def _apply_rate_limit(
         return
 
     if not rl.allowed:
+        RATE_LIMIT_BLOCKS.labels(scope=key_prefix).inc()
         raise http_error(status.HTTP_429_TOO_MANY_REQUESTS, "rate_limited")
 
 

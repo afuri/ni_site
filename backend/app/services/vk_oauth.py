@@ -64,7 +64,7 @@ async def exchange_code_for_token(code: str) -> dict:
         "redirect_uri": settings.VK_REDIRECT_URI,
         "code": code,
     }
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=settings.HTTP_CLIENT_TIMEOUT_SEC) as client:
         r = await client.get(VK_TOKEN_URL, params=params)
         data = r.json()
 

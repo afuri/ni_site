@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "NI_SITE API"
     ENV: str = "dev"
+    APP_VERSION: str = "0.0.0"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:changethis@localhost:5432/ni_site"
     DB_POOL_SIZE: int = 5
@@ -45,6 +46,8 @@ class Settings(BaseSettings):
     VK_CLIENT_SECRET: str | None = None
     VK_REDIRECT_URI: str | None = None
     VK_SCOPE: str = "offline,email"
+
+    HTTP_CLIENT_TIMEOUT_SEC: int = 10
 
     # rate limit for saving answers
     ANSWERS_RL_LIMIT: int = 20

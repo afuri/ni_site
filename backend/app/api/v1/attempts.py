@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Response
 from app.core.errors import http_error
 from app.core.rate_limit import token_bucket_rate_limit
+from app.core.metrics import RATE_LIMIT_BLOCKS
 from app.core.redis import get_redis
 from app.core.config import settings
 
@@ -136,6 +137,7 @@ async def upsert_answer(
 
     if not rl.allowed:
         response.headers["Retry-After"] = str(rl.retry_after_sec)
+        RATE_LIMIT_BLOCKS.labels(scope="attempts:answers").inc()
         raise http_error(429, "rate_limited")
 
     service = AttemptsService(AttemptsRepo(db))

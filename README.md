@@ -104,7 +104,7 @@ uvicorn app.main:app --reload
 
 - Запуск через `gunicorn`:
   ```bash
-  gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 app.main:app
+  gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 --timeout 30 --keep-alive 5 app.main:app
   ```
 - Обязательно задать:
   - `JWT_SECRET`
@@ -112,12 +112,16 @@ uvicorn app.main:app --reload
   - `REDIS_URL`
   - `EMAIL_BASE_URL`
   - `STORAGE_*` (object storage + CDN)
+  - `APP_VERSION`
 
 #### Наблюдаемость
 
 - `SENTRY_DSN` — включает Sentry (теги: path/method/user).
 - `PROMETHEUS_ENABLED=true` — включает `/metrics`.
 - `AUDIT_LOG_ENABLED=true` — запись аудита запросов в БД.
+- `APP_VERSION` — версия релиза для Sentry/логов.
+- Sentry теги: `env`, `version`, `role`.
+- Prometheus метрики: `rate_limit_blocks_total`, `attempts_started_total`, `attempts_submitted_total`.
 
 #### Производительность и лимиты
 
@@ -131,6 +135,8 @@ uvicorn app.main:app --reload
   - `DB_CONNECT_TIMEOUT_SEC`, `DB_STATEMENT_TIMEOUT_MS`
 - Таймауты Redis:
   - `REDIS_SOCKET_TIMEOUT_SEC`, `REDIS_CONNECT_TIMEOUT_SEC`
+- Таймауты HTTP‑клиента:
+  - `HTTP_CLIENT_TIMEOUT_SEC`
 
 #### Хранилище файлов
 

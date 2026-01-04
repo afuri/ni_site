@@ -9,6 +9,7 @@ from app.core.security import decode_token
 import sentry_sdk
 from app.db.session import SessionLocal
 from app.repos.audit_logs import AuditLogsRepo
+from app.repos.users import UsersRepo
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +34,20 @@ class AuditMiddleware(BaseHTTPMiddleware):
             except Exception:
                 pass
 
-        sentry_sdk.set_tag("path", path)
-        sentry_sdk.set_tag("method", request.method)
-        if user_id is not None:
-            sentry_sdk.set_user({"id": user_id})
+        if settings.SENTRY_DSN:
+            sentry_sdk.set_tag("env", settings.ENV)
+            sentry_sdk.set_tag("version", settings.APP_VERSION)
+            sentry_sdk.set_tag("path", path)
+            sentry_sdk.set_tag("method", request.method)
+            if user_id is not None:
+                sentry_sdk.set_user({"id": user_id})
+                try:
+                    async with SessionLocal() as session:
+                        user = await UsersRepo(session).get_by_id(user_id)
+                    if user:
+                        sentry_sdk.set_tag("role", user.role.value)
+                except Exception:
+                    pass
 
         status_code = 500
         try:

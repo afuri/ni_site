@@ -5,6 +5,7 @@ import json
 from types import SimpleNamespace
 
 from app.core.config import settings
+from app.core.metrics import ATTEMPTS_STARTED_TOTAL, ATTEMPTS_SUBMITTED_TOTAL
 from app.core.redis import get_redis, safe_redis
 from app.core.security import generate_token
 from app.models.attempt import AttemptStatus
@@ -238,6 +239,7 @@ class AttemptsService:
             deadline_at=deadline,
             duration_sec=int(olympiad.duration_sec),
         )
+        ATTEMPTS_STARTED_TOTAL.inc()
         return attempt, olympiad
 
     async def _ensure_attempt_access(self, *, user: User, attempt_id: int):
@@ -329,6 +331,7 @@ class AttemptsService:
         try:
             if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
                 await self.repo.mark_expired(attempt.id)
+                ATTEMPTS_SUBMITTED_TOTAL.labels(status="expired").inc()
                 return AttemptStatus.expired
 
             # иначе закрываем как submitted + оцениваем
@@ -374,6 +377,7 @@ class AttemptsService:
                     passed=passed,
                     graded_at=now_ts,
                 )
+                ATTEMPTS_SUBMITTED_TOTAL.labels(status="submitted").inc()
                 return AttemptStatus.submitted
 
             return attempt.status
