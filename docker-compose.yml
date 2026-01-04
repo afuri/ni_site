@@ -25,6 +25,35 @@ services:
       timeout: 3s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio_init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/ni-site || true;
+      mc anonymous set download local/ni-site;
+      "
+
   api:
     build:
       context: .
@@ -46,10 +75,22 @@ services:
       EMAIL_BASE_URL: http://localhost:3000
       EMAIL_VERIFY_TTL_HOURS: "24"
       PASSWORD_RESET_TTL_HOURS: "2"
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_BUCKET: ni-site
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      STORAGE_REGION: us-east-1
+      STORAGE_USE_SSL: "false"
+      STORAGE_PUBLIC_BASE_URL: http://localhost:9000/ni-site
+      STORAGE_PRESIGN_EXPIRES_SEC: "900"
+      STORAGE_MAX_UPLOAD_MB: "10"
+      STORAGE_ALLOWED_CONTENT_TYPES: image/jpeg,image/png,image/webp
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     healthcheck:
       test:
@@ -81,10 +122,22 @@ services:
       EMAIL_BASE_URL: http://localhost:3000
       EMAIL_VERIFY_TTL_HOURS: "24"
       PASSWORD_RESET_TTL_HOURS: "2"
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_BUCKET: ni-site
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      STORAGE_REGION: us-east-1
+      STORAGE_USE_SSL: "false"
+      STORAGE_PUBLIC_BASE_URL: http://localhost:9000/ni-site
+      STORAGE_PRESIGN_EXPIRES_SEC: "900"
+      STORAGE_MAX_UPLOAD_MB: "10"
+      STORAGE_ALLOWED_CONTENT_TYPES: image/jpeg,image/png,image/webp
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     healthcheck:
       test:
@@ -98,3 +151,4 @@ services:
 
 volumes:
   pgdata:
+  minio_data:

@@ -99,6 +99,16 @@ docker compose up --build
         - `olympiad_id`
         - `attempt_id`
     - Хорошо продумать модель попыток: отдельная таблица для «сессии» прохождения олимпиады.
+
+#### Объектное хранилище изображений
+
+- Dev/self-hosted: MinIO, Prod: S3‑совместимое + CDN.
+- Бэкенд хранит только `image_key`/`image_keys`, файлы — в storage.
+- Переменные окружения:
+  - `STORAGE_ENDPOINT`, `STORAGE_BUCKET`
+  - `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`
+  - `STORAGE_PUBLIC_BASE_URL`, `STORAGE_PRESIGN_EXPIRES_SEC`
+  - `STORAGE_ALLOWED_CONTENT_TYPES`, `STORAGE_MAX_UPLOAD_MB`
         
 
 #### Кэш и сессии
@@ -429,6 +439,27 @@ docker compose up --build
 Задание может включать  картинки, хранятся как:
 
 - `image_key` в S3/MinIO (или локально в dev), в БД только ключ/URL.
+
+#### 1.3.1 Загрузка картинок (presigned URL)
+
+Оптимальный вариант: объектное хранилище (MinIO/S3) + CDN.  
+Бэкенд выдаёт presigned URL, клиент загружает файл напрямую в storage.
+
+Поток:
+
+1) `POST /api/v1/uploads/presign` — получить `upload_url` и `key`
+2) `PUT upload_url` с `Content-Type`
+3) `image_key` использовать в `create_task/create_content`
+
+Для жёсткого лимита размера используйте POST‑форму:
+
+1) `POST /api/v1/uploads/presign-post` — получить `upload_url` + `fields`
+2) `POST upload_url` (multipart/form-data) с полями `fields` и файлом
+
+Доступ к картинкам:
+
+- публично: `STORAGE_PUBLIC_BASE_URL/{image_key}` (CDN/S3 URL)
+- приватно: `GET /api/v1/uploads/{key}` (временная ссылка)
 
 #### 1.4 DataBase Tasks model
 
