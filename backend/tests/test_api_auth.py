@@ -1,5 +1,6 @@
 import pytest
 
+from app.core import error_codes as codes
 from app.repos.users import UsersRepo
 
 
@@ -27,7 +28,7 @@ async def test_register_and_login_flow(client, db_session):
 
     resp = await client.post("/api/v1/auth/login", json={"login": "student01", "password": "StrongPass1"})
     assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "email_not_verified"
+    assert resp.json()["error"]["code"] == codes.EMAIL_NOT_VERIFIED
 
     repo = UsersRepo(db_session)
     user = await repo.get_by_login("student01")
@@ -45,7 +46,7 @@ async def test_auth_validation_error_format(client):
     resp = await client.post("/api/v1/auth/register", json={})
     assert resp.status_code == 422
     payload = resp.json()["error"]
-    assert payload["code"] == "validation_error"
+    assert payload["code"] == codes.VALIDATION_ERROR
     assert isinstance(payload["details"], list)
 
 
@@ -53,4 +54,4 @@ async def test_auth_validation_error_format(client):
 async def test_invalid_credentials_code(client):
     resp = await client.post("/api/v1/auth/login", json={"login": "missing", "password": "bad"})
     assert resp.status_code == 401
-    assert resp.json()["error"]["code"] == "invalid_credentials"
+    assert resp.json()["error"]["code"] == codes.INVALID_CREDENTIALS

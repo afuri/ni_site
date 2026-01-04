@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.core.config import settings
+from app.core import error_codes as codes
 from app.models.user import UserRole
 
 
@@ -66,7 +67,7 @@ async def test_auth_negative_cases(client, create_user):
     }
     resp = await client.post("/api/v1/auth/register", json=weak_payload)
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "weak_password"
+    assert resp.json()["error"]["code"] == codes.WEAK_PASSWORD
 
     await create_user(
         login="dupuser",
@@ -93,7 +94,7 @@ async def test_auth_negative_cases(client, create_user):
     }
     resp = await client.post("/api/v1/auth/register", json=dup_payload)
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "login_taken"
+    assert resp.json()["error"]["code"] == codes.LOGIN_TAKEN
 
     dup_email_payload = {
         "login": "dupuser2",
@@ -111,18 +112,18 @@ async def test_auth_negative_cases(client, create_user):
     }
     resp = await client.post("/api/v1/auth/register", json=dup_email_payload)
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "email_taken"
+    assert resp.json()["error"]["code"] == codes.EMAIL_TAKEN
 
     resp = await client.post("/api/v1/auth/verify/confirm", json={"token": "bad-token-1"})
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "invalid_token"
+    assert resp.json()["error"]["code"] == codes.INVALID_TOKEN
 
     resp = await client.post(
         "/api/v1/auth/password/reset/confirm",
         json={"token": "bad-token-1", "new_password": "StrongPass1"},
     )
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "invalid_token"
+    assert resp.json()["error"]["code"] == codes.INVALID_TOKEN
 
 
 @pytest.mark.asyncio
@@ -155,7 +156,7 @@ async def test_attempt_start_negative_cases(client, create_user, redis_client):
         headers=_auth_headers(student_token),
     )
     assert resp.status_code == 404
-    assert resp.json()["error"]["code"] == "olympiad_not_found"
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_FOUND
 
     now = datetime.now(timezone.utc)
     olympiad_id = await _create_olympiad(
@@ -172,7 +173,7 @@ async def test_attempt_start_negative_cases(client, create_user, redis_client):
         headers=_auth_headers(student_token),
     )
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "olympiad_not_published"
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_PUBLISHED
 
     resp = await client.post(
         f"/api/v1/admin/olympiads/{olympiad_id}/publish",
@@ -187,7 +188,7 @@ async def test_attempt_start_negative_cases(client, create_user, redis_client):
         headers=_auth_headers(student_token),
     )
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "olympiad_has_no_tasks"
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_HAS_NO_TASKS
 
     future_id = await _create_olympiad(
         client,
@@ -209,7 +210,7 @@ async def test_attempt_start_negative_cases(client, create_user, redis_client):
         headers=_auth_headers(student_token),
     )
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "olympiad_not_available"
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_AVAILABLE
 
 
 @pytest.mark.asyncio
@@ -284,21 +285,21 @@ async def test_attempt_forbidden_access(client, create_user, redis_client):
         headers=_auth_headers(student2_token),
     )
     assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "forbidden"
+    assert resp.json()["error"]["code"] == codes.FORBIDDEN
 
     resp = await client.post(
         f"/api/v1/attempts/{attempt_id}/submit",
         headers=_auth_headers(student2_token),
     )
     assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "forbidden"
+    assert resp.json()["error"]["code"] == codes.FORBIDDEN
 
     resp = await client.get(
         f"/api/v1/attempts/{attempt_id}/result",
         headers=_auth_headers(student2_token),
     )
     assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "forbidden"
+    assert resp.json()["error"]["code"] == codes.FORBIDDEN
 
 
 @pytest.mark.asyncio
@@ -327,7 +328,7 @@ async def test_admin_olympiad_rules_negative(client, create_user):
     }
     resp = await client.post("/api/v1/admin/olympiads", json=invalid_payload, headers=_auth_headers(admin_token))
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "invalid_availability"
+    assert resp.json()["error"]["code"] == codes.INVALID_AVAILABILITY
 
     olympiad_id = await _create_olympiad(
         client,
@@ -350,7 +351,7 @@ async def test_admin_olympiad_rules_negative(client, create_user):
         headers=_auth_headers(admin_token),
     )
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "cannot_change_published_rules"
+    assert resp.json()["error"]["code"] == codes.CANNOT_CHANGE_PUBLISHED_RULES
 
     task_id = await _create_task(client, admin_token, title="Task Rules")
     add_payload = {"task_id": task_id, "sort_order": 1, "max_score": 1}
@@ -360,7 +361,7 @@ async def test_admin_olympiad_rules_negative(client, create_user):
         headers=_auth_headers(admin_token),
     )
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "cannot_modify_published"
+    assert resp.json()["error"]["code"] == codes.CANNOT_MODIFY_PUBLISHED
 
 
 @pytest.mark.asyncio
@@ -392,14 +393,14 @@ async def test_admin_olympiad_delete_negative(client, create_user):
         headers=_auth_headers(teacher_token),
     )
     assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "forbidden"
+    assert resp.json()["error"]["code"] == codes.FORBIDDEN
 
     resp = await client.delete(
         "/api/v1/admin/olympiads/9999",
         headers=_auth_headers(admin_token),
     )
     assert resp.status_code == 404
-    assert resp.json()["error"]["code"] == "olympiad_not_found"
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_FOUND
 
     now = datetime.now(timezone.utc)
     olympiad_id = await _create_olympiad(
@@ -421,7 +422,7 @@ async def test_admin_olympiad_delete_negative(client, create_user):
         headers=_auth_headers(admin_token),
     )
     assert resp.status_code == 404
-    assert resp.json()["error"]["code"] == "olympiad_not_found"
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_FOUND
 
 
 @pytest.mark.asyncio
@@ -465,14 +466,14 @@ async def test_content_negative_permissions(client, create_user):
         headers=_auth_headers(mod_token),
     )
     assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "forbidden"
+    assert resp.json()["error"]["code"] == codes.FORBIDDEN
 
     resp = await client.post(
         f"/api/v1/admin/content/{content_id}/unpublish",
         headers=_auth_headers(mod_token),
     )
     assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "forbidden"
+    assert resp.json()["error"]["code"] == codes.FORBIDDEN
 
     news_payload = {
         "content_type": "news",
@@ -483,7 +484,7 @@ async def test_content_negative_permissions(client, create_user):
     }
     resp = await client.post("/api/v1/admin/content", json=news_payload, headers=_auth_headers(admin_token))
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "validation_error"
+    assert resp.json()["error"]["code"] == codes.VALIDATION_ERROR
 
 
 @pytest.mark.asyncio
@@ -508,7 +509,7 @@ async def test_uploads_negative_cases(client, create_user):
         headers=_auth_headers(admin_token),
     )
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "invalid_prefix"
+    assert resp.json()["error"]["code"] == codes.INVALID_PREFIX
 
     old_endpoint = settings.STORAGE_ENDPOINT
     old_access = settings.STORAGE_ACCESS_KEY
@@ -524,7 +525,7 @@ async def test_uploads_negative_cases(client, create_user):
             headers=_auth_headers(admin_token),
         )
         assert resp.status_code == 422
-        assert resp.json()["error"]["code"] == "content_type_not_allowed"
+        assert resp.json()["error"]["code"] == codes.CONTENT_TYPE_NOT_ALLOWED
     finally:
         settings.STORAGE_ENDPOINT = old_endpoint
         settings.STORAGE_ACCESS_KEY = old_access
@@ -549,4 +550,4 @@ async def test_teacher_olympiad_not_found(client, create_user):
         headers=_auth_headers(token),
     )
     assert resp.status_code == 404
-    assert resp.json()["error"]["code"] == "olympiad_not_found"
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_FOUND

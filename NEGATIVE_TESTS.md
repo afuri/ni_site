@@ -40,7 +40,7 @@
 
 - Presign without auth -> 401
 - Presign with invalid prefix -> 422 `invalid_prefix`
-- Presign with invalid content type -> 422 `unsupported_content_type`
+- Presign with invalid content type -> 422 `content_type_not_allowed`
 
 ## Health
 

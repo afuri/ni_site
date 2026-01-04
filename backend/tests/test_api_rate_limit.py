@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.core.config import settings
+from app.core import error_codes as codes
 from app.models.user import UserRole
 
 
@@ -32,7 +33,7 @@ async def test_auth_login_rate_limit(client, create_user, redis_client):
 
         resp = await client.post("/api/v1/auth/login", json={"login": "adminrate", "password": "AdminPass1"})
         assert resp.status_code == 429
-        assert resp.json()["error"]["code"] == "rate_limited"
+        assert resp.json()["error"]["code"] == codes.RATE_LIMITED
     finally:
         settings.AUTH_LOGIN_RL_LIMIT = old_limit
         settings.AUTH_LOGIN_RL_WINDOW_SEC = old_window
@@ -138,7 +139,7 @@ async def test_answers_rate_limit(client, create_user, redis_client):
             headers=_auth_headers(student_token),
         )
         assert resp.status_code == 429
-        assert resp.json()["error"]["code"] == "rate_limited"
+        assert resp.json()["error"]["code"] == codes.RATE_LIMITED
     finally:
         settings.ANSWERS_RL_LIMIT = old_limit
         settings.ANSWERS_RL_WINDOW_SEC = old_window
