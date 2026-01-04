@@ -84,3 +84,15 @@ class ContentService:
             item.published_by_id = user.id
         item.updated_at = now
         return await self.repo.update(item)
+
+    async def unpublish(self, item: ContentItem, user: User) -> ContentItem:
+        if user.role != UserRole.admin:
+            raise http_error(403, "forbidden")
+        if item.status != ContentStatus.published:
+            return item
+        now = datetime.now(timezone.utc)
+        item.status = ContentStatus.draft
+        item.published_at = None
+        item.published_by_id = None
+        item.updated_at = now
+        return await self.repo.update(item)

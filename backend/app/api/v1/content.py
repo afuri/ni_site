@@ -149,3 +149,22 @@ async def publish_content(
         raise http_error(404, "content_not_found")
     service = ContentService(repo)
     return await service.publish(item=item, user=user)
+
+
+@admin_router.post(
+    "/{content_id}/unpublish",
+    response_model=ContentRead,
+    tags=["content"],
+    description="Снять материал с публикации",
+)
+async def unpublish_content(
+    content_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin_or_moderator()),
+):
+    repo = ContentRepo(db)
+    item = await repo.get(content_id)
+    if not item:
+        raise http_error(404, "content_not_found")
+    service = ContentService(repo)
+    return await service.unpublish(item=item, user=user)

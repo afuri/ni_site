@@ -56,5 +56,16 @@ class Settings(BaseSettings):
     SENTRY_DSN: str | None = None
     PROMETHEUS_ENABLED: bool = False
 
+    STORAGE_ENDPOINT: str | None = None
+    STORAGE_BUCKET: str = "ni-site"
+    STORAGE_ACCESS_KEY: str | None = None
+    STORAGE_SECRET_KEY: str | None = None
+    STORAGE_REGION: str = "us-east-1"
+    STORAGE_USE_SSL: bool = True
+    STORAGE_PUBLIC_BASE_URL: str | None = None
+    STORAGE_PRESIGN_EXPIRES_SEC: int = 900
+    STORAGE_MAX_UPLOAD_MB: int = 10
+    STORAGE_ALLOWED_CONTENT_TYPES: str = "image/jpeg,image/png,image/webp"
+
 
 settings = Settings()

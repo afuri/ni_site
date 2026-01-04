@@ -17,16 +17,16 @@ depends_on = None
 
 
 def upgrade() -> None:
-    content_type = sa.Enum("article", "news", name="content_type")
-    content_status = sa.Enum("draft", "published", name="content_status")
+    content_type = postgresql.ENUM("article", "news", name="content_type")
+    content_status = postgresql.ENUM("draft", "published", name="content_status")
     content_type.create(op.get_bind(), checkfirst=True)
     content_status.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "content_items",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("content_type", content_type, nullable=False),
-        sa.Column("status", content_status, nullable=False),
+        sa.Column("content_type", postgresql.ENUM("article", "news", name="content_type", create_type=False), nullable=False),
+        sa.Column("status", postgresql.ENUM("draft", "published", name="content_status", create_type=False), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column(
@@ -54,7 +54,7 @@ def downgrade() -> None:
     op.drop_index("ix_content_items_type", table_name="content_items")
     op.drop_table("content_items")
 
-    content_status = sa.Enum("draft", "published", name="content_status")
-    content_type = sa.Enum("article", "news", name="content_type")
+    content_status = postgresql.ENUM("draft", "published", name="content_status")
+    content_type = postgresql.ENUM("article", "news", name="content_type")
     content_status.drop(op.get_bind(), checkfirst=True)
     content_type.drop(op.get_bind(), checkfirst=True)

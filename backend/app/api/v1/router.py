@@ -10,6 +10,7 @@ from app.api.v1.admin_olympiads import router as admin_olympiads_router
 from app.api.v1.admin_users import router as admin_users_router
 from app.api.v1.admin_audit import router as admin_audit_router
 from app.api.v1.content import router as content_router, admin_router as admin_content_router
+from app.api.v1.uploads import router as uploads_router
 
 
 
@@ -28,3 +29,4 @@ router.include_router(admin_users_router, tags=["admin"])
 router.include_router(admin_audit_router, tags=["admin"])
 router.include_router(content_router, tags=["content"])
 router.include_router(admin_content_router, tags=["content"])
+router.include_router(uploads_router, tags=["uploads"])

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.models.content import ContentStatus, ContentType
 
 ARTICLE_MIN_LEN = 100
-ARTICLE_MAX_LEN = 5000
+ARTICLE_MAX_LEN = 20000
 NEWS_MAX_LEN = 500
 MAX_IMAGE_KEYS = 10
 

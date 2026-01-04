@@ -22,8 +22,14 @@ class ContentItem(Base):
     __tablename__ = "content_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    content_type: Mapped[ContentType] = mapped_column(SAEnum(ContentType), index=True)
-    status: Mapped[ContentStatus] = mapped_column(SAEnum(ContentStatus), index=True)
+    content_type: Mapped[ContentType] = mapped_column(
+        SAEnum(ContentType, name="content_type"),
+        index=True,
+    )
+    status: Mapped[ContentStatus] = mapped_column(
+        SAEnum(ContentStatus, name="content_status"),
+        index=True,
+    )
 
     title: Mapped[str] = mapped_column(String(255))
     body: Mapped[str] = mapped_column(Text)
