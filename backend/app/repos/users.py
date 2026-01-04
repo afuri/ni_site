@@ -72,8 +72,16 @@ class UsersRepo:
         await self.db.refresh(user)
         return user
 
-    async def set_password(self, user: User, password_hash: str) -> User:
+    async def set_password(
+        self,
+        user: User,
+        password_hash: str,
+        *,
+        must_change_password: bool | None = None,
+    ) -> User:
         user.password_hash = password_hash
+        if must_change_password is not None:
+            user.must_change_password = must_change_password
         await self.db.commit()
         await self.db.refresh(user)
         return user

@@ -24,6 +24,7 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     is_moderator: Mapped[bool] = mapped_column(Boolean, default=False)
     moderator_requested: Mapped[bool] = mapped_column(Boolean, default=False)
 

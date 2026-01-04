@@ -12,9 +12,11 @@ from app.core import error_codes as codes
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(
-    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
+async def _get_current_user_base(
+    creds: HTTPAuthorizationCredentials | None,
+    db: AsyncSession,
+    *,
+    allow_password_change: bool,
 ) -> User:
     if creds is None or not creds.credentials:
         raise http_error(status.HTTP_401_UNAUTHORIZED, codes.MISSING_TOKEN)
@@ -37,7 +39,24 @@ async def get_current_user(
     if not user or not user.is_active:
         raise http_error(status.HTTP_401_UNAUTHORIZED, codes.USER_NOT_FOUND)
 
+    if user.must_change_password and not allow_password_change:
+        raise http_error(status.HTTP_403_FORBIDDEN, codes.PASSWORD_CHANGE_REQUIRED)
+
     return user
+
+
+async def get_current_user(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    return await _get_current_user_base(creds, db, allow_password_change=False)
+
+
+async def get_current_user_allow_password_change(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    return await _get_current_user_base(creds, db, allow_password_change=True)
 
 
 def require_role(*roles: UserRole):

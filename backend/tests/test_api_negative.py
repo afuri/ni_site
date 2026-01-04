@@ -551,3 +551,180 @@ async def test_teacher_olympiad_not_found(client, create_user):
     )
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_admin_users_negative_cases(client, create_user):
+    await create_user(
+        login="adminusersneg",
+        email="adminusersneg@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="studentusersneg",
+        email="studentusersneg@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=7,
+        subject=None,
+    )
+    await create_user(
+        login="teacherusersneg",
+        email="teacherusersneg@example.com",
+        password="TeacherPass1",
+        role=UserRole.teacher,
+        is_verified=True,
+        class_grade=None,
+        subject="math",
+    )
+
+    admin_token = await _login(client, "adminusersneg", "AdminPass1")
+    student_token = await _login(client, "studentusersneg", "StrongPass1")
+    teacher_token = await _login(client, "teacherusersneg", "TeacherPass1")
+
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(student_token))
+    assert resp.status_code == 200
+    student_id = resp.json()["id"]
+
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(teacher_token))
+    assert resp.status_code == 200
+    teacher_id = resp.json()["id"]
+
+    resp = await client.put(
+        "/api/v1/admin/users/9999",
+        json={"city": "Казань"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == codes.USER_NOT_FOUND
+
+    resp = await client.put(
+        f"/api/v1/admin/users/{student_id}",
+        json={"subject": "math"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT
+
+    resp = await client.put(
+        f"/api/v1/admin/users/{teacher_id}",
+        json={"class_grade": 7},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER
+
+    resp = await client.put(
+        f"/api/v1/admin/users/{student_id}",
+        json={"is_moderator": True},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == codes.USER_NOT_TEACHER
+
+    resp = await client.put(
+        f"/api/v1/admin/users/{student_id}",
+        json={"login": "teacherusersneg"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == codes.LOGIN_TAKEN
+
+    resp = await client.post(
+        f"/api/v1/admin/users/{student_id}/temp-password",
+        json={"temp_password": "weakpass1"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == codes.WEAK_PASSWORD
+
+
+@pytest.mark.asyncio
+async def test_refresh_and_endpoint_blocking_on_must_change_password(client, create_user):
+    await create_user(
+        login="adminforce",
+        email="adminforce@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="studentforce",
+        email="studentforce@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=7,
+        subject=None,
+    )
+
+    admin_token = await _login(client, "adminforce", "AdminPass1")
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentforce", "password": "StrongPass1"})
+    assert resp.status_code == 200
+    refresh_token = resp.json()["refresh_token"]
+
+    resp = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is False
+
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(resp.json()["access_token"]))
+    assert resp.status_code == 200
+    student_id = resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/admin/users/{student_id}/temp-password",
+        json={"temp_password": "TempPass1"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is True
+
+    resp = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == codes.INVALID_TOKEN
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentforce", "password": "TempPass1"})
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is True
+    temp_token = resp.json()["access_token"]
+    temp_refresh = resp.json()["refresh_token"]
+
+    resp = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": temp_refresh},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is True
+
+    resp = await client.get("/api/v1/users/me", headers=_auth_headers(temp_token))
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == codes.PASSWORD_CHANGE_REQUIRED
+
+    resp = await client.post(
+        "/api/v1/attempts/start",
+        json={"olympiad_id": 9999},
+        headers=_auth_headers(temp_token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == codes.PASSWORD_CHANGE_REQUIRED
+
+    resp = await client.post(
+        "/api/v1/admin/content",
+        json={"content_type": "article", "title": "Blocked", "body": "A" * 120, "publish": False},
+        headers=_auth_headers(temp_token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == codes.PASSWORD_CHANGE_REQUIRED

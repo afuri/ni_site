@@ -114,7 +114,7 @@ class AuthService:
             created_at=now,
             expires_at=expires_at,
         )
-        return access, refresh
+        return access, refresh, user.must_change_password
 
     async def refresh_tokens(self, *, refresh_token: str):
         try:
@@ -154,7 +154,7 @@ class AuthService:
             created_at=now,
             expires_at=expires_at,
         )
-        return access, refresh
+        return access, refresh, user.must_change_password
 
     async def logout(self, *, refresh_token: str) -> None:
         token_hash = hash_token(refresh_token)
@@ -249,5 +249,5 @@ class AuthService:
 
         await self.tokens_repo.mark_password_reset_used(record, now)
         password_hash = hash_password(new_password)
-        await self.users_repo.set_password(user, password_hash)
+        await self.users_repo.set_password(user, password_hash, must_change_password=False)
         await self.tokens_repo.revoke_all_refresh_tokens(user.id, now)

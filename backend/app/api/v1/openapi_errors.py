@@ -4,6 +4,7 @@ ERROR_EXAMPLES = {
     codes.MISSING_TOKEN: {"error": {"code": codes.MISSING_TOKEN, "message": codes.MISSING_TOKEN}},
     codes.INVALID_TOKEN: {"error": {"code": codes.INVALID_TOKEN, "message": codes.INVALID_TOKEN, "details": {}}},
     codes.INVALID_CREDENTIALS: {"error": {"code": codes.INVALID_CREDENTIALS, "message": codes.INVALID_CREDENTIALS}},
+    codes.INVALID_CURRENT_PASSWORD: {"error": {"code": codes.INVALID_CURRENT_PASSWORD, "message": codes.INVALID_CURRENT_PASSWORD}},
     codes.EMAIL_NOT_VERIFIED: {"error": {"code": codes.EMAIL_NOT_VERIFIED, "message": codes.EMAIL_NOT_VERIFIED}},
     codes.WEAK_PASSWORD: {"error": {"code": codes.WEAK_PASSWORD, "message": codes.WEAK_PASSWORD, "details": {}}},
     codes.VALIDATION_ERROR: {"error": {"code": codes.VALIDATION_ERROR, "message": codes.VALIDATION_ERROR, "details": []}},
@@ -12,6 +13,7 @@ ERROR_EXAMPLES = {
     codes.EMAIL_TAKEN: {"error": {"code": codes.EMAIL_TAKEN, "message": codes.EMAIL_TAKEN}},
     codes.USER_NOT_FOUND: {"error": {"code": codes.USER_NOT_FOUND, "message": codes.USER_NOT_FOUND}},
     codes.USER_NOT_TEACHER: {"error": {"code": codes.USER_NOT_TEACHER, "message": codes.USER_NOT_TEACHER}},
+    codes.PASSWORD_CHANGE_REQUIRED: {"error": {"code": codes.PASSWORD_CHANGE_REQUIRED, "message": codes.PASSWORD_CHANGE_REQUIRED}},
     codes.ALREADY_MODERATOR: {"error": {"code": codes.ALREADY_MODERATOR, "message": codes.ALREADY_MODERATOR}},
     codes.TASK_NOT_FOUND: {"error": {"code": codes.TASK_NOT_FOUND, "message": codes.TASK_NOT_FOUND}},
     codes.OLYMPIAD_NOT_FOUND: {"error": {"code": codes.OLYMPIAD_NOT_FOUND, "message": codes.OLYMPIAD_NOT_FOUND}},
@@ -32,6 +34,14 @@ ERROR_EXAMPLES = {
     codes.NEWS_IMAGES_FORBIDDEN: {"error": {"code": codes.NEWS_IMAGES_FORBIDDEN, "message": codes.NEWS_IMAGES_FORBIDDEN}},
     codes.NEWS_BODY_TOO_LONG: {"error": {"code": codes.NEWS_BODY_TOO_LONG, "message": codes.NEWS_BODY_TOO_LONG}},
     codes.ARTICLE_BODY_TOO_SHORT: {"error": {"code": codes.ARTICLE_BODY_TOO_SHORT, "message": codes.ARTICLE_BODY_TOO_SHORT}},
+    codes.CLASS_GRADE_REQUIRED: {"error": {"code": codes.CLASS_GRADE_REQUIRED, "message": codes.CLASS_GRADE_REQUIRED}},
+    codes.SUBJECT_REQUIRED: {"error": {"code": codes.SUBJECT_REQUIRED, "message": codes.SUBJECT_REQUIRED}},
+    codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT: {
+        "error": {"code": codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT, "message": codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT}
+    },
+    codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER: {
+        "error": {"code": codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER, "message": codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER}
+    },
     codes.INVALID_PREFIX: {"error": {"code": codes.INVALID_PREFIX, "message": codes.INVALID_PREFIX}},
     codes.CONTENT_TYPE_NOT_ALLOWED: {"error": {"code": codes.CONTENT_TYPE_NOT_ALLOWED, "message": codes.CONTENT_TYPE_NOT_ALLOWED}},
     codes.STORAGE_UNAVAILABLE: {"error": {"code": codes.STORAGE_UNAVAILABLE, "message": codes.STORAGE_UNAVAILABLE}},
