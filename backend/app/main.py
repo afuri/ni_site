@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
@@ -39,7 +40,7 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_request: Request, exc: RequestValidationError):
-    payload = api_error("validation_error", details=exc.errors())
+    payload = api_error("validation_error", details=jsonable_encoder(exc.errors()))
     return JSONResponse(status_code=422, content={"error": payload})
 
 
