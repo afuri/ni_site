@@ -5,6 +5,8 @@ from app.models.olympiad_task import OlympiadTask
 from app.repos.olympiads import OlympiadsRepo
 from app.repos.olympiad_tasks import OlympiadTasksRepo
 from app.repos.tasks import TasksRepo
+from app.core.cache import olympiad_tasks_key, olympiad_meta_key
+from app.core.redis import safe_redis
 
 
 class AdminOlympiadsService:
@@ -12,6 +14,18 @@ class AdminOlympiadsService:
         self.olympiads = olympiads
         self.olympiad_tasks = olympiad_tasks
         self.tasks = tasks
+
+    async def _invalidate_cache(self, olympiad_id: int) -> None:
+        redis = await safe_redis()
+        if redis is None:
+            return
+        try:
+            await redis.delete(
+                olympiad_tasks_key(olympiad_id),
+                olympiad_meta_key(olympiad_id),
+            )
+        except Exception:
+            pass
 
     async def create(self, *, data: dict, admin_id: int) -> Olympiad:
         if data["available_to"] <= data["available_from"]:
@@ -50,7 +64,9 @@ class AdminOlympiadsService:
             setattr(olympiad, k, v)
 
         olympiad.updated_at = datetime.now(timezone.utc)
-        return await self.olympiads.save(olympiad)
+        saved = await self.olympiads.save(olympiad)
+        await self._invalidate_cache(olympiad.id)
+        return saved
 
     async def add_task(self, *, olympiad: Olympiad, task_id: int, sort_order: int, max_score: int) -> OlympiadTask:
         if olympiad.is_published:
@@ -65,7 +81,9 @@ class AdminOlympiadsService:
             return existing
 
         obj = OlympiadTask(olympiad_id=olympiad.id, task_id=task_id, sort_order=sort_order, max_score=max_score)
-        return await self.olympiad_tasks.add(obj)
+        created = await self.olympiad_tasks.add(obj)
+        await self._invalidate_cache(olympiad.id)
+        return created
 
     async def remove_task(self, *, olympiad: Olympiad, task_id: int) -> None:
         if olympiad.is_published:
@@ -75,8 +93,11 @@ class AdminOlympiadsService:
         if not existing:
             return
         await self.olympiad_tasks.delete(existing)
+        await self._invalidate_cache(olympiad.id)
 
     async def publish(self, *, olympiad: Olympiad, publish: bool) -> Olympiad:
         olympiad.is_published = publish
         olympiad.updated_at = datetime.now(timezone.utc)
-        return await self.olympiads.save(olympiad)
+        saved = await self.olympiads.save(olympiad)
+        await self._invalidate_cache(olympiad.id)
+        return saved

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from app.core.config import settings
 from app.core.metrics import ATTEMPTS_STARTED_TOTAL, ATTEMPTS_SUBMITTED_TOTAL
 from app.core.redis import get_redis, safe_redis
+from app.core.cache import olympiad_tasks_key, olympiad_meta_key
 from app.core.security import generate_token
 from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
@@ -36,15 +37,15 @@ class AttemptsService:
         return {}
 
     @staticmethod
-    def _tasks_cache_key(olympiad_id: int) -> str:
-        return f"cache:olympiad:{olympiad_id}:tasks:v1"
+    def _serialize_task_type(task_type: TaskType):
+        return task_type.value if isinstance(task_type, TaskType) else str(task_type)
 
     async def _get_tasks_cached(self, olympiad_id: int) -> list[dict]:
         redis = await safe_redis()
         if redis is None:
             return await self.repo.list_tasks_full(olympiad_id)
 
-        cache_key = self._tasks_cache_key(olympiad_id)
+        cache_key = olympiad_tasks_key(olympiad_id)
         try:
             cached = await redis.get(cache_key)
         except Exception:
@@ -71,7 +72,7 @@ class AttemptsService:
                         "id": task.id,
                         "title": task.title,
                         "content": task.content,
-                        "task_type": task.task_type,
+                        "task_type": self._serialize_task_type(task.task_type),
                         "image_key": task.image_key,
                         "payload": task.payload,
                     },
@@ -88,6 +89,53 @@ class AttemptsService:
             pass
 
         return payload
+
+    async def _get_olympiad_cached(self, olympiad_id: int):
+        redis = await safe_redis()
+        if redis is None:
+            return await self.repo.get_olympiad(olympiad_id)
+
+        cache_key = olympiad_meta_key(olympiad_id)
+        try:
+            cached = await redis.get(cache_key)
+        except Exception:
+            cached = None
+
+        if cached:
+            try:
+                data = json.loads(cached)
+                data["available_from"] = datetime.fromisoformat(data["available_from"])
+                data["available_to"] = datetime.fromisoformat(data["available_to"])
+                return SimpleNamespace(**data)
+            except Exception:
+                pass
+
+        olympiad = await self.repo.get_olympiad(olympiad_id)
+        if not olympiad:
+            return None
+
+        payload = {
+            "id": olympiad.id,
+            "title": olympiad.title,
+            "is_published": olympiad.is_published,
+            "available_from": olympiad.available_from.isoformat(),
+            "available_to": olympiad.available_to.isoformat(),
+            "duration_sec": olympiad.duration_sec,
+            "pass_percent": olympiad.pass_percent,
+            "attempts_limit": olympiad.attempts_limit,
+        }
+        try:
+            await redis.set(
+                cache_key,
+                json.dumps(payload),
+                ex=settings.OLYMPIAD_TASKS_CACHE_TTL_SEC,
+            )
+        except Exception:
+            pass
+
+        payload["available_from"] = olympiad.available_from
+        payload["available_to"] = olympiad.available_to
+        return SimpleNamespace(**payload)
 
     @staticmethod
     def _inflate_tasks(
@@ -210,7 +258,7 @@ class AttemptsService:
         return False
 
     async def start_attempt(self, *, user: User, olympiad_id: int):
-        olympiad = await self.repo.get_olympiad(olympiad_id)
+        olympiad = await self._get_olympiad_cached(olympiad_id)
         if not olympiad:
             raise ValueError("olympiad_not_found")
         if not olympiad.is_published:
@@ -257,7 +305,7 @@ class AttemptsService:
     async def get_attempt_view(self, *, user: User, attempt_id: int):
         attempt = await self._ensure_attempt_access(user=user, attempt_id=attempt_id)
 
-        olympiad = await self.repo.get_olympiad(attempt.olympiad_id)
+        olympiad = await self._get_olympiad_cached(attempt.olympiad_id)
         if not olympiad:
             raise ValueError("olympiad_not_found")
 
@@ -336,7 +384,7 @@ class AttemptsService:
 
             # иначе закрываем как submitted + оцениваем
             if attempt.status == AttemptStatus.active:
-                olympiad = await self.repo.get_olympiad(attempt.olympiad_id)
+                olympiad = await self._get_olympiad_cached(attempt.olympiad_id)
                 if not olympiad:
                     raise ValueError("olympiad_not_found")
 

@@ -66,7 +66,7 @@ async def test_auth_negative_cases(client, create_user):
     }
     resp = await client.post("/api/v1/auth/register", json=weak_payload)
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "validation_error"
+    assert resp.json()["error"]["code"] == "weak_password"
 
     await create_user(
         login="dupuser",

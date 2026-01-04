@@ -21,3 +21,17 @@ async def safe_redis() -> Redis | None:
         return await get_redis()
     except Exception:
         return None
+
+
+async def safe_redis_for_url(url: str) -> Redis | None:
+    try:
+        client = Redis.from_url(
+            url,
+            decode_responses=True,
+            socket_timeout=settings.REDIS_SOCKET_TIMEOUT_SEC,
+            socket_connect_timeout=settings.REDIS_CONNECT_TIMEOUT_SEC,
+        )
+        await client.ping()
+        return client
+    except Exception:
+        return None

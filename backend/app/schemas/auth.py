@@ -1,8 +1,6 @@
 from typing import Optional, Literal
 from pydantic import BaseModel, Field, EmailStr, model_validator
 
-from app.core.security import validate_password_policy
-
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
 CYRILLIC_RE = r"^[А-ЯЁ][а-яё]+$"
 
@@ -26,7 +24,6 @@ class RegisterRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_role_fields(self):
-        validate_password_policy(self.password)
         if self.role == "student":
             if self.class_grade is None:
                 raise ValueError("class_grade_required")
@@ -63,11 +60,6 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str = Field(min_length=10, max_length=512)
     new_password: str = Field(min_length=8, max_length=128)
-
-    @model_validator(mode="after")
-    def validate_password(self):
-        validate_password_policy(self.new_password)
-        return self
 
 
 class MessageResponse(BaseModel):

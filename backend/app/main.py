@@ -15,7 +15,31 @@ setup_logging()
 if settings.SENTRY_DSN:
     sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENV, release=settings.APP_VERSION)
 
-app = FastAPI(title=settings.APP_NAME)
+APP_DESCRIPTION = """
+## Формат ошибок
+Все ошибки возвращаются единообразно:
+
+```json
+{
+  "error": {
+    "code": "some_error_code",
+    "message": "some_error_code",
+    "details": {}
+  }
+}
+```
+
+## Частые коды ошибок
+- `validation_error`
+- `internal_error`
+- `invalid_credentials`, `email_not_verified`
+- `weak_password`
+- `missing_token`, `invalid_token`, `invalid_token_type`
+- `forbidden`, `user_not_found`, `olympiad_not_found`, `task_not_found`
+- `rate_limited`, `attempt_expired`, `olympiad_not_available`
+"""
+
+app = FastAPI(title=settings.APP_NAME, description=APP_DESCRIPTION)
 app.add_middleware(AuditMiddleware)
 app.include_router(v1_router)
 

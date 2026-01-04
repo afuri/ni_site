@@ -49,6 +49,8 @@ def verify_token_hash(token: str, token_hash: str) -> bool:
 
 
 def validate_password_policy(password: str) -> None:
+    if len(password) < settings.PASSWORD_MIN_LEN:
+        raise ValueError("weak_password")
     has_upper = any(c.isupper() for c in password)
     has_lower = any(c.islower() for c in password)
     has_digit = any(c.isdigit() for c in password)

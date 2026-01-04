@@ -249,3 +249,4 @@ class AuthService:
         await self.tokens_repo.mark_password_reset_used(record, now)
         password_hash = hash_password(new_password)
         await self.users_repo.set_password(user, password_hash)
+        await self.tokens_repo.revoke_all_refresh_tokens(user.id, now)

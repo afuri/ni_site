@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     EMAIL_VERIFY_TTL_HOURS: int = 24
     PASSWORD_RESET_TTL_HOURS: int = 2
     EMAIL_SEND_ENABLED: bool = False
+    PASSWORD_MIN_LEN: int = 8
 
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
