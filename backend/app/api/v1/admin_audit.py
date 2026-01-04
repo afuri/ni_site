@@ -12,6 +12,7 @@ from app.models.user import UserRole, User
 from app.repos.audit_logs import AuditLogsRepo
 from app.schemas.audit import AuditLogRead
 from app.api.v1.openapi_errors import response_example
+from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/audit-logs")
 
@@ -22,8 +23,8 @@ router = APIRouter(prefix="/admin/audit-logs")
     tags=["admin"],
     description="Список записей аудита",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
     },
 )
 async def list_audit_logs(
@@ -54,8 +55,8 @@ async def list_audit_logs(
     tags=["admin"],
     description="Выгрузка аудита в CSV",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
     },
 )
 async def export_audit_logs(

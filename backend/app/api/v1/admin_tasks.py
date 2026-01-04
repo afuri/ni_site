@@ -10,6 +10,7 @@ from app.repos.tasks import TasksRepo
 from app.services.tasks import TasksService
 from app.schemas.tasks import TaskCreate, TaskUpdate, TaskRead
 from app.api.v1.openapi_errors import response_example
+from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/tasks")
 
@@ -21,9 +22,9 @@ router = APIRouter(prefix="/admin/tasks")
     tags=["admin"],
     description="Создать задание в банке",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        422: response_example("validation_error"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        422: response_example(codes.VALIDATION_ERROR),
     },
 )
 async def create_task(
@@ -41,8 +42,8 @@ async def create_task(
     tags=["admin"],
     description="Список заданий банка",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
     },
 )
 async def list_tasks(
@@ -63,9 +64,9 @@ async def list_tasks(
     tags=["admin"],
     description="Получить задание банка",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("task_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.TASK_NOT_FOUND),
     },
 )
 async def get_task(
@@ -76,7 +77,7 @@ async def get_task(
     repo = TasksRepo(db)
     task = await repo.get(task_id)
     if not task:
-        raise http_error(404, "task_not_found")
+        raise http_error(404, codes.TASK_NOT_FOUND)
     return task
 
 
@@ -86,10 +87,10 @@ async def get_task(
     tags=["admin"],
     description="Обновить задание банка",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("task_not_found"),
-        422: response_example("validation_error"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.TASK_NOT_FOUND),
+        422: response_example(codes.VALIDATION_ERROR),
     },
 )
 async def update_task(
@@ -101,7 +102,7 @@ async def update_task(
     repo = TasksRepo(db)
     task = await repo.get(task_id)
     if not task:
-        raise http_error(404, "task_not_found")
+        raise http_error(404, codes.TASK_NOT_FOUND)
 
     patch = payload.model_dump(exclude_unset=True)
     service = TasksService(repo)
@@ -117,9 +118,9 @@ async def update_task(
     tags=["admin"],
     description="Удалить задание банка",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("task_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.TASK_NOT_FOUND),
     },
 )
 async def delete_task(
@@ -130,7 +131,7 @@ async def delete_task(
     repo = TasksRepo(db)
     task = await repo.get(task_id)
     if not task:
-        raise http_error(404, "task_not_found")
+        raise http_error(404, codes.TASK_NOT_FOUND)
     service = TasksService(repo)
     await service.delete(task=task)
     return None

@@ -10,6 +10,7 @@ from fastapi import status
 
 from app.core.config import settings
 from app.core.errors import http_error
+from app.core import error_codes as codes
 
 
 VK_AUTHORIZE_URL = "https://oauth.vk.com/authorize"
@@ -37,9 +38,9 @@ def validate_state_jwt(state: str) -> None:
     try:
         payload = jwt.decode(state, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
     except Exception:
-        raise http_error(status.HTTP_400_BAD_REQUEST, "invalid_state")
+        raise http_error(status.HTTP_400_BAD_REQUEST, codes.INVALID_STATE)
     if payload.get("typ") != "vk_state":
-        raise http_error(status.HTTP_400_BAD_REQUEST, "invalid_state")
+        raise http_error(status.HTTP_400_BAD_REQUEST, codes.INVALID_STATE)
 
 
 def build_authorize_url() -> str:
@@ -70,5 +71,5 @@ async def exchange_code_for_token(code: str) -> dict:
 
     # VK может вернуть error/error_description
     if "error" in data:
-        raise http_error(status.HTTP_400_BAD_REQUEST, "vk_token_error", details={"vk_error": data.get("error")})
+        raise http_error(status.HTTP_400_BAD_REQUEST, codes.VK_TOKEN_ERROR, details={"vk_error": data.get("error")})
     return data

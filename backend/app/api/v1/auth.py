@@ -24,6 +24,7 @@ from app.schemas.auth import (
 from app.schemas.user import UserRead
 from app.core.deps_auth import get_current_user
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.core import error_codes as codes
 
 router = APIRouter(prefix="/auth")
 
@@ -58,7 +59,7 @@ async def _apply_rate_limit(
 
     if not rl.allowed:
         RATE_LIMIT_BLOCKS.labels(scope=key_prefix).inc()
-        raise http_error(status.HTTP_429_TOO_MANY_REQUESTS, "rate_limited")
+        raise http_error(status.HTTP_429_TOO_MANY_REQUESTS, codes.RATE_LIMITED)
 
 
 @router.post(
@@ -68,8 +69,8 @@ async def _apply_rate_limit(
     tags=["auth"],
     description="Регистрация пользователя",
     responses={
-        409: response_examples("login_taken", "email_taken"),
-        422: response_examples("validation_error", "weak_password"),
+        409: response_examples(codes.LOGIN_TAKEN, codes.EMAIL_TAKEN),
+        422: response_examples(codes.VALIDATION_ERROR, codes.WEAK_PASSWORD),
     },
 )
 async def register(
@@ -101,18 +102,18 @@ async def register(
             subject=payload.subject,
         )
     except ValueError as e:
-        if str(e) == "login_taken":
-            raise http_error(409, "login_taken")
-        if str(e) == "email_taken":
-            raise http_error(409, "email_taken")
-        if str(e) == "invalid_role":
-            raise http_error(422, "invalid_role")
+        if str(e) == codes.LOGIN_TAKEN:
+            raise http_error(409, codes.LOGIN_TAKEN)
+        if str(e) == codes.EMAIL_TAKEN:
+            raise http_error(409, codes.EMAIL_TAKEN)
+        if str(e) == codes.INVALID_ROLE:
+            raise http_error(422, codes.INVALID_ROLE)
         if str(e) in (
-            "class_grade_required",
-            "subject_required",
-            "subject_not_allowed_for_student",
-            "class_grade_not_allowed_for_teacher",
-            "weak_password",
+            codes.CLASS_GRADE_REQUIRED,
+            codes.SUBJECT_REQUIRED,
+            codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT,
+            codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+            codes.WEAK_PASSWORD,
         ):
             raise http_error(422, str(e))
         raise
@@ -125,9 +126,9 @@ async def register(
     tags=["auth"],
     description="Вход по логину и паролю",
     responses={
-        401: response_example("invalid_credentials"),
-        403: response_example("email_not_verified"),
-        422: response_example("validation_error"),
+        401: response_example(codes.INVALID_CREDENTIALS),
+        403: response_example(codes.EMAIL_NOT_VERIFIED),
+        422: response_example(codes.VALIDATION_ERROR),
     },
 )
 async def login(
@@ -146,9 +147,9 @@ async def login(
     try:
         access, refresh = await service.login(payload.login, payload.password)
     except ValueError as e:
-        if str(e) == "email_not_verified":
-            raise http_error(403, "email_not_verified")
-        raise http_error(status.HTTP_401_UNAUTHORIZED, "invalid_credentials")
+        if str(e) == codes.EMAIL_NOT_VERIFIED:
+            raise http_error(403, codes.EMAIL_NOT_VERIFIED)
+        raise http_error(status.HTTP_401_UNAUTHORIZED, codes.INVALID_CREDENTIALS)
     return TokenPair(access_token=access, refresh_token=refresh)
 
 
@@ -191,7 +192,7 @@ async def request_email_verification(
     tags=["auth"],
     description="Подтвердить email по токену",
     responses={
-        422: response_example("invalid_token"),
+        422: response_example(codes.INVALID_TOKEN),
     },
 )
 async def confirm_email_verification(
@@ -202,7 +203,7 @@ async def confirm_email_verification(
     try:
         await service.verify_email(token=payload.token)
     except ValueError:
-        raise http_error(422, "invalid_token")
+        raise http_error(422, codes.INVALID_TOKEN)
     return {"status": "ok"}
 
 
@@ -235,7 +236,7 @@ async def request_password_reset(
     tags=["auth"],
     description="Сбросить пароль по токену",
     responses={
-        422: response_examples("invalid_token", "weak_password"),
+        422: response_examples(codes.INVALID_TOKEN, codes.WEAK_PASSWORD),
     },
 )
 async def confirm_password_reset(
@@ -254,9 +255,9 @@ async def confirm_password_reset(
     try:
         await service.confirm_password_reset(token=payload.token, new_password=payload.new_password)
     except ValueError as e:
-        if str(e) == "weak_password":
-            raise http_error(422, "weak_password")
-        raise http_error(422, "invalid_token")
+        if str(e) == codes.WEAK_PASSWORD:
+            raise http_error(422, codes.WEAK_PASSWORD)
+        raise http_error(422, codes.INVALID_TOKEN)
     return {"status": "ok"}
 
 
@@ -283,9 +284,9 @@ async def refresh_tokens(
         access, refresh = await service.refresh_tokens(refresh_token=payload.refresh_token)
     except ValueError as e:
         code = str(e)
-        if code == "invalid_token_type":
-            raise http_error(422, "invalid_token_type")
-        raise http_error(422, "invalid_token")
+        if code == codes.INVALID_TOKEN_TYPE:
+            raise http_error(422, codes.INVALID_TOKEN_TYPE)
+        raise http_error(422, codes.INVALID_TOKEN)
     return TokenPair(access_token=access, refresh_token=refresh)
 
 

@@ -7,6 +7,7 @@ from app.repos.olympiad_tasks import OlympiadTasksRepo
 from app.repos.tasks import TasksRepo
 from app.core.cache import olympiad_tasks_key, olympiad_meta_key
 from app.core.redis import safe_redis
+from app.core import error_codes as codes
 
 
 class AdminOlympiadsService:
@@ -29,7 +30,7 @@ class AdminOlympiadsService:
 
     async def create(self, *, data: dict, admin_id: int) -> Olympiad:
         if data["available_to"] <= data["available_from"]:
-            raise ValueError("invalid_availability")
+            raise ValueError(codes.INVALID_AVAILABILITY)
 
         now = datetime.now(timezone.utc)
         obj = Olympiad(
@@ -52,13 +53,13 @@ class AdminOlympiadsService:
     async def update(self, *, olympiad: Olympiad, patch: dict) -> Olympiad:
         # Запрещаем менять критичные поля опубликованной олимпиады (MVP правило)
         if olympiad.is_published and any(k in patch for k in ("duration_sec", "attempts_limit", "available_from", "available_to")):
-            raise ValueError("cannot_change_published_rules")
+            raise ValueError(codes.CANNOT_CHANGE_PUBLISHED_RULES)
 
         if "available_from" in patch or "available_to" in patch:
             af = patch.get("available_from", olympiad.available_from)
             at = patch.get("available_to", olympiad.available_to)
             if at <= af:
-                raise ValueError("invalid_availability")
+                raise ValueError(codes.INVALID_AVAILABILITY)
 
         for k, v in patch.items():
             setattr(olympiad, k, v)
@@ -70,11 +71,11 @@ class AdminOlympiadsService:
 
     async def add_task(self, *, olympiad: Olympiad, task_id: int, sort_order: int, max_score: int) -> OlympiadTask:
         if olympiad.is_published:
-            raise ValueError("cannot_modify_published")
+            raise ValueError(codes.CANNOT_MODIFY_PUBLISHED)
 
         task = await self.tasks.get(task_id)
         if not task:
-            raise ValueError("task_not_found")
+            raise ValueError(codes.TASK_NOT_FOUND)
 
         existing = await self.olympiad_tasks.get_by_olympiad_task(olympiad.id, task_id)
         if existing:
@@ -87,7 +88,7 @@ class AdminOlympiadsService:
 
     async def remove_task(self, *, olympiad: Olympiad, task_id: int) -> None:
         if olympiad.is_published:
-            raise ValueError("cannot_modify_published")
+            raise ValueError(codes.CANNOT_MODIFY_PUBLISHED)
 
         existing = await self.olympiad_tasks.get_by_olympiad_task(olympiad.id, task_id)
         if not existing:

@@ -4,6 +4,7 @@ from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.services.auth import AuthService
 from app.models.teacher_student import TeacherStudentStatus
+from app.core import error_codes as codes
 
 
 
@@ -18,13 +19,13 @@ class TeacherStudentsService:
     async def attach_existing(self, *, teacher: User, student_login: str):
         student = await self.users_repo.get_by_login(student_login)
         if not student:
-            raise ValueError("student_not_found")
+            raise ValueError(codes.STUDENT_NOT_FOUND)
 
         if student.id == teacher.id:
-            raise ValueError("cannot_attach_self")
+            raise ValueError(codes.CANNOT_ATTACH_SELF)
 
         if student.role != UserRole.student:
-            raise ValueError("not_a_student")
+            raise ValueError(codes.NOT_A_STUDENT)
 
         existing = await self.links_repo.get_link(teacher.id, student.id)
         if existing:
@@ -60,7 +61,7 @@ class TeacherStudentsService:
     async def confirm(self, *, teacher: User, student_id: int):
         link = await self.links_repo.get_link(teacher.id, student_id)
         if not link:
-            raise ValueError("link_not_found")
+            raise ValueError(codes.LINK_NOT_FOUND)
 
         if link.status == TeacherStudentStatus.confirmed:
             return link

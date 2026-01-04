@@ -1,5 +1,6 @@
 from typing import Optional, Literal
 from pydantic import BaseModel, Field, EmailStr, model_validator
+from app.core import error_codes as codes
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
 CYRILLIC_RE = r"^[А-ЯЁ][а-яё]+$"
@@ -26,11 +27,11 @@ class RegisterRequest(BaseModel):
     def validate_role_fields(self):
         if self.role == "student":
             if self.class_grade is None:
-                raise ValueError("class_grade_required")
+                raise ValueError(codes.CLASS_GRADE_REQUIRED)
             self.subject = None
         if self.role == "teacher":
             if self.class_grade is not None:
-                raise ValueError("class_grade_not_allowed_for_teacher")
+                raise ValueError(codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER)
         return self
 
 

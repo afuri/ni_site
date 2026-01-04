@@ -8,6 +8,7 @@ from app.models.user import User, UserRole
 from app.repos.users import UsersRepo
 from app.schemas.user import UserRead, UserUpdate
 from app.api.v1.openapi_errors import response_example
+from app.core import error_codes as codes
 
 router = APIRouter(prefix="/users")
 
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/users")
     tags=["users"],
     description="Получить профиль пользователя",
     responses={
-        401: response_example("missing_token"),
+        401: response_example(codes.MISSING_TOKEN),
     },
 )
 async def get_me(user: User = Depends(get_current_user)):
@@ -31,9 +32,9 @@ async def get_me(user: User = Depends(get_current_user)):
     tags=["users"],
     description="Обновить профиль пользователя",
     responses={
-        401: response_example("missing_token"),
-        404: response_example("user_not_found"),
-        422: response_example("validation_error"),
+        401: response_example(codes.MISSING_TOKEN),
+        404: response_example(codes.USER_NOT_FOUND),
+        422: response_example(codes.VALIDATION_ERROR),
     },
 )
 async def update_me(
@@ -50,7 +51,7 @@ async def update_me(
     repo = UsersRepo(db)
     user = await repo.get_by_id(user.id)
     if not user:
-        raise http_error(404, "user_not_found")
+        raise http_error(404, codes.USER_NOT_FOUND)
 
     updated = await repo.update_profile(user, data)
     return updated

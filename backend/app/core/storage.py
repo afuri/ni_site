@@ -7,6 +7,7 @@ import boto3
 from botocore.client import Config
 
 from app.core.config import settings
+from app.core import error_codes as codes
 
 
 ALLOWED_CONTENT_TYPES = {t.strip() for t in settings.STORAGE_ALLOWED_CONTENT_TYPES.split(",") if t.strip()}
@@ -67,7 +68,7 @@ def presign_put(prefix: str, content_type: str) -> PresignPutResult:
     if client is None:
         raise RuntimeError("storage_not_configured")
     if content_type not in ALLOWED_CONTENT_TYPES:
-        raise ValueError("content_type_not_allowed")
+        raise ValueError(codes.CONTENT_TYPE_NOT_ALLOWED)
 
     key = _build_key(prefix, content_type)
     params = {
@@ -94,7 +95,7 @@ def presign_post(prefix: str, content_type: str, max_size_bytes: int) -> Presign
     if client is None:
         raise RuntimeError("storage_not_configured")
     if content_type not in ALLOWED_CONTENT_TYPES:
-        raise ValueError("content_type_not_allowed")
+        raise ValueError(codes.CONTENT_TYPE_NOT_ALLOWED)
 
     key = _build_key(prefix, content_type)
     conditions = [

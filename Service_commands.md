@@ -62,6 +62,12 @@ docker exec -it <pg_container> psql -U postgres -d ni_site -c "
 
 ## Примеры curl
 
+### Проверка очередей фоновых задач
+
+```bash
+curl http://localhost:8000/api/v1/health/queues
+```
+
 ### Регистрация пользователя
 
 ```bash

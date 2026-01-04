@@ -7,6 +7,7 @@ from app.core.rate_limit import token_bucket_rate_limit
 from app.core.metrics import RATE_LIMIT_BLOCKS
 from app.core.redis import get_redis
 from app.core.config import settings
+from app.core import error_codes as codes
 
 
 from app.core.deps import get_db
@@ -34,13 +35,13 @@ router = APIRouter(prefix="/attempts")
     tags=["attempts"],
     description="Старт попытки прохождения олимпиады",
     responses={
-        401: response_example("missing_token"),
+        401: response_example(codes.MISSING_TOKEN),
         409: response_examples(
-            "olympiad_not_available",
-            "olympiad_not_published",
-            "olympiad_has_no_tasks",
+            codes.OLYMPIAD_NOT_AVAILABLE,
+            codes.OLYMPIAD_NOT_PUBLISHED,
+            codes.OLYMPIAD_HAS_NO_TASKS,
         ),
-        404: response_example("olympiad_not_found"),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
     },
 )
 async def start_attempt(
@@ -54,14 +55,14 @@ async def start_attempt(
         return attempt
     except ValueError as e:
         code = str(e)
-        if code == "olympiad_not_found":
-            raise http_error(404, "olympiad_not_found")
-        if code == "olympiad_not_published":
-            raise http_error(409, "olympiad_not_published")
-        if code == "olympiad_not_available":
-            raise http_error(409, "olympiad_not_available")
-        if code == "olympiad_has_no_tasks":
-            raise http_error(409, "olympiad_has_no_tasks")
+        if code == codes.OLYMPIAD_NOT_FOUND:
+            raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+        if code == codes.OLYMPIAD_NOT_PUBLISHED:
+            raise http_error(409, codes.OLYMPIAD_NOT_PUBLISHED)
+        if code == codes.OLYMPIAD_NOT_AVAILABLE:
+            raise http_error(409, codes.OLYMPIAD_NOT_AVAILABLE)
+        if code == codes.OLYMPIAD_HAS_NO_TASKS:
+            raise http_error(409, codes.OLYMPIAD_HAS_NO_TASKS)
         raise
 
 
@@ -73,9 +74,9 @@ async def start_attempt(
     tags=["attempts"],
     description="Просмотр попытки и ответов",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_examples("attempt_not_found", "olympiad_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_examples(codes.ATTEMPT_NOT_FOUND, codes.OLYMPIAD_NOT_FOUND),
     },
 )
 async def get_attempt_view(
@@ -88,12 +89,12 @@ async def get_attempt_view(
         attempt, olympiad, tasks, answers_by_task = await service.get_attempt_view(user=user, attempt_id=attempt_id)
     except ValueError as e:
         code = str(e)
-        if code == "attempt_not_found":
-            raise http_error(404, "attempt_not_found")
-        if code == "olympiad_not_found":
-            raise http_error(404, "olympiad_not_found")
-        if code == "forbidden":
-            raise http_error(403, "forbidden")
+        if code == codes.ATTEMPT_NOT_FOUND:
+            raise http_error(404, codes.ATTEMPT_NOT_FOUND)
+        if code == codes.OLYMPIAD_NOT_FOUND:
+            raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+        if code == codes.FORBIDDEN:
+            raise http_error(403, codes.FORBIDDEN)
         raise
 
     tasks_view = []
@@ -128,11 +129,11 @@ async def get_attempt_view(
     tags=["attempts"],
     description="Сохранить ответ на задание",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_examples("attempt_not_found", "task_not_found"),
-        409: response_examples("attempt_expired", "attempt_not_active"),
-        422: response_example("invalid_answer_payload"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_examples(codes.ATTEMPT_NOT_FOUND, codes.TASK_NOT_FOUND),
+        409: response_examples(codes.ATTEMPT_EXPIRED, codes.ATTEMPT_NOT_ACTIVE),
+        422: response_example(codes.INVALID_ANSWER_PAYLOAD),
     },
 )
 async def upsert_answer(
@@ -160,7 +161,7 @@ async def upsert_answer(
     if not rl.allowed:
         response.headers["Retry-After"] = str(rl.retry_after_sec)
         RATE_LIMIT_BLOCKS.labels(scope="attempts:answers").inc()
-        raise http_error(429, "rate_limited")
+        raise http_error(429, codes.RATE_LIMITED)
 
     service = AttemptsService(AttemptsRepo(db))
     try:
@@ -172,18 +173,18 @@ async def upsert_answer(
         )
     except ValueError as e:
         code = str(e)
-        if code == "attempt_not_found":
-            raise http_error(404, "attempt_not_found")
-        if code in ("forbidden",):
-            raise http_error(403, "forbidden")
-        if code in ("attempt_not_active",):
-            raise http_error(409, "attempt_not_active")
-        if code in ("attempt_expired",):
-            raise http_error(409, "attempt_expired")
-        if code == "task_not_found":
-            raise http_error(404, "task_not_found")
-        if code == "invalid_answer_payload":
-            raise http_error(422, "invalid_answer_payload")
+        if code == codes.ATTEMPT_NOT_FOUND:
+            raise http_error(404, codes.ATTEMPT_NOT_FOUND)
+        if code in (codes.FORBIDDEN,):
+            raise http_error(403, codes.FORBIDDEN)
+        if code in (codes.ATTEMPT_NOT_ACTIVE,):
+            raise http_error(409, codes.ATTEMPT_NOT_ACTIVE)
+        if code in (codes.ATTEMPT_EXPIRED,):
+            raise http_error(409, codes.ATTEMPT_EXPIRED)
+        if code == codes.TASK_NOT_FOUND:
+            raise http_error(404, codes.TASK_NOT_FOUND)
+        if code == codes.INVALID_ANSWER_PAYLOAD:
+            raise http_error(422, codes.INVALID_ANSWER_PAYLOAD)
         raise
 
 
@@ -194,9 +195,9 @@ async def upsert_answer(
     tags=["attempts"],
     description="Отправить попытку на проверку",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("attempt_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.ATTEMPT_NOT_FOUND),
     },
 )
 async def submit_attempt(
@@ -210,10 +211,10 @@ async def submit_attempt(
         return {"status": status_value}
     except ValueError as e:
         code = str(e)
-        if code == "attempt_not_found":
-            raise http_error(404, "attempt_not_found")
-        if code == "forbidden":
-            raise http_error(403, "forbidden")
+        if code == codes.ATTEMPT_NOT_FOUND:
+            raise http_error(404, codes.ATTEMPT_NOT_FOUND)
+        if code == codes.FORBIDDEN:
+            raise http_error(403, codes.FORBIDDEN)
         raise
 
 
@@ -223,9 +224,9 @@ async def submit_attempt(
     tags=["attempts"],
     description="Получить результат попытки",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("attempt_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.ATTEMPT_NOT_FOUND),
     },
 )
 async def get_attempt_result(
@@ -238,10 +239,10 @@ async def get_attempt_result(
         return await service.get_result(user=student, attempt_id=attempt_id)
     except ValueError as e:
         code = str(e)
-        if code == "attempt_not_found":
-            raise http_error(404, "attempt_not_found")
-        if code == "forbidden":
-            raise http_error(403, "forbidden")
+        if code == codes.ATTEMPT_NOT_FOUND:
+            raise http_error(404, codes.ATTEMPT_NOT_FOUND)
+        if code == codes.FORBIDDEN:
+            raise http_error(403, codes.FORBIDDEN)
         raise
 
 
@@ -259,6 +260,6 @@ async def list_my_results(
     try:
         return await service.list_results(user=student)
     except ValueError as e:
-        if str(e) == "forbidden":
-            raise http_error(403, "forbidden")
+        if str(e) == codes.FORBIDDEN:
+            raise http_error(403, codes.FORBIDDEN)
         raise

@@ -10,6 +10,7 @@ from app.repos.content import ContentRepo
 from app.schemas.content import ContentCreate, ContentRead, ContentUpdate
 from app.services.content import ContentService
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.core import error_codes as codes
 
 
 router = APIRouter(prefix="/content")
@@ -38,7 +39,7 @@ async def list_published_content(
     tags=["content"],
     description="Получить опубликованный материал",
     responses={
-        404: response_example("content_not_found"),
+        404: response_example(codes.CONTENT_NOT_FOUND),
     },
 )
 async def get_published_content(
@@ -48,7 +49,7 @@ async def get_published_content(
     repo = ContentRepo(db)
     item = await repo.get(content_id)
     if not item or item.status != ContentStatus.published:
-        raise http_error(404, "content_not_found")
+        raise http_error(404, codes.CONTENT_NOT_FOUND)
     return item
 
 
@@ -58,8 +59,8 @@ async def get_published_content(
     tags=["content"],
     description="Список материалов для управления",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
     },
 )
 async def list_content_admin(
@@ -89,9 +90,9 @@ async def list_content_admin(
     tags=["content"],
     description="Получить материал для управления",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("content_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.CONTENT_NOT_FOUND),
     },
 )
 async def get_content_admin(
@@ -102,9 +103,9 @@ async def get_content_admin(
     repo = ContentRepo(db)
     item = await repo.get(content_id)
     if not item:
-        raise http_error(404, "content_not_found")
+        raise http_error(404, codes.CONTENT_NOT_FOUND)
     if user.role != UserRole.admin and item.author_id != user.id:
-        raise http_error(403, "forbidden")
+        raise http_error(403, codes.FORBIDDEN)
     return item
 
 
@@ -115,13 +116,13 @@ async def get_content_admin(
     tags=["content"],
     description="Создать материал",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
         422: response_examples(
-            "validation_error",
-            "news_images_forbidden",
-            "news_body_too_long",
-            "article_body_too_short",
+            codes.VALIDATION_ERROR,
+            codes.NEWS_IMAGES_FORBIDDEN,
+            codes.NEWS_BODY_TOO_LONG,
+            codes.ARTICLE_BODY_TOO_SHORT,
         ),
     },
 )
@@ -140,14 +141,14 @@ async def create_content(
     tags=["content"],
     description="Обновить материал",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("content_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.CONTENT_NOT_FOUND),
         422: response_examples(
-            "validation_error",
-            "news_images_forbidden",
-            "news_body_too_long",
-            "article_body_too_short",
+            codes.VALIDATION_ERROR,
+            codes.NEWS_IMAGES_FORBIDDEN,
+            codes.NEWS_BODY_TOO_LONG,
+            codes.ARTICLE_BODY_TOO_SHORT,
         ),
     },
 )
@@ -160,7 +161,7 @@ async def update_content(
     repo = ContentRepo(db)
     item = await repo.get(content_id)
     if not item:
-        raise http_error(404, "content_not_found")
+        raise http_error(404, codes.CONTENT_NOT_FOUND)
     patch = payload.model_dump(exclude_unset=True)
     service = ContentService(repo)
     return await service.update(item=item, patch=patch, user=user)
@@ -172,14 +173,14 @@ async def update_content(
     tags=["content"],
     description="Опубликовать материал",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("content_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.CONTENT_NOT_FOUND),
         422: response_examples(
-            "validation_error",
-            "news_images_forbidden",
-            "news_body_too_long",
-            "article_body_too_short",
+            codes.VALIDATION_ERROR,
+            codes.NEWS_IMAGES_FORBIDDEN,
+            codes.NEWS_BODY_TOO_LONG,
+            codes.ARTICLE_BODY_TOO_SHORT,
         ),
     },
 )
@@ -191,7 +192,7 @@ async def publish_content(
     repo = ContentRepo(db)
     item = await repo.get(content_id)
     if not item:
-        raise http_error(404, "content_not_found")
+        raise http_error(404, codes.CONTENT_NOT_FOUND)
     service = ContentService(repo)
     return await service.publish(item=item, user=user)
 
@@ -202,9 +203,9 @@ async def publish_content(
     tags=["content"],
     description="Снять материал с публикации",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("content_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.CONTENT_NOT_FOUND),
     },
 )
 async def unpublish_content(
@@ -215,6 +216,6 @@ async def unpublish_content(
     repo = ContentRepo(db)
     item = await repo.get(content_id)
     if not item:
-        raise http_error(404, "content_not_found")
+        raise http_error(404, codes.CONTENT_NOT_FOUND)
     service = ContentService(repo)
     return await service.unpublish(item=item, user=user)

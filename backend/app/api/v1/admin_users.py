@@ -8,6 +8,7 @@ from app.models.user import UserRole, User
 from app.repos.users import UsersRepo
 from app.schemas.user import UserRead, ModeratorStatusUpdate
 from app.api.v1.openapi_errors import response_example
+from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/users")
 
@@ -18,10 +19,10 @@ router = APIRouter(prefix="/admin/users")
     tags=["admin"],
     description="Назначить или снять статус модератора",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("user_not_found"),
-        409: response_example("user_not_teacher"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.USER_NOT_FOUND),
+        409: response_example(codes.USER_NOT_TEACHER),
     },
 )
 async def set_moderator_status(
@@ -33,7 +34,7 @@ async def set_moderator_status(
     repo = UsersRepo(db)
     user = await repo.get_by_id(user_id)
     if not user:
-        raise http_error(404, "user_not_found")
+        raise http_error(404, codes.USER_NOT_FOUND)
     if user.role != UserRole.teacher:
-        raise http_error(409, "user_not_teacher")
+        raise http_error(409, codes.USER_NOT_TEACHER)
     return await repo.set_moderator_status(user, payload.is_moderator)

@@ -6,6 +6,7 @@ import re
 from app.core.errors import http_error
 from app.core.storage import presign_get, presign_put, presign_post
 from app.core.config import settings
+from app.core import error_codes as codes
 from app.schemas.uploads import (
     UploadPresignRequest,
     UploadPresignResponse,
@@ -34,9 +35,9 @@ def _normalize_prefix(prefix: str) -> str:
     tags=["uploads"],
     description="Получить ссылку для загрузки изображения в хранилище",
     responses={
-        401: response_example("missing_token"),
-        422: response_examples("invalid_prefix", "content_type_not_allowed"),
-        503: response_example("storage_unavailable"),
+        401: response_example(codes.MISSING_TOKEN),
+        422: response_examples(codes.INVALID_PREFIX, codes.CONTENT_TYPE_NOT_ALLOWED),
+        503: response_example(codes.STORAGE_UNAVAILABLE),
     },
 )
 async def presign_upload(
@@ -45,19 +46,19 @@ async def presign_upload(
 ):
     normalized = _normalize_prefix(payload.prefix)
     if normalized in ("", ".", "..") or ".." in normalized.split("/"):
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     if not any(normalized == allowed or normalized.startswith(f"{allowed}/") for allowed in ALLOWED_PREFIXES):
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     if not PREFIX_RE.match(normalized):
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     if len(normalized.split("/")) > MAX_PREFIX_SEGMENTS:
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     try:
         result = presign_put(prefix=normalized, content_type=payload.content_type)
     except ValueError:
-        raise http_error(422, "content_type_not_allowed")
+        raise http_error(422, codes.CONTENT_TYPE_NOT_ALLOWED)
     except RuntimeError:
-        raise http_error(503, "storage_unavailable")
+        raise http_error(503, codes.STORAGE_UNAVAILABLE)
     return UploadPresignResponse(
         key=result.key,
         upload_url=result.upload_url,
@@ -73,9 +74,9 @@ async def presign_upload(
     tags=["uploads"],
     description="Получить форму для загрузки с лимитом размера",
     responses={
-        401: response_example("missing_token"),
-        422: response_examples("invalid_prefix", "content_type_not_allowed"),
-        503: response_example("storage_unavailable"),
+        401: response_example(codes.MISSING_TOKEN),
+        422: response_examples(codes.INVALID_PREFIX, codes.CONTENT_TYPE_NOT_ALLOWED),
+        503: response_example(codes.STORAGE_UNAVAILABLE),
     },
 )
 async def presign_upload_post(
@@ -84,13 +85,13 @@ async def presign_upload_post(
 ):
     normalized = _normalize_prefix(payload.prefix)
     if normalized in ("", ".", "..") or ".." in normalized.split("/"):
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     if not any(normalized == allowed or normalized.startswith(f"{allowed}/") for allowed in ALLOWED_PREFIXES):
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     if not PREFIX_RE.match(normalized):
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     if len(normalized.split("/")) > MAX_PREFIX_SEGMENTS:
-        raise http_error(422, "invalid_prefix")
+        raise http_error(422, codes.INVALID_PREFIX)
     try:
         result = presign_post(
             prefix=normalized,
@@ -98,9 +99,9 @@ async def presign_upload_post(
             max_size_bytes=settings.STORAGE_MAX_UPLOAD_MB * 1024 * 1024,
         )
     except ValueError:
-        raise http_error(422, "content_type_not_allowed")
+        raise http_error(422, codes.CONTENT_TYPE_NOT_ALLOWED)
     except RuntimeError:
-        raise http_error(503, "storage_unavailable")
+        raise http_error(503, codes.STORAGE_UNAVAILABLE)
     return UploadPresignPostResponse(
         key=result.key,
         upload_url=result.upload_url,
@@ -117,8 +118,8 @@ async def presign_upload_post(
     tags=["uploads"],
     description="Получить временную ссылку на файл из хранилища",
     responses={
-        401: response_example("missing_token"),
-        503: response_example("storage_unavailable"),
+        401: response_example(codes.MISSING_TOKEN),
+        503: response_example(codes.STORAGE_UNAVAILABLE),
     },
 )
 async def get_upload_url(
@@ -128,5 +129,5 @@ async def get_upload_url(
     try:
         url = presign_get(key=key)
     except RuntimeError:
-        raise http_error(503, "storage_unavailable")
+        raise http_error(503, codes.STORAGE_UNAVAILABLE)
     return UploadGetResponse(url=url, expires_in=settings.STORAGE_PRESIGN_EXPIRES_SEC)

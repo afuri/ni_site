@@ -26,6 +26,8 @@
 - Publish invalid availability (available_to <= available_from) -> 422 `invalid_availability`
 - Change time rules for published olympiad -> 409 `cannot_change_published_rules`
 - Add task to published olympiad -> 409 `cannot_modify_published`
+- Delete olympiad as non-admin -> 403 `forbidden`
+- Delete non-existent olympiad -> 404 `olympiad_not_found`
 
 ## Content
 
@@ -39,3 +41,7 @@
 - Presign without auth -> 401
 - Presign with invalid prefix -> 422 `invalid_prefix`
 - Presign with invalid content type -> 422 `unsupported_content_type`
+
+## Health
+
+- Queues health when broker unavailable -> 503

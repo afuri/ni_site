@@ -79,6 +79,7 @@ docker compose up --build
 
 - API: `http://localhost:8000/api/v1/health`
 - Readiness: `http://localhost:8000/api/v1/health/ready`
+- Очереди: `http://localhost:8000/api/v1/health/queues`
 - Миграции: `docker compose exec api alembic -c /app/alembic.ini upgrade head`
 
 #### Локальный запуск (без Docker)
@@ -95,6 +96,7 @@ uvicorn app.main:app --reload
 - Переменные окружения: см. `backend/.env.example` (скопировать в `backend/.env`).
 - Healthcheck: `GET /api/v1/health`.
 - Readiness: `GET /api/v1/health/ready`.
+- Очереди: `GET /api/v1/health/queues`.
 - Метрики (если включены): `GET /metrics`.
 
 ---

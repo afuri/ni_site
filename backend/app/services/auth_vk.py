@@ -5,6 +5,7 @@ from app.repos.users import UsersRepo
 from app.repos.social_accounts import SocialAccountsRepo
 from app.core.security import create_access_token, create_refresh_token
 from app.core.security import hash_password
+from app.core import error_codes as codes
 
 
 class AuthVKService:
@@ -19,7 +20,7 @@ class AuthVKService:
         if existing_social:
             user = await self.users.get_by_id(existing_social.user_id)
             if not user or not user.is_active:
-                raise ValueError("user_not_found")
+                raise ValueError(codes.USER_NOT_FOUND)
             return create_access_token(str(user.id)), create_refresh_token(str(user.id))
 
         # 2) Иначе создаём нового пользователя (MVP)

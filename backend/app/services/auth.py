@@ -16,6 +16,7 @@ from app.models.user import UserRole
 from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.users import UsersRepo
 from app.tasks.email import send_email_task
+from app.core import error_codes as codes
 
 
 class AuthService:
@@ -45,30 +46,30 @@ class AuthService:
     ):
         existing = await self.users_repo.get_by_login(login)
         if existing:
-            raise ValueError("login_taken")
+            raise ValueError(codes.LOGIN_TAKEN)
 
         existing_email = await self.users_repo.get_by_email(email)
         if existing_email:
-            raise ValueError("email_taken")
+            raise ValueError(codes.EMAIL_TAKEN)
 
         try:
             role_enum = UserRole(role)
         except Exception:
-            raise ValueError("invalid_role")
+            raise ValueError(codes.INVALID_ROLE)
 
         if role_enum not in (UserRole.student, UserRole.teacher):
-            raise ValueError("invalid_role")
+            raise ValueError(codes.INVALID_ROLE)
 
         if role_enum == UserRole.student:
             if class_grade is None:
-                raise ValueError("class_grade_required")
+                raise ValueError(codes.CLASS_GRADE_REQUIRED)
             if subject is not None:
-                raise ValueError("subject_not_allowed_for_student")
+                raise ValueError(codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT)
         if role_enum == UserRole.teacher:
             if subject is None:
-                raise ValueError("subject_required")
+                raise ValueError(codes.SUBJECT_REQUIRED)
             if class_grade is not None:
-                raise ValueError("class_grade_not_allowed_for_teacher")
+                raise ValueError(codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER)
 
         validate_password_policy(password)
         password_hash = hash_password(password)
@@ -93,13 +94,13 @@ class AuthService:
     async def login(self, login: str, password: str):
         user = await self.users_repo.get_by_login(login)
         if not user or not user.is_active:
-            raise ValueError("invalid_credentials")
+            raise ValueError(codes.INVALID_CREDENTIALS)
 
         if not user.is_email_verified:
-            raise ValueError("email_not_verified")
+            raise ValueError(codes.EMAIL_NOT_VERIFIED)
 
         if not verify_password(password, user.password_hash):
-            raise ValueError("invalid_credentials")
+            raise ValueError(codes.INVALID_CREDENTIALS)
 
         access = create_access_token(str(user.id))
         refresh = create_refresh_token(str(user.id))
@@ -119,27 +120,27 @@ class AuthService:
         try:
             payload = decode_token(refresh_token)
         except Exception:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         if payload.get("type") != "refresh":
-            raise ValueError("invalid_token_type")
+            raise ValueError(codes.INVALID_TOKEN_TYPE)
 
         sub = payload.get("sub")
         if not sub:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         token_hash = hash_token(refresh_token)
         record = await self.tokens_repo.get_refresh_by_hash(token_hash)
         if not record:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         now = self._now_utc()
         if record.revoked_at is not None or record.expires_at < now:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         user = await self.users_repo.get_by_id(record.user_id)
         if not user or not user.is_active:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         await self.tokens_repo.revoke_refresh_token(record, now)
 
@@ -192,17 +193,17 @@ class AuthService:
         token_hash = hash_token(token)
         record = await self.tokens_repo.get_email_verification_by_hash(token_hash)
         if not record:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         now = self._now_utc()
         if record.used_at is not None:
             return
         if record.expires_at < now:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         user = await self.users_repo.get_by_id(record.user_id)
         if not user:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         await self.tokens_repo.mark_email_verification_used(record, now)
         await self.users_repo.set_email_verified(user)
@@ -234,17 +235,17 @@ class AuthService:
         token_hash = hash_token(token)
         record = await self.tokens_repo.get_password_reset_by_hash(token_hash)
         if not record:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         now = self._now_utc()
         if record.used_at is not None:
             return
         if record.expires_at < now:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         user = await self.users_repo.get_by_id(record.user_id)
         if not user:
-            raise ValueError("invalid_token")
+            raise ValueError(codes.INVALID_TOKEN)
 
         await self.tokens_repo.mark_password_reset_used(record, now)
         password_hash = hash_password(new_password)

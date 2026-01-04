@@ -7,6 +7,7 @@ from app.models.content import ContentItem, ContentStatus, ContentType
 from app.models.user import User, UserRole
 from app.repos.content import ContentRepo
 from app.schemas.content import ARTICLE_MIN_LEN, NEWS_MAX_LEN
+from app.core import error_codes as codes
 
 
 class ContentService:
@@ -18,25 +19,25 @@ class ContentService:
             return
         if user.role == UserRole.teacher and user.is_moderator and item.author_id == user.id:
             return
-        raise http_error(403, "forbidden")
+        raise http_error(403, codes.FORBIDDEN)
 
     def _validate_by_type(self, content_type: ContentType, body: str, image_keys: list[str]) -> None:
         if content_type == ContentType.news:
             if image_keys:
-                raise http_error(422, "news_images_forbidden")
+                raise http_error(422, codes.NEWS_IMAGES_FORBIDDEN)
             if len(body) > NEWS_MAX_LEN:
-                raise http_error(422, "news_body_too_long")
+                raise http_error(422, codes.NEWS_BODY_TOO_LONG)
             return
 
         if len(body) < ARTICLE_MIN_LEN:
-            raise http_error(422, "article_body_too_short")
+            raise http_error(422, codes.ARTICLE_BODY_TOO_SHORT)
 
     def _ensure_publishable(self, content_type: ContentType, body: str, image_keys: list[str]) -> None:
         self._validate_by_type(content_type, body, image_keys)
 
     async def create(self, payload, user: User) -> ContentItem:
         if payload.publish and user.role != UserRole.admin:
-            raise http_error(403, "publish_forbidden")
+            raise http_error(403, codes.PUBLISH_FORBIDDEN)
         publish = payload.publish and user.role == UserRole.admin
         self._validate_by_type(payload.content_type, payload.body, payload.image_keys)
         if publish:
@@ -60,7 +61,7 @@ class ContentService:
     async def update(self, item: ContentItem, patch: dict, user: User) -> ContentItem:
         self._ensure_can_manage(user, item)
         if user.role != UserRole.admin and item.status == ContentStatus.published:
-            raise http_error(403, "content_update_forbidden")
+            raise http_error(403, codes.CONTENT_UPDATE_FORBIDDEN)
 
         title = patch.get("title", item.title)
         body = patch.get("body", item.body)
@@ -87,7 +88,7 @@ class ContentService:
 
     async def unpublish(self, item: ContentItem, user: User) -> ContentItem:
         if user.role != UserRole.admin:
-            raise http_error(403, "forbidden")
+            raise http_error(403, codes.FORBIDDEN)
         if item.status != ContentStatus.published:
             return item
         now = datetime.now(timezone.utc)

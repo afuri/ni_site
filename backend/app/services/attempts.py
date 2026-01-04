@@ -13,6 +13,7 @@ from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
 from app.models.user import User, UserRole
 from app.repos.attempts import AttemptsRepo
+from app.core import error_codes as codes
 
 
 class AttemptsService:
@@ -167,42 +168,42 @@ class AttemptsService:
     @staticmethod
     def _validate_answer_payload(task_type: TaskType, task_payload: dict, answer_payload: dict) -> dict:
         if not isinstance(answer_payload, dict):
-            raise ValueError("invalid_answer_payload")
+            raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
 
         if task_type == TaskType.single_choice:
             choice_id = answer_payload.get("choice_id")
             if not isinstance(choice_id, str):
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             options = task_payload.get("options") or []
             ids = {o.get("id") for o in options if isinstance(o, dict)}
             if choice_id not in ids:
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             return {"choice_id": choice_id}
 
         if task_type == TaskType.multi_choice:
             choice_ids = answer_payload.get("choice_ids")
             if not isinstance(choice_ids, list) or len(choice_ids) == 0:
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             if any(not isinstance(cid, str) for cid in choice_ids):
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             if len(set(choice_ids)) != len(choice_ids):
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             options = task_payload.get("options") or []
             ids = {o.get("id") for o in options if isinstance(o, dict)}
             if any(cid not in ids for cid in choice_ids):
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             return {"choice_ids": choice_ids}
 
         if task_type == TaskType.short_text:
             text = answer_payload.get("text")
             if not isinstance(text, str):
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             trimmed = text.strip()
             if trimmed == "":
-                raise ValueError("invalid_answer_payload")
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             return {"text": trimmed}
 
-        raise ValueError("invalid_answer_payload")
+        raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
 
     @staticmethod
     def _normalize_spaces(value: str) -> str:
@@ -260,9 +261,9 @@ class AttemptsService:
     async def start_attempt(self, *, user: User, olympiad_id: int):
         olympiad = await self._get_olympiad_cached(olympiad_id)
         if not olympiad:
-            raise ValueError("olympiad_not_found")
+            raise ValueError(codes.OLYMPIAD_NOT_FOUND)
         if not olympiad.is_published:
-            raise ValueError("olympiad_not_published")
+            raise ValueError(codes.OLYMPIAD_NOT_PUBLISHED)
 
         existing = await self.repo.get_attempt_by_user_olympiad(user.id, olympiad_id)
         if existing:
@@ -271,13 +272,13 @@ class AttemptsService:
 
         now = self._now_utc()
         if now < olympiad.available_from or now > olympiad.available_to:
-            raise ValueError("olympiad_not_available")
+            raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
 
         cached = await self._get_tasks_cached(olympiad_id)
         tasks = self._inflate_tasks(cached)
         if len(tasks) == 0:
             # защищаемся от "пустой" опубликованной олимпиады
-            raise ValueError("olympiad_has_no_tasks")
+            raise ValueError(codes.OLYMPIAD_HAS_NO_TASKS)
 
         deadline = now + timedelta(seconds=int(olympiad.duration_sec))
         attempt = await self.repo.create_attempt(
@@ -293,13 +294,13 @@ class AttemptsService:
     async def _ensure_attempt_access(self, *, user: User, attempt_id: int):
         attempt = await self.repo.get_attempt(attempt_id)
         if not attempt:
-            raise ValueError("attempt_not_found")
+            raise ValueError(codes.ATTEMPT_NOT_FOUND)
 
         # студент видит только свою попытку; учитель — через отдельные эндпоинты
         if user.role == UserRole.student and attempt.user_id != user.id:
-            raise ValueError("forbidden")
+            raise ValueError(codes.FORBIDDEN)
         if user.role == UserRole.teacher:
-            raise ValueError("forbidden")
+            raise ValueError(codes.FORBIDDEN)
         return attempt
 
     async def get_attempt_view(self, *, user: User, attempt_id: int):
@@ -307,7 +308,7 @@ class AttemptsService:
 
         olympiad = await self._get_olympiad_cached(attempt.olympiad_id)
         if not olympiad:
-            raise ValueError("olympiad_not_found")
+            raise ValueError(codes.OLYMPIAD_NOT_FOUND)
 
         cached = await self._get_tasks_cached(attempt.olympiad_id)
         tasks = self._inflate_tasks(cached)
@@ -328,18 +329,18 @@ class AttemptsService:
         now = self._now_utc()
         # если время вышло — фиксируем expired и запрещаем запись
         if attempt.status != AttemptStatus.active:
-            raise ValueError("attempt_not_active")
+            raise ValueError(codes.ATTEMPT_NOT_ACTIVE)
 
         if now > attempt.deadline_at:
             await self.repo.mark_expired(attempt.id)
-            raise ValueError("attempt_expired")
+            raise ValueError(codes.ATTEMPT_EXPIRED)
 
         # убедимся, что task принадлежит олимпиаде попытки
         cached = await self._get_tasks_cached(attempt.olympiad_id)
         tasks = self._inflate_tasks(cached)
         match = next(((ot, t) for ot, t in tasks if ot.task_id == task_id), None)
         if not match:
-            raise ValueError("task_not_found")
+            raise ValueError(codes.TASK_NOT_FOUND)
         _olymp_task, task = match
 
         normalized = self._validate_answer_payload(task.task_type, task.payload, answer_payload)
@@ -386,7 +387,7 @@ class AttemptsService:
             if attempt.status == AttemptStatus.active:
                 olympiad = await self._get_olympiad_cached(attempt.olympiad_id)
                 if not olympiad:
-                    raise ValueError("olympiad_not_found")
+                    raise ValueError(codes.OLYMPIAD_NOT_FOUND)
 
                 cached = await self._get_tasks_cached(attempt.olympiad_id)
                 tasks = self._inflate_tasks(cached)
@@ -460,7 +461,7 @@ class AttemptsService:
 
     async def list_results(self, *, user: User):
         if user.role != UserRole.student:
-            raise ValueError("forbidden")
+            raise ValueError(codes.FORBIDDEN)
         attempts = await self.repo.list_attempts_for_user(user.id)
         results = []
         for attempt in attempts:

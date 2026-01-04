@@ -98,4 +98,5 @@ alembic -c alembic.ini upgrade head
 
 - API: `GET /api/v1/health`
 - Readiness: `GET /api/v1/health/ready`
+- Queues: `GET /api/v1/health/queues`
 - Metrics: `GET /metrics` (when enabled)

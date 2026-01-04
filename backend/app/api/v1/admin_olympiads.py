@@ -16,6 +16,7 @@ from app.services.olympiads_admin import AdminOlympiadsService
 from app.schemas.olympiads_admin import OlympiadTaskFullRead
 from app.schemas.tasks import TaskRead
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.core import error_codes as codes
 
 
 
@@ -29,9 +30,9 @@ router = APIRouter(prefix="/admin/olympiads")
     tags=["admin"],
     description="Создать олимпиаду (админ)",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        422: response_example("invalid_availability"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        422: response_example(codes.INVALID_AVAILABILITY),
     },
 )
 async def create_olympiad(
@@ -43,8 +44,8 @@ async def create_olympiad(
     try:
         return await service.create(data=payload.model_dump(), admin_id=admin.id)
     except ValueError as e:
-        if str(e) == "invalid_availability":
-            raise http_error(422, "invalid_availability")
+        if str(e) == codes.INVALID_AVAILABILITY:
+            raise http_error(422, codes.INVALID_AVAILABILITY)
         raise
 
 
@@ -54,8 +55,8 @@ async def create_olympiad(
     tags=["admin"],
     description="Список олимпиад админа",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
     },
 )
 async def list_olympiads(
@@ -76,9 +77,9 @@ async def list_olympiads(
     tags=["admin"],
     description="Получить олимпиаду (админ)",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("olympiad_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
     },
 )
 async def get_olympiad(
@@ -89,7 +90,7 @@ async def get_olympiad(
     repo = OlympiadsRepo(db)
     obj = await repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
     return obj
 
 
@@ -99,11 +100,11 @@ async def get_olympiad(
     tags=["admin"],
     description="Обновить олимпиаду (админ)",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("olympiad_not_found"),
-        409: response_examples("cannot_change_published_rules"),
-        422: response_example("invalid_availability"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
+        409: response_examples(codes.CANNOT_CHANGE_PUBLISHED_RULES),
+        422: response_example(codes.INVALID_AVAILABILITY),
     },
 )
 async def update_olympiad(
@@ -115,17 +116,17 @@ async def update_olympiad(
     repo = OlympiadsRepo(db)
     obj = await repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
         return await service.update(olympiad=obj, patch=payload.model_dump(exclude_unset=True))
     except ValueError as e:
         code = str(e)
-        if code == "invalid_availability":
-            raise http_error(422, "invalid_availability")
-        if code == "cannot_change_published_rules":
-            raise http_error(409, "cannot_change_published_rules")
+        if code == codes.INVALID_AVAILABILITY:
+            raise http_error(422, codes.INVALID_AVAILABILITY)
+        if code == codes.CANNOT_CHANGE_PUBLISHED_RULES:
+            raise http_error(409, codes.CANNOT_CHANGE_PUBLISHED_RULES)
         raise
 
 
@@ -135,9 +136,9 @@ async def update_olympiad(
     tags=["admin"],
     description="Удалить олимпиаду",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("olympiad_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
     },
 )
 async def delete_olympiad(
@@ -148,7 +149,7 @@ async def delete_olympiad(
     repo = OlympiadsRepo(db)
     obj = await repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
     await service.delete(olympiad=obj)
@@ -162,10 +163,10 @@ async def delete_olympiad(
     tags=["admin"],
     description="Добавить задание в олимпиаду",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_examples("olympiad_not_found", "task_not_found"),
-        409: response_examples("cannot_modify_published"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_examples(codes.OLYMPIAD_NOT_FOUND, codes.TASK_NOT_FOUND),
+        409: response_examples(codes.CANNOT_MODIFY_PUBLISHED),
     },
 )
 async def add_task_to_olympiad(
@@ -177,7 +178,7 @@ async def add_task_to_olympiad(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     service = AdminOlympiadsService(o_repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
@@ -189,10 +190,10 @@ async def add_task_to_olympiad(
         )
     except ValueError as e:
         code = str(e)
-        if code == "cannot_modify_published":
-            raise http_error(409, "cannot_modify_published")
-        if code == "task_not_found":
-            raise http_error(404, "task_not_found")
+        if code == codes.CANNOT_MODIFY_PUBLISHED:
+            raise http_error(409, codes.CANNOT_MODIFY_PUBLISHED)
+        if code == codes.TASK_NOT_FOUND:
+            raise http_error(404, codes.TASK_NOT_FOUND)
         raise
 
 
@@ -202,9 +203,9 @@ async def add_task_to_olympiad(
     tags=["admin"],
     description="Список заданий олимпиады",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("olympiad_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
     },
 )
 async def list_olympiad_tasks(
@@ -215,7 +216,7 @@ async def list_olympiad_tasks(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     repo = OlympiadTasksRepo(db)
     return await repo.list_by_olympiad(olympiad_id)
@@ -227,9 +228,9 @@ async def list_olympiad_tasks(
     tags=["admin"],
     description="Список заданий олимпиады с деталями",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("olympiad_not_found"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
     },
 )
 async def list_olympiad_tasks_full(
@@ -240,7 +241,7 @@ async def list_olympiad_tasks_full(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     repo = OlympiadTasksRepo(db)
     rows = await repo.list_full_by_olympiad(olympiad_id)
@@ -265,10 +266,10 @@ async def list_olympiad_tasks_full(
     tags=["admin"],
     description="Удалить задание из олимпиады",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("olympiad_not_found"),
-        409: response_examples("cannot_modify_published"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
+        409: response_examples(codes.CANNOT_MODIFY_PUBLISHED),
     },
 )
 async def remove_task_from_olympiad(
@@ -280,7 +281,7 @@ async def remove_task_from_olympiad(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     service = AdminOlympiadsService(o_repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
@@ -288,8 +289,8 @@ async def remove_task_from_olympiad(
         return None
     except ValueError as e:
         code = str(e)
-        if code == "cannot_modify_published":
-            raise http_error(409, "cannot_modify_published")
+        if code == codes.CANNOT_MODIFY_PUBLISHED:
+            raise http_error(409, codes.CANNOT_MODIFY_PUBLISHED)
         raise
 
 
@@ -299,10 +300,10 @@ async def remove_task_from_olympiad(
     tags=["admin"],
     description="Опубликовать или снять с публикации",
     responses={
-        401: response_example("missing_token"),
-        403: response_example("forbidden"),
-        404: response_example("olympiad_not_found"),
-        409: response_examples("cannot_publish_empty"),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
+        409: response_examples(codes.CANNOT_PUBLISH_EMPTY),
     },
 )
 async def set_publish(
@@ -314,12 +315,12 @@ async def set_publish(
     o_repo = OlympiadsRepo(db)
     obj = await o_repo.get(olympiad_id)
     if not obj:
-        raise http_error(404, "olympiad_not_found")
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     service = AdminOlympiadsService(o_repo, OlympiadTasksRepo(db), TasksRepo(db))
     try:
         return await service.publish(olympiad=obj, publish=publish)
     except ValueError as e:
-        if str(e) == "cannot_publish_empty":
-            raise http_error(409, "cannot_publish_empty")
+        if str(e) == codes.CANNOT_PUBLISH_EMPTY:
+            raise http_error(409, codes.CANNOT_PUBLISH_EMPTY)
         raise
