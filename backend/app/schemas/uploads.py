@@ -14,6 +14,15 @@ class UploadPresignResponse(BaseModel):
     expires_in: int
 
 
+class UploadPresignPostResponse(BaseModel):
+    key: str
+    upload_url: str
+    fields: dict[str, str]
+    public_url: str | None
+    expires_in: int
+    max_size_bytes: int
+
+
 class UploadGetResponse(BaseModel):
     url: str
     expires_in: int

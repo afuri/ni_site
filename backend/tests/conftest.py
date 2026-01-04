@@ -6,8 +6,9 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy import text
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from redis.asyncio import Redis
 
@@ -15,7 +16,7 @@ from app.core.config import settings
 from app.core.deps import get_db
 from app.core.security import hash_password
 from app.db.base import Base
-from app.main import app
+from app.main import app as fastapi_app
 from app.models.user import UserRole
 from app.repos.users import UsersRepo
 from app.core import redis as redis_module
@@ -29,6 +30,7 @@ import app.models.teacher_student  # noqa: F401
 import app.models.social_account  # noqa: F401
 import app.models.auth_token  # noqa: F401
 import app.models.audit_log  # noqa: F401
+import app.models.content  # noqa: F401
 
 
 def _get_test_db_url() -> str:
@@ -45,9 +47,13 @@ def _get_test_redis_url() -> str:
     return url
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def db_engine():
-    engine = create_async_engine(_get_test_db_url(), pool_pre_ping=True)
+    engine = create_async_engine(
+        _get_test_db_url(),
+        pool_pre_ping=True,
+        poolclass=NullPool,
+    )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
@@ -57,23 +63,13 @@ async def db_engine():
     await engine.dispose()
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def truncate_tables(request):
-    if "db_engine" not in request.fixturenames:
-        yield
-        return
-
-    db_engine = request.getfixturevalue("db_engine")
+@pytest_asyncio.fixture
+async def db_session(db_engine):
+    session_maker = async_sessionmaker(bind=db_engine, expire_on_commit=False, class_=AsyncSession)
     async with db_engine.begin() as conn:
         table_names = [f'"{t.name}"' for t in Base.metadata.sorted_tables]
         if table_names:
             await conn.execute(text(f"TRUNCATE {', '.join(table_names)} RESTART IDENTITY CASCADE"))
-    yield
-
-
-@pytest_asyncio.fixture
-async def db_session(db_engine):
-    session_maker = async_sessionmaker(bind=db_engine, expire_on_commit=False, class_=AsyncSession)
     async with session_maker() as session:
         yield session
 
@@ -83,10 +79,14 @@ async def client(db_session):
     async def _get_test_db():
         yield db_session
 
-    app.dependency_overrides[get_db] = _get_test_db
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    fastapi_app.dependency_overrides[get_db] = _get_test_db
+    prev_audit = settings.AUDIT_LOG_ENABLED
+    settings.AUDIT_LOG_ENABLED = False
+    transport = ASGITransport(app=fastapi_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
-    app.dependency_overrides.clear()
+    fastapi_app.dependency_overrides.clear()
+    settings.AUDIT_LOG_ENABLED = prev_audit
 
 
 @pytest_asyncio.fixture
@@ -96,6 +96,7 @@ async def redis_client():
     redis_module.redis_client = None
 
     client = Redis.from_url(url, decode_responses=True)
+    redis_module.redis_client = client
     try:
         await client.ping()
     except Exception:
@@ -104,7 +105,9 @@ async def redis_client():
     await client.flushdb()
     yield client
     await client.flushdb()
-    await client.close()
+    await client.aclose()
+    await client.connection_pool.disconnect(inuse_connections=True)
+    redis_module.redis_client = None
 
 
 @pytest_asyncio.fixture
@@ -116,6 +119,7 @@ async def create_user(db_session):
         password: str,
         role: UserRole,
         is_verified: bool = True,
+        is_moderator: bool = False,
         subject: str | None = None,
         class_grade: int | None = 5,
     ):
@@ -126,6 +130,7 @@ async def create_user(db_session):
             password_hash=hash_password(password),
             role=role,
             is_email_verified=is_verified,
+            is_moderator=is_moderator,
             surname="Иванов",
             name="Иван",
             father_name="Иванович",

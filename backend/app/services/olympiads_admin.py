@@ -77,12 +77,6 @@ class AdminOlympiadsService:
         await self.olympiad_tasks.delete(existing)
 
     async def publish(self, *, olympiad: Olympiad, publish: bool) -> Olympiad:
-        # Нельзя публиковать пустую олимпиаду
-        if publish:
-            items = await self.olympiad_tasks.list_by_olympiad(olympiad.id)
-            if not items:
-                raise ValueError("cannot_publish_empty")
-
         olympiad.is_published = publish
         olympiad.updated_at = datetime.now(timezone.utc)
         return await self.olympiads.save(olympiad)

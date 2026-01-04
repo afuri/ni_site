@@ -26,6 +26,16 @@ class PresignPutResult:
     expires_in: int
 
 
+@dataclass(slots=True)
+class PresignPostResult:
+    key: str
+    upload_url: str
+    fields: dict[str, str]
+    public_url: str | None
+    expires_in: int
+    max_size_bytes: int
+
+
 def _get_s3_client():
     if not settings.STORAGE_ENDPOINT or not settings.STORAGE_ACCESS_KEY or not settings.STORAGE_SECRET_KEY:
         return None
@@ -76,6 +86,38 @@ def presign_put(prefix: str, content_type: str) -> PresignPutResult:
         headers={"Content-Type": content_type},
         public_url=_public_url_for_key(key),
         expires_in=settings.STORAGE_PRESIGN_EXPIRES_SEC,
+    )
+
+
+def presign_post(prefix: str, content_type: str, max_size_bytes: int) -> PresignPostResult:
+    client = _get_s3_client()
+    if client is None:
+        raise RuntimeError("storage_not_configured")
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        raise ValueError("content_type_not_allowed")
+
+    key = _build_key(prefix, content_type)
+    conditions = [
+        {"Content-Type": content_type},
+        ["content-length-range", 1, max_size_bytes],
+    ]
+    fields = {"Content-Type": content_type}
+
+    response = client.generate_presigned_post(
+        Bucket=settings.STORAGE_BUCKET,
+        Key=key,
+        Fields=fields,
+        Conditions=conditions,
+        ExpiresIn=settings.STORAGE_PRESIGN_EXPIRES_SEC,
+    )
+
+    return PresignPostResult(
+        key=key,
+        upload_url=response["url"],
+        fields=response["fields"],
+        public_url=_public_url_for_key(key),
+        expires_in=settings.STORAGE_PRESIGN_EXPIRES_SEC,
+        max_size_bytes=max_size_bytes,
     )
 
 
