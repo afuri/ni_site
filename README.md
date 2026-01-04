@@ -3,6 +3,12 @@
 
 Ed-tech продукт "Сервис подготовки и проведения инженерно-математических олимпиад"
 
+## Документация
+
+- Быстрые команды и curl: `Service_commands.md`
+- Продакшн‑чеклист: `PRODUCTION.md`
+- Негативные сценарии API: `NEGATIVE_TESTS.md`
+
 ## АРХИТЕКТУРА
 ### 1. Общая архитектура
 
@@ -72,6 +78,58 @@ docker compose up --build
 
 - API: `http://localhost:8000/api/v1/health`
 - Миграции: `docker compose exec api alembic -c /app/alembic.ini upgrade head`
+
+#### Локальный запуск (без Docker)
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+alembic -c alembic.ini upgrade head
+uvicorn app.main:app --reload
+```
+
+- Переменные окружения: см. `backend/.env.example` (скопировать в `backend/.env`).
+- Healthcheck: `GET /api/v1/health`.
+- Метрики (если включены): `GET /metrics`.
+
+---
+
+## Production и конфигурация
+
+#### Базовые требования
+
+- Запуск через `gunicorn`:
+  ```bash
+  gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 app.main:app
+  ```
+- Обязательно задать:
+  - `JWT_SECRET`
+  - `DATABASE_URL`
+  - `REDIS_URL`
+  - `EMAIL_BASE_URL`
+  - `STORAGE_*` (object storage + CDN)
+
+#### Наблюдаемость
+
+- `SENTRY_DSN` — включает Sentry (теги: path/method/user).
+- `PROMETHEUS_ENABLED=true` — включает `/metrics`.
+- `AUDIT_LOG_ENABLED=true` — запись аудита запросов в БД.
+
+#### Производительность и лимиты
+
+- Rate limit:
+  - `AUTH_*_RL_*` — лимиты для auth‑эндпойнтов
+  - `ANSWERS_RL_LIMIT`, `ANSWERS_RL_WINDOW_SEC` — лимиты на ответы
+- Идемпотентность submit: `SUBMIT_LOCK_TTL_SEC` (Redis‑lock).
+- Кэширование задач олимпиад: `OLYMPIAD_TASKS_CACHE_TTL_SEC`.
+
+#### Хранилище файлов
+
+- Используется S3‑совместимое хранилище (MinIO в dev, S3 в prod).
+- Загрузка через presign (POST/PUT), в БД хранится только `image_key(s)`.
+- Для продакшна рекомендован CDN и immutable cache‑policy.
     
 
 ---
