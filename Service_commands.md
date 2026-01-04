@@ -8,6 +8,7 @@ docker compose exec api alembic -c /app/alembic.ini upgrade head
 ```
 
 - API health: `http://localhost:8000/api/v1/health`
+- API readiness: `http://localhost:8000/api/v1/health/ready`
 
 ## Локальный запуск (backend)
 

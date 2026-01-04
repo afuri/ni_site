@@ -77,6 +77,7 @@ docker compose up --build
 ```
 
 - API: `http://localhost:8000/api/v1/health`
+- Readiness: `http://localhost:8000/api/v1/health/ready`
 - Миграции: `docker compose exec api alembic -c /app/alembic.ini upgrade head`
 
 #### Локальный запуск (без Docker)
@@ -92,6 +93,7 @@ uvicorn app.main:app --reload
 
 - Переменные окружения: см. `backend/.env.example` (скопировать в `backend/.env`).
 - Healthcheck: `GET /api/v1/health`.
+- Readiness: `GET /api/v1/health/ready`.
 - Метрики (если включены): `GET /metrics`.
 
 ---
@@ -124,6 +126,11 @@ uvicorn app.main:app --reload
   - `ANSWERS_RL_LIMIT`, `ANSWERS_RL_WINDOW_SEC` — лимиты на ответы
 - Идемпотентность submit: `SUBMIT_LOCK_TTL_SEC` (Redis‑lock).
 - Кэширование задач олимпиад: `OLYMPIAD_TASKS_CACHE_TTL_SEC`.
+- Пулы/таймауты БД:
+  - `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_POOL_TIMEOUT_SEC`, `DB_POOL_RECYCLE_SEC`
+  - `DB_CONNECT_TIMEOUT_SEC`, `DB_STATEMENT_TIMEOUT_MS`
+- Таймауты Redis:
+  - `REDIS_SOCKET_TIMEOUT_SEC`, `REDIS_CONNECT_TIMEOUT_SEC`
 
 #### Хранилище файлов
 

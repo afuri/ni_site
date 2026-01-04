@@ -45,6 +45,11 @@ alembic -c alembic.ini upgrade head
   - `SUBMIT_LOCK_TTL_SEC`
 - Cache:
   - `OLYMPIAD_TASKS_CACHE_TTL_SEC`
+- DB pool/timeouts:
+  - `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_POOL_TIMEOUT_SEC`, `DB_POOL_RECYCLE_SEC`
+  - `DB_CONNECT_TIMEOUT_SEC`, `DB_STATEMENT_TIMEOUT_MS`
+- Redis timeouts:
+  - `REDIS_SOCKET_TIMEOUT_SEC`, `REDIS_CONNECT_TIMEOUT_SEC`
 
 ## Storage/CDN
 
@@ -55,4 +60,5 @@ alembic -c alembic.ini upgrade head
 ## Healthchecks
 
 - API: `GET /api/v1/health`
+- Readiness: `GET /api/v1/health/ready`
 - Metrics: `GET /metrics` (when enabled)

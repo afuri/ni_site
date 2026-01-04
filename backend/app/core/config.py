@@ -6,12 +6,20 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_SOCKET_TIMEOUT_SEC: int = 2
+    REDIS_CONNECT_TIMEOUT_SEC: int = 2
     OLYMPIAD_TASKS_CACHE_TTL_SEC: int = 300
 
     APP_NAME: str = "NI_SITE API"
     ENV: str = "dev"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:changethis@localhost:5432/ni_site"
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT_SEC: int = 30
+    DB_POOL_RECYCLE_SEC: int = 1800
+    DB_CONNECT_TIMEOUT_SEC: int = 5
+    DB_STATEMENT_TIMEOUT_MS: int = 15000
 
     JWT_SECRET: str = "change_me"
     JWT_ALG: str = "HS256"
