@@ -7,23 +7,9 @@ from app.core.errors import http_error
 from app.models.user import User, UserRole
 from app.repos.users import UsersRepo
 from app.schemas.user import UserRead, UserUpdate
+from app.api.v1.openapi_errors import response_example
 
 router = APIRouter(prefix="/users")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "user_not_found", "message": "user_not_found"}}}},
-}
-
-ERROR_RESPONSE_422 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "validation_error", "message": "validation_error"}}}},
-}
 
 
 @router.get(
@@ -32,7 +18,7 @@ ERROR_RESPONSE_422 = {
     tags=["users"],
     description="Получить профиль пользователя",
     responses={
-        401: ERROR_RESPONSE_401,
+        401: response_example("missing_token"),
     },
 )
 async def get_me(user: User = Depends(get_current_user)):
@@ -45,9 +31,9 @@ async def get_me(user: User = Depends(get_current_user)):
     tags=["users"],
     description="Обновить профиль пользователя",
     responses={
-        401: ERROR_RESPONSE_401,
-        404: ERROR_RESPONSE_404,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        404: response_example("user_not_found"),
+        422: response_example("validation_error"),
     },
 )
 async def update_me(

@@ -364,6 +364,67 @@ async def test_admin_olympiad_rules_negative(client, create_user):
 
 
 @pytest.mark.asyncio
+async def test_admin_olympiad_delete_negative(client, create_user):
+    await create_user(
+        login="admindel",
+        email="admindel@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="teacherdel",
+        email="teacherdel@example.com",
+        password="TeacherPass1",
+        role=UserRole.teacher,
+        is_verified=True,
+        class_grade=None,
+        subject="math",
+    )
+
+    admin_token = await _login(client, "admindel", "AdminPass1")
+    teacher_token = await _login(client, "teacherdel", "TeacherPass1")
+
+    resp = await client.delete(
+        "/api/v1/admin/olympiads/9999",
+        headers=_auth_headers(teacher_token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "forbidden"
+
+    resp = await client.delete(
+        "/api/v1/admin/olympiads/9999",
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "olympiad_not_found"
+
+    now = datetime.now(timezone.utc)
+    olympiad_id = await _create_olympiad(
+        client,
+        admin_token,
+        title="Olympiad Delete",
+        available_from=now - timedelta(minutes=1),
+        available_to=now + timedelta(hours=1),
+    )
+
+    resp = await client.delete(
+        f"/api/v1/admin/olympiads/{olympiad_id}",
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 204
+
+    resp = await client.delete(
+        f"/api/v1/admin/olympiads/{olympiad_id}",
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "olympiad_not_found"
+
+
+@pytest.mark.asyncio
 async def test_content_negative_permissions(client, create_user):
     await create_user(
         login="admincontent",

@@ -30,3 +30,7 @@ class OlympiadsRepo:
         await self.db.commit()
         await self.db.refresh(obj)
         return obj
+
+    async def delete(self, obj: Olympiad) -> None:
+        await self.db.delete(obj)
+        await self.db.commit()

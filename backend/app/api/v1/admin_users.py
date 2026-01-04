@@ -7,28 +7,9 @@ from app.core.errors import http_error
 from app.models.user import UserRole, User
 from app.repos.users import UsersRepo
 from app.schemas.user import UserRead, ModeratorStatusUpdate
+from app.api.v1.openapi_errors import response_example
 
 router = APIRouter(prefix="/admin/users")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "user_not_found", "message": "user_not_found"}}}},
-}
-
-ERROR_RESPONSE_409 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "user_not_teacher", "message": "user_not_teacher"}}}},
-}
 
 
 @router.put(
@@ -37,10 +18,10 @@ ERROR_RESPONSE_409 = {
     tags=["admin"],
     description="Назначить или снять статус модератора",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        409: ERROR_RESPONSE_409,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("user_not_found"),
+        409: response_example("user_not_teacher"),
     },
 )
 async def set_moderator_status(

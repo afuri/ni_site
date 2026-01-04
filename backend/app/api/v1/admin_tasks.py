@@ -9,36 +9,9 @@ from app.models.task import Subject, TaskType
 from app.repos.tasks import TasksRepo
 from app.services.tasks import TasksService
 from app.schemas.tasks import TaskCreate, TaskUpdate, TaskRead
+from app.api.v1.openapi_errors import response_example
 
 router = APIRouter(prefix="/admin/tasks")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "task_not_found", "message": "task_not_found"}}}},
-}
-
-ERROR_RESPONSE_422 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "validation_error": {
-                    "value": {"error": {"code": "validation_error", "message": "validation_error", "details": []}}
-                },
-            }
-        }
-    },
-}
 
 
 @router.post(
@@ -48,9 +21,9 @@ ERROR_RESPONSE_422 = {
     tags=["admin"],
     description="Создать задание в банке",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        422: response_example("validation_error"),
     },
 )
 async def create_task(
@@ -68,8 +41,8 @@ async def create_task(
     tags=["admin"],
     description="Список заданий банка",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
     },
 )
 async def list_tasks(
@@ -90,9 +63,9 @@ async def list_tasks(
     tags=["admin"],
     description="Получить задание банка",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("task_not_found"),
     },
 )
 async def get_task(
@@ -113,10 +86,10 @@ async def get_task(
     tags=["admin"],
     description="Обновить задание банка",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("task_not_found"),
+        422: response_example("validation_error"),
     },
 )
 async def update_task(
@@ -144,9 +117,9 @@ async def update_task(
     tags=["admin"],
     description="Удалить задание банка",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("task_not_found"),
     },
 )
 async def delete_task(

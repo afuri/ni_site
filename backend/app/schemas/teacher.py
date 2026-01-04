@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
 from app.models.user import UserRole
@@ -13,8 +13,7 @@ class TeacherUserRead(BaseModel):
     role: UserRole
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeacherAttemptRead(BaseModel):
@@ -30,8 +29,7 @@ class TeacherAttemptRead(BaseModel):
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeacherAttemptTask(BaseModel):

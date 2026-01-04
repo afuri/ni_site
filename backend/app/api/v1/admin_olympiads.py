@@ -15,62 +15,11 @@ from app.schemas.olympiads_admin import (
 from app.services.olympiads_admin import AdminOlympiadsService
 from app.schemas.olympiads_admin import OlympiadTaskFullRead
 from app.schemas.tasks import TaskRead
+from app.api.v1.openapi_errors import response_example, response_examples
 
 
 
 router = APIRouter(prefix="/admin/olympiads")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "olympiad_not_found": {
-                    "value": {"error": {"code": "olympiad_not_found", "message": "olympiad_not_found"}}
-                },
-                "task_not_found": {"value": {"error": {"code": "task_not_found", "message": "task_not_found"}}},
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_409 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "cannot_change_published_rules": {
-                    "value": {"error": {"code": "cannot_change_published_rules", "message": "cannot_change_published_rules"}}
-                },
-                "cannot_modify_published": {
-                    "value": {"error": {"code": "cannot_modify_published", "message": "cannot_modify_published"}}
-                },
-                "cannot_publish_empty": {
-                    "value": {"error": {"code": "cannot_publish_empty", "message": "cannot_publish_empty"}}
-                },
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_422 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "example": {"error": {"code": "invalid_availability", "message": "invalid_availability"}}
-        }
-    },
-}
 
 
 @router.post(
@@ -80,9 +29,9 @@ ERROR_RESPONSE_422 = {
     tags=["admin"],
     description="Создать олимпиаду (админ)",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        422: response_example("invalid_availability"),
     },
 )
 async def create_olympiad(
@@ -105,8 +54,8 @@ async def create_olympiad(
     tags=["admin"],
     description="Список олимпиад админа",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
     },
 )
 async def list_olympiads(
@@ -127,9 +76,9 @@ async def list_olympiads(
     tags=["admin"],
     description="Получить олимпиаду (админ)",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
     },
 )
 async def get_olympiad(
@@ -150,11 +99,11 @@ async def get_olympiad(
     tags=["admin"],
     description="Обновить олимпиаду (админ)",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        409: ERROR_RESPONSE_409,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
+        409: response_examples("cannot_change_published_rules"),
+        422: response_example("invalid_availability"),
     },
 )
 async def update_olympiad(
@@ -180,6 +129,32 @@ async def update_olympiad(
         raise
 
 
+@router.delete(
+    "/{olympiad_id}",
+    status_code=204,
+    tags=["admin"],
+    description="Удалить олимпиаду",
+    responses={
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
+    },
+)
+async def delete_olympiad(
+    olympiad_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    repo = OlympiadsRepo(db)
+    obj = await repo.get(olympiad_id)
+    if not obj:
+        raise http_error(404, "olympiad_not_found")
+
+    service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
+    await service.delete(olympiad=obj)
+    return None
+
+
 @router.post(
     "/{olympiad_id}/tasks",
     response_model=OlympiadTaskRead,
@@ -187,10 +162,10 @@ async def update_olympiad(
     tags=["admin"],
     description="Добавить задание в олимпиаду",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        409: ERROR_RESPONSE_409,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_examples("olympiad_not_found", "task_not_found"),
+        409: response_examples("cannot_modify_published"),
     },
 )
 async def add_task_to_olympiad(
@@ -227,9 +202,9 @@ async def add_task_to_olympiad(
     tags=["admin"],
     description="Список заданий олимпиады",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
     },
 )
 async def list_olympiad_tasks(
@@ -252,9 +227,9 @@ async def list_olympiad_tasks(
     tags=["admin"],
     description="Список заданий олимпиады с деталями",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
     },
 )
 async def list_olympiad_tasks_full(
@@ -290,10 +265,10 @@ async def list_olympiad_tasks_full(
     tags=["admin"],
     description="Удалить задание из олимпиады",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        409: ERROR_RESPONSE_409,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
+        409: response_examples("cannot_modify_published"),
     },
 )
 async def remove_task_from_olympiad(
@@ -324,10 +299,10 @@ async def remove_task_from_olympiad(
     tags=["admin"],
     description="Опубликовать или снять с публикации",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        409: ERROR_RESPONSE_409,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
+        409: response_examples("cannot_publish_empty"),
     },
 )
 async def set_publish(

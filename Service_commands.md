@@ -116,6 +116,13 @@ curl -X POST http://localhost:8000/api/v1/admin/content \
   -d '{"content_type":"news","title":"Новость","body":"Короткая новость","publish":true}'
 ```
 
+### Удалить олимпиаду (admin)
+
+```bash
+curl -X DELETE http://localhost:8000/api/v1/admin/olympiads/1 \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
 ### Получить presign URL для загрузки
 
 ```bash

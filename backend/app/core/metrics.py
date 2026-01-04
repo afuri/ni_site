@@ -22,3 +22,13 @@ CELERY_QUEUE_LENGTH = Gauge(
     "Redis-backed Celery queue length",
     ["queue"],
 )
+
+DB_HEALTH_LATENCY_SECONDS = Gauge(
+    "db_health_latency_seconds",
+    "Latency for database health check",
+)
+
+REDIS_HEALTH_LATENCY_SECONDS = Gauge(
+    "redis_health_latency_seconds",
+    "Latency for Redis health check",
+)

@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 from app.models.teacher_student import TeacherStudentStatus
 
@@ -40,5 +40,4 @@ class TeacherStudentRead(BaseModel):
     created_at: datetime
     confirmed_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

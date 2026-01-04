@@ -9,41 +9,11 @@ from app.models.user import User, UserRole
 from app.repos.content import ContentRepo
 from app.schemas.content import ContentCreate, ContentRead, ContentUpdate
 from app.services.content import ContentService
+from app.api.v1.openapi_errors import response_example, response_examples
 
 
 router = APIRouter(prefix="/content")
 admin_router = APIRouter(prefix="/admin/content")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "content_not_found", "message": "content_not_found"}}}},
-}
-
-ERROR_RESPONSE_422 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "news_images_forbidden": {"value": {"error": {"code": "news_images_forbidden", "message": "news_images_forbidden"}}},
-                "news_body_too_long": {"value": {"error": {"code": "news_body_too_long", "message": "news_body_too_long"}}},
-                "article_body_too_short": {
-                    "value": {"error": {"code": "article_body_too_short", "message": "article_body_too_short"}}
-                },
-                "validation_error": {"value": {"error": {"code": "validation_error", "message": "validation_error"}}},
-            }
-        }
-    },
-}
 
 
 @router.get(
@@ -68,7 +38,7 @@ async def list_published_content(
     tags=["content"],
     description="Получить опубликованный материал",
     responses={
-        404: ERROR_RESPONSE_404,
+        404: response_example("content_not_found"),
     },
 )
 async def get_published_content(
@@ -88,8 +58,8 @@ async def get_published_content(
     tags=["content"],
     description="Список материалов для управления",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
     },
 )
 async def list_content_admin(
@@ -119,9 +89,9 @@ async def list_content_admin(
     tags=["content"],
     description="Получить материал для управления",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("content_not_found"),
     },
 )
 async def get_content_admin(
@@ -145,9 +115,14 @@ async def get_content_admin(
     tags=["content"],
     description="Создать материал",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        422: response_examples(
+            "validation_error",
+            "news_images_forbidden",
+            "news_body_too_long",
+            "article_body_too_short",
+        ),
     },
 )
 async def create_content(
@@ -165,10 +140,15 @@ async def create_content(
     tags=["content"],
     description="Обновить материал",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("content_not_found"),
+        422: response_examples(
+            "validation_error",
+            "news_images_forbidden",
+            "news_body_too_long",
+            "article_body_too_short",
+        ),
     },
 )
 async def update_content(
@@ -192,10 +172,15 @@ async def update_content(
     tags=["content"],
     description="Опубликовать материал",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("content_not_found"),
+        422: response_examples(
+            "validation_error",
+            "news_images_forbidden",
+            "news_body_too_long",
+            "article_body_too_short",
+        ),
     },
 )
 async def publish_content(
@@ -217,9 +202,9 @@ async def publish_content(
     tags=["content"],
     description="Снять материал с публикации",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("content_not_found"),
     },
 )
 async def unpublish_content(

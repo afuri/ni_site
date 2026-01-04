@@ -23,49 +23,9 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserRead
 from app.core.deps_auth import get_current_user
+from app.api.v1.openapi_errors import response_example, response_examples
 
 router = APIRouter(prefix="/auth")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "invalid_credentials", "message": "invalid_credentials"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "email_not_verified", "message": "email_not_verified"}}}},
-}
-
-ERROR_RESPONSE_409 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "login_taken": {"value": {"error": {"code": "login_taken", "message": "login_taken"}}},
-                "email_taken": {"value": {"error": {"code": "email_taken", "message": "email_taken"}}},
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_422 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "validation_error": {
-                    "value": {"error": {"code": "validation_error", "message": "validation_error", "details": []}}
-                },
-                "weak_password": {
-                    "value": {"error": {"code": "weak_password", "message": "weak_password", "details": {}}}
-                },
-                "invalid_token": {
-                    "value": {"error": {"code": "invalid_token", "message": "invalid_token", "details": {}}}
-                },
-            }
-        }
-    },
-}
 
 
 async def _apply_rate_limit(
@@ -108,8 +68,8 @@ async def _apply_rate_limit(
     tags=["auth"],
     description="Регистрация пользователя",
     responses={
-        409: ERROR_RESPONSE_409,
-        422: ERROR_RESPONSE_422,
+        409: response_examples("login_taken", "email_taken"),
+        422: response_examples("validation_error", "weak_password"),
     },
 )
 async def register(
@@ -165,9 +125,9 @@ async def register(
     tags=["auth"],
     description="Вход по логину и паролю",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        422: ERROR_RESPONSE_422,
+        401: response_example("invalid_credentials"),
+        403: response_example("email_not_verified"),
+        422: response_example("validation_error"),
     },
 )
 async def login(
@@ -231,7 +191,7 @@ async def request_email_verification(
     tags=["auth"],
     description="Подтвердить email по токену",
     responses={
-        422: ERROR_RESPONSE_422,
+        422: response_example("invalid_token"),
     },
 )
 async def confirm_email_verification(
@@ -275,7 +235,7 @@ async def request_password_reset(
     tags=["auth"],
     description="Сбросить пароль по токену",
     responses={
-        422: ERROR_RESPONSE_422,
+        422: response_examples("invalid_token", "weak_password"),
     },
 )
 async def confirm_password_reset(

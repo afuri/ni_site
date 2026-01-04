@@ -13,37 +13,9 @@ from app.repos.users import UsersRepo
 from app.services.teacher import TeacherService
 from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow
 from app.schemas.user import ModeratorRequestResponse
+from app.api.v1.openapi_errors import response_example, response_examples
 
 router = APIRouter(prefix="/teacher")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "olympiad_not_found": {
-                    "value": {"error": {"code": "olympiad_not_found", "message": "olympiad_not_found"}}
-                },
-                "attempt_not_found": {"value": {"error": {"code": "attempt_not_found", "message": "attempt_not_found"}}},
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_409 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "already_moderator", "message": "already_moderator"}}}},
-}
 
 
 @router.get(
@@ -52,9 +24,9 @@ ERROR_RESPONSE_409 = {
     tags=["teacher"],
     description="Список попыток по олимпиаде для учителя",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("olympiad_not_found"),
     },
 )
 async def list_attempts_for_olympiad(
@@ -100,9 +72,9 @@ async def list_attempts_for_olympiad(
     tags=["teacher"],
     description="Просмотр попытки ученика для учителя",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_examples("attempt_not_found", "olympiad_not_found"),
     },
 )
 async def get_attempt_for_review(
@@ -156,8 +128,8 @@ async def get_attempt_for_review(
     tags=["teacher"],
     description="Запросить статус модератора",
     responses={
-        401: ERROR_RESPONSE_401,
-        409: ERROR_RESPONSE_409,
+        401: response_example("missing_token"),
+        409: response_example("already_moderator"),
     },
 )
 async def request_moderator_status(

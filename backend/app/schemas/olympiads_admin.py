@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.models.olympiad import AgeGroup, OlympiadScope
 from app.schemas.tasks import TaskRead
@@ -56,8 +56,7 @@ class OlympiadTaskRead(BaseModel):
     sort_order: int
     max_score: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OlympiadRead(BaseModel):
@@ -74,5 +73,4 @@ class OlympiadRead(BaseModel):
     is_published: bool
     created_by_user_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

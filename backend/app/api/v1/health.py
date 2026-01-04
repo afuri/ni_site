@@ -1,4 +1,5 @@
 """Health check endpoints."""
+import time
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -6,7 +7,7 @@ from sqlalchemy import text
 from app.core.redis import safe_redis, safe_redis_for_url
 from app.db.session import SessionLocal
 from app.core.config import settings
-from app.core.metrics import CELERY_QUEUE_LENGTH
+from app.core.metrics import CELERY_QUEUE_LENGTH, DB_HEALTH_LATENCY_SECONDS, REDIS_HEALTH_LATENCY_SECONDS
 
 router = APIRouter()
 
@@ -30,17 +31,22 @@ async def readiness():
     db_ok = False
     redis_ok = False
     try:
+        start = time.perf_counter()
         async with SessionLocal() as session:
             await session.execute(text("SELECT 1"))
         db_ok = True
+        DB_HEALTH_LATENCY_SECONDS.set(time.perf_counter() - start)
     except Exception:
         db_ok = False
 
     try:
+        start = time.perf_counter()
         redis = await safe_redis()
         if redis is not None:
             await redis.ping()
             redis_ok = True
+        if redis_ok:
+            REDIS_HEALTH_LATENCY_SECONDS.set(time.perf_counter() - start)
     except Exception:
         redis_ok = False
 

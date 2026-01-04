@@ -1,7 +1,7 @@
 """Attempt schemas."""
 from datetime import datetime
 from typing import Any, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from app.models.task import TaskType
 
 from app.models.attempt import AttemptStatus
@@ -24,8 +24,7 @@ class AttemptRead(BaseModel):
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AttemptAnswerUpsertRequest(BaseModel):
@@ -38,8 +37,7 @@ class AttemptAnswerRead(BaseModel):
     answer_payload: dict[str, Any]
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AttemptTaskView(BaseModel):

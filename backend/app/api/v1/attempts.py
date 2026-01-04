@@ -14,6 +14,7 @@ from app.core.deps_auth import require_role, get_current_user
 from app.models.user import UserRole, User
 from app.repos.attempts import AttemptsRepo
 from app.services.attempts import AttemptsService
+from app.api.v1.openapi_errors import response_example, response_examples
 from app.schemas.attempt import (
     AttemptStartRequest,
     AttemptRead,
@@ -25,56 +26,6 @@ from app.schemas.attempt import (
 
 router = APIRouter(prefix="/attempts")
 
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "attempt_not_found": {
-                    "value": {"error": {"code": "attempt_not_found", "message": "attempt_not_found"}}
-                },
-                "task_not_found": {"value": {"error": {"code": "task_not_found", "message": "task_not_found"}}},
-                "olympiad_not_found": {
-                    "value": {"error": {"code": "olympiad_not_found", "message": "olympiad_not_found"}}
-                },
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_409 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "attempt_expired": {"value": {"error": {"code": "attempt_expired", "message": "attempt_expired"}}},
-                "olympiad_not_available": {"value": {"error": {"code": "olympiad_not_available", "message": "olympiad_not_available"}}},
-                "olympiad_not_published": {
-                    "value": {"error": {"code": "olympiad_not_published", "message": "olympiad_not_published"}}
-                },
-                "olympiad_has_no_tasks": {
-                    "value": {"error": {"code": "olympiad_has_no_tasks", "message": "olympiad_has_no_tasks"}}
-                },
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_422 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "invalid_answer_payload", "message": "invalid_answer_payload"}}}},
-}
-
 
 @router.post(
     "/start",
@@ -83,8 +34,13 @@ ERROR_RESPONSE_422 = {
     tags=["attempts"],
     description="Старт попытки прохождения олимпиады",
     responses={
-        401: ERROR_RESPONSE_401,
-        409: ERROR_RESPONSE_409,
+        401: response_example("missing_token"),
+        409: response_examples(
+            "olympiad_not_available",
+            "olympiad_not_published",
+            "olympiad_has_no_tasks",
+        ),
+        404: response_example("olympiad_not_found"),
     },
 )
 async def start_attempt(
@@ -117,9 +73,9 @@ async def start_attempt(
     tags=["attempts"],
     description="Просмотр попытки и ответов",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_examples("attempt_not_found", "olympiad_not_found"),
     },
 )
 async def get_attempt_view(
@@ -172,11 +128,11 @@ async def get_attempt_view(
     tags=["attempts"],
     description="Сохранить ответ на задание",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        409: ERROR_RESPONSE_409,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_examples("attempt_not_found", "task_not_found"),
+        409: response_examples("attempt_expired", "attempt_not_active"),
+        422: response_example("invalid_answer_payload"),
     },
 )
 async def upsert_answer(
@@ -238,9 +194,9 @@ async def upsert_answer(
     tags=["attempts"],
     description="Отправить попытку на проверку",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("attempt_not_found"),
     },
 )
 async def submit_attempt(
@@ -267,9 +223,9 @@ async def submit_attempt(
     tags=["attempts"],
     description="Получить результат попытки",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("attempt_not_found"),
     },
 )
 async def get_attempt_result(

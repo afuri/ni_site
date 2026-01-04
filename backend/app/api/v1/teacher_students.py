@@ -10,47 +10,9 @@ from app.repos.users import UsersRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.services.teacher_students import TeacherStudentsService
 from app.schemas.teacher_students import TeacherStudentCreateRequest, TeacherStudentRead
+from app.api.v1.openapi_errors import response_example, response_examples
 
 router = APIRouter(prefix="/teacher/students")
-
-ERROR_RESPONSE_401 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
-}
-
-ERROR_RESPONSE_403 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
-}
-
-ERROR_RESPONSE_404 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "student_not_found": {"value": {"error": {"code": "student_not_found", "message": "student_not_found"}}},
-                "link_not_found": {"value": {"error": {"code": "link_not_found", "message": "link_not_found"}}},
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_409 = {
-    "model": dict,
-    "content": {
-        "application/json": {
-            "examples": {
-                "cannot_attach_self": {"value": {"error": {"code": "cannot_attach_self", "message": "cannot_attach_self"}}},
-                "not_a_student": {"value": {"error": {"code": "not_a_student", "message": "not_a_student"}}},
-            }
-        }
-    },
-}
-
-ERROR_RESPONSE_422 = {
-    "model": dict,
-    "content": {"application/json": {"example": {"error": {"code": "validation_error", "message": "validation_error"}}}},
-}
 
 
 @router.post(
@@ -60,11 +22,11 @@ ERROR_RESPONSE_422 = {
     tags=["teacher"],
     description="Создать или прикрепить ученика к учителю",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
-        409: ERROR_RESPONSE_409,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("student_not_found"),
+        409: response_examples("cannot_attach_self", "not_a_student"),
+        422: response_example("validation_error"),
     },
 )
 async def create_or_attach_student(
@@ -115,9 +77,9 @@ async def create_or_attach_student(
     tags=["teacher"],
     description="Подтвердить связь учитель-ученик",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        404: ERROR_RESPONSE_404,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        404: response_example("link_not_found"),
     },
 )
 async def confirm_student(
@@ -141,9 +103,9 @@ async def confirm_student(
     tags=["teacher"],
     description="Список учеников учителя",
     responses={
-        401: ERROR_RESPONSE_401,
-        403: ERROR_RESPONSE_403,
-        422: ERROR_RESPONSE_422,
+        401: response_example("missing_token"),
+        403: response_example("forbidden"),
+        422: response_example("validation_error"),
     },
 )
 async def list_students(
