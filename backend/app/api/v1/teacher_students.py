@@ -13,6 +13,45 @@ from app.schemas.teacher_students import TeacherStudentCreateRequest, TeacherStu
 
 router = APIRouter(prefix="/teacher/students")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
+ERROR_RESPONSE_404 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "student_not_found": {"value": {"error": {"code": "student_not_found", "message": "student_not_found"}}},
+                "link_not_found": {"value": {"error": {"code": "link_not_found", "message": "link_not_found"}}},
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_409 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "cannot_attach_self": {"value": {"error": {"code": "cannot_attach_self", "message": "cannot_attach_self"}}},
+                "not_a_student": {"value": {"error": {"code": "not_a_student", "message": "not_a_student"}}},
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_422 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "validation_error", "message": "validation_error"}}}},
+}
+
 
 @router.post(
     "",
@@ -20,6 +59,13 @@ router = APIRouter(prefix="/teacher/students")
     status_code=201,
     tags=["teacher"],
     description="Создать или прикрепить ученика к учителю",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        409: ERROR_RESPONSE_409,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def create_or_attach_student(
     payload: TeacherStudentCreateRequest,
@@ -68,6 +114,11 @@ async def create_or_attach_student(
     response_model=TeacherStudentRead,
     tags=["teacher"],
     description="Подтвердить связь учитель-ученик",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def confirm_student(
     student_id: int,
@@ -89,6 +140,11 @@ async def confirm_student(
     response_model=list[TeacherStudentRead],
     tags=["teacher"],
     description="Список учеников учителя",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def list_students(
     status: str | None = Query(default=None, description="pending|confirmed"),

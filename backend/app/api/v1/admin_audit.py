@@ -14,12 +14,26 @@ from app.schemas.audit import AuditLogRead
 
 router = APIRouter(prefix="/admin/audit-logs")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
 
 @router.get(
     "",
     response_model=list[AuditLogRead],
     tags=["admin"],
     description="Список записей аудита",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+    },
 )
 async def list_audit_logs(
     user_id: int | None = Query(default=None),
@@ -48,6 +62,10 @@ async def list_audit_logs(
     "/export",
     tags=["admin"],
     description="Выгрузка аудита в CSV",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+    },
 )
 async def export_audit_logs(
     user_id: int | None = Query(default=None),

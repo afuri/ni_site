@@ -10,12 +10,22 @@ from app.core.metrics import CELERY_QUEUE_LENGTH
 
 router = APIRouter()
 
+ERROR_RESPONSE_503 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"status": "degraded", "db": False, "redis": False}}},
+}
+
+
 @router.get("/health", tags=["health"], description="Проверка доступности сервиса")
 async def health():
     return {"status": "ok"}
 
-
-@router.get("/health/ready", tags=["health"], description="Проверка готовности сервиса")
+@router.get(
+    "/health/ready",
+    tags=["health"],
+    description="Проверка готовности сервиса",
+    responses={503: ERROR_RESPONSE_503},
+)
 async def readiness():
     db_ok = False
     redis_ok = False
@@ -40,7 +50,12 @@ async def readiness():
     return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
 
 
-@router.get("/health/queues", tags=["health"], description="Проверка очередей фоновых задач")
+@router.get(
+    "/health/queues",
+    tags=["health"],
+    description="Проверка очередей фоновых задач",
+    responses={503: ERROR_RESPONSE_503},
+)
 async def queues():
     queue_length = None
     client = await safe_redis_for_url(settings.CELERY_BROKER_URL)

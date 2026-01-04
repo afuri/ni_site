@@ -16,6 +16,30 @@ from app.schemas.uploads import (
 
 router = APIRouter(prefix="/uploads")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_422 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "invalid_prefix": {"value": {"error": {"code": "invalid_prefix", "message": "invalid_prefix"}}},
+                "content_type_not_allowed": {
+                    "value": {"error": {"code": "content_type_not_allowed", "message": "content_type_not_allowed"}}
+                },
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_503 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "storage_unavailable", "message": "storage_unavailable"}}}},
+}
+
 ALLOWED_PREFIXES = ("tasks", "content")
 PREFIX_RE = re.compile(r"^[a-z0-9][a-z0-9/_-]*$")
 MAX_PREFIX_SEGMENTS = 3
@@ -32,6 +56,11 @@ def _normalize_prefix(prefix: str) -> str:
     response_model=UploadPresignResponse,
     tags=["uploads"],
     description="Получить ссылку для загрузки изображения в хранилище",
+    responses={
+        401: ERROR_RESPONSE_401,
+        422: ERROR_RESPONSE_422,
+        503: ERROR_RESPONSE_503,
+    },
 )
 async def presign_upload(
     payload: UploadPresignRequest,
@@ -66,6 +95,11 @@ async def presign_upload(
     response_model=UploadPresignPostResponse,
     tags=["uploads"],
     description="Получить форму для загрузки с лимитом размера",
+    responses={
+        401: ERROR_RESPONSE_401,
+        422: ERROR_RESPONSE_422,
+        503: ERROR_RESPONSE_503,
+    },
 )
 async def presign_upload_post(
     payload: UploadPresignRequest,
@@ -105,6 +139,10 @@ async def presign_upload_post(
     response_model=UploadGetResponse,
     tags=["uploads"],
     description="Получить временную ссылку на файл из хранилища",
+    responses={
+        401: ERROR_RESPONSE_401,
+        503: ERROR_RESPONSE_503,
+    },
 )
 async def get_upload_url(
     key: str,

@@ -14,6 +14,37 @@ from app.services.content import ContentService
 router = APIRouter(prefix="/content")
 admin_router = APIRouter(prefix="/admin/content")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
+ERROR_RESPONSE_404 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "content_not_found", "message": "content_not_found"}}}},
+}
+
+ERROR_RESPONSE_422 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "news_images_forbidden": {"value": {"error": {"code": "news_images_forbidden", "message": "news_images_forbidden"}}},
+                "news_body_too_long": {"value": {"error": {"code": "news_body_too_long", "message": "news_body_too_long"}}},
+                "article_body_too_short": {
+                    "value": {"error": {"code": "article_body_too_short", "message": "article_body_too_short"}}
+                },
+                "validation_error": {"value": {"error": {"code": "validation_error", "message": "validation_error"}}},
+            }
+        }
+    },
+}
+
 
 @router.get(
     "",
@@ -36,6 +67,9 @@ async def list_published_content(
     response_model=ContentRead,
     tags=["content"],
     description="Получить опубликованный материал",
+    responses={
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def get_published_content(
     content_id: int,
@@ -53,6 +87,10 @@ async def get_published_content(
     response_model=list[ContentRead],
     tags=["content"],
     description="Список материалов для управления",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+    },
 )
 async def list_content_admin(
     content_type: ContentType | None = Query(default=None),
@@ -80,6 +118,11 @@ async def list_content_admin(
     response_model=ContentRead,
     tags=["content"],
     description="Получить материал для управления",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def get_content_admin(
     content_id: int,
@@ -101,6 +144,11 @@ async def get_content_admin(
     status_code=201,
     tags=["content"],
     description="Создать материал",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def create_content(
     payload: ContentCreate,
@@ -116,6 +164,12 @@ async def create_content(
     response_model=ContentRead,
     tags=["content"],
     description="Обновить материал",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def update_content(
     content_id: int,
@@ -137,6 +191,12 @@ async def update_content(
     response_model=ContentRead,
     tags=["content"],
     description="Опубликовать материал",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def publish_content(
     content_id: int,
@@ -156,6 +216,11 @@ async def publish_content(
     response_model=ContentRead,
     tags=["content"],
     description="Снять материал с публикации",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def unpublish_content(
     content_id: int,

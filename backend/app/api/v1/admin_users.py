@@ -10,12 +10,38 @@ from app.schemas.user import UserRead, ModeratorStatusUpdate
 
 router = APIRouter(prefix="/admin/users")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
+ERROR_RESPONSE_404 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "user_not_found", "message": "user_not_found"}}}},
+}
+
+ERROR_RESPONSE_409 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "user_not_teacher", "message": "user_not_teacher"}}}},
+}
+
 
 @router.put(
     "/{user_id}/moderator",
     response_model=UserRead,
     tags=["admin"],
     description="Назначить или снять статус модератора",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        409: ERROR_RESPONSE_409,
+    },
 )
 async def set_moderator_status(
     user_id: int,

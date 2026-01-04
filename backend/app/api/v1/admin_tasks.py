@@ -12,6 +12,34 @@ from app.schemas.tasks import TaskCreate, TaskUpdate, TaskRead
 
 router = APIRouter(prefix="/admin/tasks")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
+ERROR_RESPONSE_404 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "task_not_found", "message": "task_not_found"}}}},
+}
+
+ERROR_RESPONSE_422 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "validation_error": {
+                    "value": {"error": {"code": "validation_error", "message": "validation_error", "details": []}}
+                },
+            }
+        }
+    },
+}
+
 
 @router.post(
     "",
@@ -19,6 +47,11 @@ router = APIRouter(prefix="/admin/tasks")
     status_code=201,
     tags=["admin"],
     description="Создать задание в банке",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def create_task(
     payload: TaskCreate,
@@ -34,6 +67,10 @@ async def create_task(
     response_model=list[TaskRead],
     tags=["admin"],
     description="Список заданий банка",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+    },
 )
 async def list_tasks(
     subject: Subject | None = Query(default=None),
@@ -52,6 +89,11 @@ async def list_tasks(
     response_model=TaskRead,
     tags=["admin"],
     description="Получить задание банка",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def get_task(
     task_id: int,
@@ -70,6 +112,12 @@ async def get_task(
     response_model=TaskRead,
     tags=["admin"],
     description="Обновить задание банка",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def update_task(
     task_id: int,
@@ -95,6 +143,11 @@ async def update_task(
     status_code=204,
     tags=["admin"],
     description="Удалить задание банка",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def delete_task(
     task_id: int,

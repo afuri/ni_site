@@ -26,6 +26,47 @@ from app.core.deps_auth import get_current_user
 
 router = APIRouter(prefix="/auth")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "invalid_credentials", "message": "invalid_credentials"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "email_not_verified", "message": "email_not_verified"}}}},
+}
+
+ERROR_RESPONSE_409 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "login_taken": {"value": {"error": {"code": "login_taken", "message": "login_taken"}}},
+                "email_taken": {"value": {"error": {"code": "email_taken", "message": "email_taken"}}},
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_422 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "validation_error": {
+                    "value": {"error": {"code": "validation_error", "message": "validation_error", "details": []}}
+                },
+                "weak_password": {
+                    "value": {"error": {"code": "weak_password", "message": "weak_password", "details": {}}}
+                },
+                "invalid_token": {
+                    "value": {"error": {"code": "invalid_token", "message": "invalid_token", "details": {}}}
+                },
+            }
+        }
+    },
+}
+
 
 async def _apply_rate_limit(
     request: Request,
@@ -66,6 +107,10 @@ async def _apply_rate_limit(
     status_code=201,
     tags=["auth"],
     description="Регистрация пользователя",
+    responses={
+        409: ERROR_RESPONSE_409,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def register(
     payload: RegisterRequest,
@@ -119,6 +164,11 @@ async def register(
     response_model=TokenPair,
     tags=["auth"],
     description="Вход по логину и паролю",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def login(
     payload: LoginRequest,
@@ -180,6 +230,9 @@ async def request_email_verification(
     response_model=MessageResponse,
     tags=["auth"],
     description="Подтвердить email по токену",
+    responses={
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def confirm_email_verification(
     payload: EmailVerificationConfirm,
@@ -221,6 +274,9 @@ async def request_password_reset(
     response_model=MessageResponse,
     tags=["auth"],
     description="Сбросить пароль по токену",
+    responses={
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def confirm_password_reset(
     payload: PasswordResetConfirm,

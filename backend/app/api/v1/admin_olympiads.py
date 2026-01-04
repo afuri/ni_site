@@ -20,6 +20,58 @@ from app.schemas.tasks import TaskRead
 
 router = APIRouter(prefix="/admin/olympiads")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
+ERROR_RESPONSE_404 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "olympiad_not_found": {
+                    "value": {"error": {"code": "olympiad_not_found", "message": "olympiad_not_found"}}
+                },
+                "task_not_found": {"value": {"error": {"code": "task_not_found", "message": "task_not_found"}}},
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_409 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "cannot_change_published_rules": {
+                    "value": {"error": {"code": "cannot_change_published_rules", "message": "cannot_change_published_rules"}}
+                },
+                "cannot_modify_published": {
+                    "value": {"error": {"code": "cannot_modify_published", "message": "cannot_modify_published"}}
+                },
+                "cannot_publish_empty": {
+                    "value": {"error": {"code": "cannot_publish_empty", "message": "cannot_publish_empty"}}
+                },
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_422 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "example": {"error": {"code": "invalid_availability", "message": "invalid_availability"}}
+        }
+    },
+}
+
 
 @router.post(
     "",
@@ -27,6 +79,11 @@ router = APIRouter(prefix="/admin/olympiads")
     status_code=201,
     tags=["admin"],
     description="Создать олимпиаду (админ)",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def create_olympiad(
     payload: OlympiadCreate,
@@ -47,6 +104,10 @@ async def create_olympiad(
     response_model=list[OlympiadRead],
     tags=["admin"],
     description="Список олимпиад админа",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+    },
 )
 async def list_olympiads(
     mine: bool = Query(default=True, description="If true, only olympiads created by current admin"),
@@ -65,6 +126,11 @@ async def list_olympiads(
     response_model=OlympiadRead,
     tags=["admin"],
     description="Получить олимпиаду (админ)",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def get_olympiad(
     olympiad_id: int,
@@ -83,6 +149,13 @@ async def get_olympiad(
     response_model=OlympiadRead,
     tags=["admin"],
     description="Обновить олимпиаду (админ)",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        409: ERROR_RESPONSE_409,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def update_olympiad(
     olympiad_id: int,
@@ -113,6 +186,12 @@ async def update_olympiad(
     status_code=201,
     tags=["admin"],
     description="Добавить задание в олимпиаду",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        409: ERROR_RESPONSE_409,
+    },
 )
 async def add_task_to_olympiad(
     olympiad_id: int,
@@ -147,6 +226,11 @@ async def add_task_to_olympiad(
     response_model=list[OlympiadTaskRead],
     tags=["admin"],
     description="Список заданий олимпиады",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def list_olympiad_tasks(
     olympiad_id: int,
@@ -167,6 +251,11 @@ async def list_olympiad_tasks(
     response_model=list[OlympiadTaskFullRead],
     tags=["admin"],
     description="Список заданий олимпиады с деталями",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def list_olympiad_tasks_full(
     olympiad_id: int,
@@ -200,6 +289,12 @@ async def list_olympiad_tasks_full(
     status_code=204,
     tags=["admin"],
     description="Удалить задание из олимпиады",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        409: ERROR_RESPONSE_409,
+    },
 )
 async def remove_task_from_olympiad(
     olympiad_id: int,
@@ -228,6 +323,12 @@ async def remove_task_from_olympiad(
     response_model=OlympiadRead,
     tags=["admin"],
     description="Опубликовать или снять с публикации",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        409: ERROR_RESPONSE_409,
+    },
 )
 async def set_publish(
     olympiad_id: int,

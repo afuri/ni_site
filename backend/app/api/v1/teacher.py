@@ -16,12 +16,46 @@ from app.schemas.user import ModeratorRequestResponse
 
 router = APIRouter(prefix="/teacher")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
+ERROR_RESPONSE_404 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "olympiad_not_found": {
+                    "value": {"error": {"code": "olympiad_not_found", "message": "olympiad_not_found"}}
+                },
+                "attempt_not_found": {"value": {"error": {"code": "attempt_not_found", "message": "attempt_not_found"}}},
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_409 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "already_moderator", "message": "already_moderator"}}}},
+}
+
 
 @router.get(
     "/olympiads/{olympiad_id}/attempts",
     response_model=list[TeacherOlympiadAttemptRow],
     tags=["teacher"],
     description="Список попыток по олимпиаде для учителя",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def list_attempts_for_olympiad(
     olympiad_id: int,
@@ -65,6 +99,11 @@ async def list_attempts_for_olympiad(
     response_model=TeacherAttemptView,
     tags=["teacher"],
     description="Просмотр попытки ученика для учителя",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def get_attempt_for_review(
     attempt_id: int,
@@ -116,6 +155,10 @@ async def get_attempt_for_review(
     response_model=ModeratorRequestResponse,
     tags=["teacher"],
     description="Запросить статус модератора",
+    responses={
+        401: ERROR_RESPONSE_401,
+        409: ERROR_RESPONSE_409,
+    },
 )
 async def request_moderator_status(
     db: AsyncSession = Depends(get_db),

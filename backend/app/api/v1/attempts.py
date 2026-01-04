@@ -25,6 +25,56 @@ from app.schemas.attempt import (
 
 router = APIRouter(prefix="/attempts")
 
+ERROR_RESPONSE_401 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "missing_token", "message": "missing_token"}}}},
+}
+
+ERROR_RESPONSE_403 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "forbidden", "message": "forbidden"}}}},
+}
+
+ERROR_RESPONSE_404 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "attempt_not_found": {
+                    "value": {"error": {"code": "attempt_not_found", "message": "attempt_not_found"}}
+                },
+                "task_not_found": {"value": {"error": {"code": "task_not_found", "message": "task_not_found"}}},
+                "olympiad_not_found": {
+                    "value": {"error": {"code": "olympiad_not_found", "message": "olympiad_not_found"}}
+                },
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_409 = {
+    "model": dict,
+    "content": {
+        "application/json": {
+            "examples": {
+                "attempt_expired": {"value": {"error": {"code": "attempt_expired", "message": "attempt_expired"}}},
+                "olympiad_not_available": {"value": {"error": {"code": "olympiad_not_available", "message": "olympiad_not_available"}}},
+                "olympiad_not_published": {
+                    "value": {"error": {"code": "olympiad_not_published", "message": "olympiad_not_published"}}
+                },
+                "olympiad_has_no_tasks": {
+                    "value": {"error": {"code": "olympiad_has_no_tasks", "message": "olympiad_has_no_tasks"}}
+                },
+            }
+        }
+    },
+}
+
+ERROR_RESPONSE_422 = {
+    "model": dict,
+    "content": {"application/json": {"example": {"error": {"code": "invalid_answer_payload", "message": "invalid_answer_payload"}}}},
+}
+
 
 @router.post(
     "/start",
@@ -32,6 +82,10 @@ router = APIRouter(prefix="/attempts")
     status_code=201,
     tags=["attempts"],
     description="Старт попытки прохождения олимпиады",
+    responses={
+        401: ERROR_RESPONSE_401,
+        409: ERROR_RESPONSE_409,
+    },
 )
 async def start_attempt(
     payload: AttemptStartRequest,
@@ -62,6 +116,11 @@ async def start_attempt(
     response_model=AttemptView,
     tags=["attempts"],
     description="Просмотр попытки и ответов",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def get_attempt_view(
     attempt_id: int,
@@ -112,6 +171,13 @@ async def get_attempt_view(
     status_code=200,
     tags=["attempts"],
     description="Сохранить ответ на задание",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+        409: ERROR_RESPONSE_409,
+        422: ERROR_RESPONSE_422,
+    },
 )
 async def upsert_answer(
     attempt_id: int,
@@ -171,6 +237,11 @@ async def upsert_answer(
     response_model=SubmitResponse,
     tags=["attempts"],
     description="Отправить попытку на проверку",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def submit_attempt(
     attempt_id: int,
@@ -195,6 +266,11 @@ async def submit_attempt(
     response_model=AttemptResult,
     tags=["attempts"],
     description="Получить результат попытки",
+    responses={
+        401: ERROR_RESPONSE_401,
+        403: ERROR_RESPONSE_403,
+        404: ERROR_RESPONSE_404,
+    },
 )
 async def get_attempt_result(
     attempt_id: int,
