@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.olympiad_task import OlympiadTask
 from app.models.task import Task, Subject, TaskType
 
 
@@ -36,3 +39,9 @@ class TasksRepo:
     async def delete(self, task: Task) -> None:
         await self.db.delete(task)
         await self.db.commit()
+
+    async def list_olympiad_ids_for_task(self, task_id: int) -> list[int]:
+        res = await self.db.execute(
+            select(OlympiadTask.olympiad_id).where(OlympiadTask.task_id == task_id)
+        )
+        return list(res.scalars().all())

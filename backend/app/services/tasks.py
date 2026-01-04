@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from app.models.task import Task, TaskType
 from app.repos.tasks import TasksRepo
 from app.schemas.tasks import TaskCreate
+from app.core.redis import safe_redis
+from app.core.cache import olympiad_tasks_key
 
 
 class TasksService:
@@ -45,4 +47,23 @@ class TasksService:
             setattr(task, k, v)
 
         task.updated_at = datetime.now(timezone.utc)
-        return await self.repo.update(task)
+        updated = await self.repo.update(task)
+        await self._invalidate_task_cache(task.id)
+        return updated
+
+    async def _invalidate_task_cache(self, task_id: int) -> None:
+        redis = await safe_redis()
+        if redis is None:
+            return
+        try:
+            olympiad_ids = await self.repo.list_olympiad_ids_for_task(task_id)
+            if not olympiad_ids:
+                return
+            keys = [olympiad_tasks_key(oid) for oid in olympiad_ids]
+            await redis.delete(*keys)
+        except Exception:
+            pass
+
+    async def delete(self, *, task: Task) -> None:
+        await self.repo.delete(task)
+        await self._invalidate_task_cache(task.id)

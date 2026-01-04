@@ -105,5 +105,6 @@ async def delete_task(
     task = await repo.get(task_id)
     if not task:
         raise http_error(404, "task_not_found")
-    await repo.delete(task)
+    service = TasksService(repo)
+    await service.delete(task=task)
     return None
