@@ -177,8 +177,13 @@ Rate Limited (429): 5
 ## Ручная верификация email
 
 
-docker exec -it 73217cf92122fc04e29872bd30977cc87851c94cd523834b36b1d4c96df09a35 psql -U postgres -d ni_site \
-    -c "UPDATE users SET is_email_verified=true WHERE login='teacher001';"
+docker exec -it b1152a86e57bda5a1f58d1d5b960b478dbf0f3673335c90b4b3398b9f6a6a5ed psql -U postgres -d ni_site \
+    -c "UPDATE users SET is_email_verified=true WHERE login='teacher32276a';"
+
+## Получаем список всех users
+
+docker exec -it b1152a86e57bda5a1f58d1d5b960b478dbf0f3673335c90b4b3398b9f6a6a5ed psql -U postgres -d ni_site -c "SELECT id, login, email, role, is_email_verified, is_moderator FROM users ORDER BY id;"
+
 
 ## Ручное создание admin
 
@@ -220,3 +225,40 @@ strongPass1
   Если хотите, могу расписать пошагово с задачами и оценкой, или сразу взять первый блок в работу.
 
 codex resume 019b7fcd-1b4c-7c41-9b03-e9cad0baa173
+
+
+03.01.2026 13:00
+
+Дальнейшие шаги по backend:
+
+  1. Закрепить миграции для чистой БД
+  2. Довести API‑тесты до CI‑уровня (контейнеры + фикстуры)
+  3. Прописать документацию по окружению и переменным
+  4. Подготовить production‑готовые настройки (логирование, Sentry, Redis)
+  5. Проверить обратную совместимость и rollback‑пути миграций
+
+
+› Посоветуй что делать с функционалом по добавлению статей (длинного текста с картинками) и новостей (короткого текстового сообщения) на сайт пользователя admin
+  и teacher-moderator
+
+
+• Рекомендация: сделать единый контент‑модуль с двумя типами записей — article и news, и разными правилами публикации.
+
+  Что бы я сделал:
+
+  - Модель данных: таблица content с полями id, type(article|news), title, body, cover_image_key?, status(draft|published|archived), created_by_user_id,
+    created_at, updated_at, published_at.
+  - Роли/права:
+      - admin — полный доступ (создание/редактирование/публикация/удаление любых).
+      - teacher_moderator — может создавать и публиковать свои, но не трогать чужие (или только свои + черновики).
+  - API: единые эндпоинты /admin/content или /content с фильтром type.
+  - Изображения: отдельный upload endpoint, хранение ключей в body (markdown) или отдельной таблице content_assets.
+  - Валидация:
+      - article: длинный body, допускается markdown, минимум 200–300 символов.
+      - news: короткий текст, например 300–500 символов, без markdown (или только базовый).
+  - UI: один редактор, разные ограничения по типу; список и предпросмотр.
+
+  Если хочешь, могу оформить схему БД, миграцию и эндпойнты в следующем шаге.
+
+
+codex resume 019b82e5-8736-7571-bb9f-1998da875338

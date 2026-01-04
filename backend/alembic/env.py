@@ -14,6 +14,7 @@ from app.models.auth_token import EmailVerification, PasswordResetToken, Refresh
 from app.models.audit_log import AuditLog  # noqa
 from app.core.config import settings
 from app.models.social_account import SocialAccount  # noqa
+from app.models.content import ContentItem  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
