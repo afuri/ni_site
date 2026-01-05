@@ -22,6 +22,11 @@ if settings.TOKEN_CLEANUP_INTERVAL_SEC > 0:
         "task": "maintenance.cleanup_expired_auth",
         "schedule": timedelta(seconds=settings.TOKEN_CLEANUP_INTERVAL_SEC),
     }
+if settings.AUDIT_LOG_CLEANUP_INTERVAL_SEC > 0:
+    beat_schedule["cleanup-audit-logs"] = {
+        "task": "maintenance.cleanup_audit_logs",
+        "schedule": timedelta(seconds=settings.AUDIT_LOG_CLEANUP_INTERVAL_SEC),
+    }
 
 celery_app.conf.update(
     task_serializer="json",

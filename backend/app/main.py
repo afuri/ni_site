@@ -4,9 +4,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
 import sentry_sdk
-from app.core.config import settings
+from app.core.config import settings, validate_required_settings
 from app.core.errors import api_error
 from app.core.logging import setup_logging
+from app.core.tracing import setup_tracing
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from app.core.request_id import get_request_id
 from app.middleware.audit import AuditMiddleware
 from app.middleware.rate_limit import GlobalRateLimitMiddleware
@@ -14,6 +16,15 @@ from app.middleware.request_id import RequestIdMiddleware
 from app.api.v1.router import router as v1_router
 
 setup_logging()
+missing_settings = validate_required_settings()
+if missing_settings and settings.ENV in {"prod", "stage"}:
+    raise RuntimeError(f"missing_required_env:{','.join(missing_settings)}")
+if missing_settings and settings.ENV not in {"prod", "stage"}:
+    import logging
+    logging.getLogger(__name__).warning(
+        "missing_required_env:%s", ",".join(missing_settings)
+    )
+setup_tracing()
 
 if settings.SENTRY_DSN:
     sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENV, release=settings.APP_VERSION)
@@ -47,6 +58,8 @@ app.add_middleware(RequestIdMiddleware)
 app.add_middleware(GlobalRateLimitMiddleware)
 app.add_middleware(AuditMiddleware)
 app.include_router(v1_router)
+if settings.OTEL_ENABLED:
+    FastAPIInstrumentor.instrument_app(app)
 
 if settings.PROMETHEUS_ENABLED:
     app.mount("/metrics", make_asgi_app())

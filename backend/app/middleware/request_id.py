@@ -6,6 +6,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core.request_id import set_request_id, reset_request_id
+from opentelemetry import trace
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
@@ -14,6 +15,9 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get(header_name) or str(uuid.uuid4())
         token = set_request_id(request_id)
         try:
+            span = trace.get_current_span()
+            if span.is_recording():
+                span.set_attribute("request_id", request_id)
             response = await call_next(request)
             response.headers[header_name] = request_id
             return response

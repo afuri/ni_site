@@ -60,6 +60,13 @@ docker exec -it <pg_container> psql -U postgres -d ni_site -c "
 "
 ```
 
+### Dev/Stage: сброс БД (опасно)
+
+```bash
+ENV=dev python backend/scripts/db_reset.py
+python backend/scripts/bootstrap_db.py
+```
+
 ## Примеры curl
 
 ### Проверка очередей фоновых задач

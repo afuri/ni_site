@@ -185,6 +185,49 @@ async def test_admin_update_user_and_temp_password_flow(client, create_user):
 
 
 @pytest.mark.asyncio
+async def test_service_token_allows_admin_update(client, create_user):
+    await create_user(
+        login="svcadmin",
+        email="svcadmin@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="svcstudent",
+        email="svcstudent@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=7,
+        subject=None,
+    )
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "svcstudent", "password": "StrongPass1"})
+    assert resp.status_code == 200
+    token = resp.json()["access_token"]
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(token))
+    assert resp.status_code == 200
+    student_id = resp.json()["id"]
+
+    old_tokens = settings.SERVICE_TOKENS
+    settings.SERVICE_TOKENS = "svc-token"
+    try:
+        resp = await client.put(
+            f"/api/v1/admin/users/{student_id}",
+            json={"city": "Казань"},
+            headers={"X-Service-Token": "svc-token"},
+        )
+    finally:
+        settings.SERVICE_TOKENS = old_tokens
+
+    assert resp.status_code == 200
+    assert resp.json()["city"] == "Казань"
+
+
+@pytest.mark.asyncio
 async def test_admin_generate_temp_password_flow(client, create_user):
     await create_user(
         login="admingenerate",

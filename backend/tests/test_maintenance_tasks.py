@@ -8,6 +8,7 @@ from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.auth_token import RefreshToken
 from app.models.olympiad import Olympiad, AgeGroup, OlympiadScope
+from app.models.audit_log import AuditLog
 from app.models.task import Task, Subject, TaskType
 from app.models.olympiad_task import OlympiadTask
 from app.tasks import maintenance
@@ -71,6 +72,54 @@ async def test_cleanup_expired_auth(db_engine):
         assert refreshed.temp_password_expires_at is None
         res = await session.execute(select(RefreshToken))
         assert res.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_cleanup_audit_logs(db_engine):
+    session_maker = async_sessionmaker(bind=db_engine, expire_on_commit=False, class_=AsyncSession)
+    now = datetime.now(timezone.utc)
+    async with session_maker() as session:
+        session.add(
+            AuditLog(
+                user_id=None,
+                action="test",
+                method="GET",
+                path="/",
+                status_code=200,
+                ip=None,
+                user_agent=None,
+                request_id="req-1",
+                details=None,
+                created_at=now - timedelta(days=10),
+            )
+        )
+        session.add(
+            AuditLog(
+                user_id=None,
+                action="test",
+                method="GET",
+                path="/",
+                status_code=200,
+                ip=None,
+                user_agent=None,
+                request_id="req-2",
+                details=None,
+                created_at=now - timedelta(days=1),
+            )
+        )
+        await session.commit()
+
+    deleted = await maintenance._cleanup_audit_logs(
+        session_maker=session_maker,
+        retention_days=7,
+    )
+    assert deleted == 1
+
+    async with session_maker() as session:
+        res = await session.execute(select(AuditLog))
+        rows = res.scalars().all()
+        assert len(rows) == 1
+        assert rows[0].request_id == "req-2"
 
 
 @pytest.mark.asyncio

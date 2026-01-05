@@ -3,6 +3,7 @@ import json
 import logging
 import sys
 from datetime import datetime, timezone
+from opentelemetry import trace
 
 from app.core.config import settings
 from app.core.request_id import get_request_id
@@ -27,6 +28,10 @@ class JsonFormatter(logging.Formatter):
             payload["request_id"] = request_id
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
+        span = trace.get_current_span()
+        context = span.get_span_context()
+        if context and context.trace_id:
+            payload["trace_id"] = format(context.trace_id, "032x")
         return json.dumps(payload, ensure_ascii=True)
 
 

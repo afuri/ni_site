@@ -64,6 +64,9 @@ server {
 - `APP_VERSION`
 - `ENV` (set to `stage` or `prod`)
 - `LOG_FORMAT` (`json` for production)
+- `AUDIT_LOG_RETENTION_DAYS`
+- `AUDIT_LOG_CLEANUP_INTERVAL_SEC`
+- `OTEL_ENABLED` / `OTEL_EXPORTER_OTLP_ENDPOINT` (optional)
 
 ## Env structure (prod/stage minimal)
 
@@ -84,6 +87,8 @@ Optional but recommended:
 - `PROMETHEUS_ENABLED=true`
 - `AUDIT_LOG_ENABLED=true`
 - `CACHE_WARMUP_INTERVAL_SEC`, `TOKEN_CLEANUP_INTERVAL_SEC` (for celery beat)
+- `AUDIT_LOG_RETENTION_DAYS`, `AUDIT_LOG_CLEANUP_INTERVAL_SEC`
+- `OTEL_ENABLED=true` and `OTEL_EXPORTER_OTLP_ENDPOINT`
 
 ## Migrations
 

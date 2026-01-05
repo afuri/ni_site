@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     ENV: str = "dev"
     APP_VERSION: str = "0.0.0"
     LOG_FORMAT: str = "json"
+    OTEL_ENABLED: bool = False
+    OTEL_EXPORTER_OTLP_ENDPOINT: str | None = None
+    OTEL_SERVICE_NAME: str | None = None
+    OTEL_SAMPLE_RATIO: float = 1.0
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:changethis@localhost:5432/ni_site"
     DB_POOL_SIZE: int = 5
@@ -87,8 +91,10 @@ class Settings(BaseSettings):
     ADMIN_ACTION_OTP_LENGTH: int = 6
 
     AUDIT_LOG_ENABLED: bool = True
+    AUDIT_LOG_RETENTION_DAYS: int = 90
     SENTRY_DSN: str | None = None
     PROMETHEUS_ENABLED: bool = False
+    AUDIT_LOG_CLEANUP_INTERVAL_SEC: int = 86400
 
     STORAGE_ENDPOINT: str | None = None
     STORAGE_BUCKET: str = "ni-site"
@@ -107,3 +113,20 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_required_settings() -> list[str]:
+    required = {
+        "DATABASE_URL": settings.DATABASE_URL,
+        "REDIS_URL": settings.REDIS_URL,
+        "JWT_SECRET": settings.JWT_SECRET if settings.JWT_SECRETS == "" else "ok",
+        "EMAIL_BASE_URL": settings.EMAIL_BASE_URL,
+        "APP_VERSION": settings.APP_VERSION,
+    }
+    if settings.STORAGE_ENDPOINT:
+        required["STORAGE_BUCKET"] = settings.STORAGE_BUCKET
+        required["STORAGE_ACCESS_KEY"] = settings.STORAGE_ACCESS_KEY
+        required["STORAGE_SECRET_KEY"] = settings.STORAGE_SECRET_KEY
+        required["STORAGE_PUBLIC_BASE_URL"] = settings.STORAGE_PUBLIC_BASE_URL
+    missing = [key for key, value in required.items() if not value]
+    return missing

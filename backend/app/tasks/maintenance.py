@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, update, or_, select
 
 from app.core.celery_app import celery_app
+from app.core.config import settings
 from app.core.redis import safe_redis
 from app.core import redis as redis_module
 from app.models.auth_token import RefreshToken
+from app.models.audit_log import AuditLog
 from app.models.olympiad import Olympiad
 from app.models.user import User
 from app.db.session import SessionLocal
@@ -45,6 +47,20 @@ async def _cleanup_expired_auth(
     return {"refresh_deleted": refresh_deleted, "temp_passwords_cleared": temp_passwords_cleared}
 
 
+async def _cleanup_audit_logs(
+    *,
+    session_maker=SessionLocal,
+    retention_days: int,
+) -> int:
+    if retention_days <= 0:
+        return 0
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    async with session_maker() as session:
+        res = await session.execute(delete(AuditLog).where(AuditLog.created_at < cutoff))
+        await session.commit()
+        return res.rowcount or 0
+
+
 async def _warmup_olympiad_cache(
     *,
     session_maker=SessionLocal,
@@ -78,6 +94,11 @@ async def _warmup_olympiad_cache(
 @celery_app.task(name="maintenance.cleanup_expired_auth")
 def cleanup_expired_auth() -> dict[str, int]:
     return asyncio.run(_cleanup_expired_auth())
+
+
+@celery_app.task(name="maintenance.cleanup_audit_logs")
+def cleanup_audit_logs() -> int:
+    return asyncio.run(_cleanup_audit_logs(retention_days=settings.AUDIT_LOG_RETENTION_DAYS))
 
 
 @celery_app.task(name="maintenance.warmup_olympiad_cache")

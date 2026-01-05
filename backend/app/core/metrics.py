@@ -68,6 +68,11 @@ READ_DB_HEALTH_ERRORS_TOTAL = Counter(
     "Read database health check errors",
 )
 
+READ_DB_FALLBACK_TOTAL = Counter(
+    "read_db_fallback_total",
+    "Read database fallback to primary",
+)
+
 REDIS_HEALTH_LATENCY_SECONDS = Gauge(
     "redis_health_latency_seconds",
     "Latency for Redis health check",

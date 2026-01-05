@@ -654,6 +654,41 @@ async def test_admin_users_negative_cases(client, create_user):
 
 
 @pytest.mark.asyncio
+async def test_admin_update_requires_otp_for_admin_target(client, create_user, redis_client):
+    await create_user(
+        login="adminotp1",
+        email="adminotp1@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="adminotp2",
+        email="adminotp2@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+
+    admin_token = await _login(client, "adminotp1", "AdminPass1")
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(admin_token))
+    assert resp.status_code == 200
+    admin_id = resp.json()["id"]
+
+    resp = await client.put(
+        f"/api/v1/admin/users/{admin_id}",
+        json={"is_active": False},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == codes.ADMIN_OTP_REQUIRED
+
+
+@pytest.mark.asyncio
 async def test_refresh_and_endpoint_blocking_on_must_change_password(client, create_user):
     await create_user(
         login="adminforce",

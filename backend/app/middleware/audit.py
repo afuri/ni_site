@@ -13,6 +13,7 @@ from app.repos.audit_logs import AuditLogsRepo
 from app.repos.users import UsersRepo
 from app.core.metrics import REQUEST_LATENCY_SECONDS
 from app.core.request_id import get_request_id
+from opentelemetry import trace
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
             req_id = get_request_id()
             if req_id:
                 sentry_sdk.set_tag("request_id", req_id)
+            span = trace.get_current_span()
+            context = span.get_span_context()
+            if context and context.trace_id:
+                sentry_sdk.set_tag("trace_id", format(context.trace_id, "032x"))
             if user_id is not None:
                 sentry_sdk.set_user({"id": user_id})
                 try:
