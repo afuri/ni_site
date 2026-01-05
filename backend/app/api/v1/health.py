@@ -5,9 +5,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.core.redis import safe_redis, safe_redis_for_url
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, ReadSessionLocal
 from app.core.config import settings
-from app.core.metrics import CELERY_QUEUE_LENGTH, DB_HEALTH_LATENCY_SECONDS, REDIS_HEALTH_LATENCY_SECONDS
+from app.core.metrics import (
+    CELERY_QUEUE_LENGTH,
+    DB_HEALTH_LATENCY_SECONDS,
+    READ_DB_HEALTH_LATENCY_SECONDS,
+    READ_DB_HEALTH_ERRORS_TOTAL,
+    REDIS_HEALTH_LATENCY_SECONDS,
+)
 from app.core.storage import storage_health
 
 router = APIRouter()
@@ -30,6 +36,7 @@ async def health():
 )
 async def readiness():
     db_ok = False
+    read_db_ok = None
     redis_ok = False
     try:
         start = time.perf_counter()
@@ -39,6 +46,17 @@ async def readiness():
         DB_HEALTH_LATENCY_SECONDS.set(time.perf_counter() - start)
     except Exception:
         db_ok = False
+
+    if settings.READ_DATABASE_URL:
+        try:
+            start = time.perf_counter()
+            async with ReadSessionLocal() as session:
+                await session.execute(text("SELECT 1"))
+            read_db_ok = True
+            READ_DB_HEALTH_LATENCY_SECONDS.set(time.perf_counter() - start)
+        except Exception:
+            read_db_ok = False
+            READ_DB_HEALTH_ERRORS_TOTAL.inc()
 
     try:
         start = time.perf_counter()
@@ -51,8 +69,13 @@ async def readiness():
     except Exception:
         redis_ok = False
 
-    payload = {"status": "ok" if db_ok and redis_ok else "degraded", "db": db_ok, "redis": redis_ok}
-    if db_ok and redis_ok:
+    payload = {
+        "status": "ok" if db_ok and redis_ok and read_db_ok is not False else "degraded",
+        "db": db_ok,
+        "read_db": read_db_ok,
+        "redis": redis_ok,
+    }
+    if db_ok and redis_ok and read_db_ok is not False:
         return payload
     return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
 

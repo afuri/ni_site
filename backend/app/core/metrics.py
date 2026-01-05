@@ -58,6 +58,16 @@ DB_HEALTH_LATENCY_SECONDS = Gauge(
     "Latency for database health check",
 )
 
+READ_DB_HEALTH_LATENCY_SECONDS = Gauge(
+    "read_db_health_latency_seconds",
+    "Latency for read database health check",
+)
+
+READ_DB_HEALTH_ERRORS_TOTAL = Counter(
+    "read_db_health_errors_total",
+    "Read database health check errors",
+)
+
 REDIS_HEALTH_LATENCY_SECONDS = Gauge(
     "redis_health_latency_seconds",
     "Latency for Redis health check",

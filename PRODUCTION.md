@@ -62,6 +62,28 @@ server {
 - `STORAGE_SECRET_KEY`
 - `STORAGE_PUBLIC_BASE_URL`
 - `APP_VERSION`
+- `ENV` (set to `stage` or `prod`)
+- `LOG_FORMAT` (`json` for production)
+
+## Env structure (prod/stage minimal)
+
+Minimal set for prod/stage:
+
+- `ENV=prod` (or `stage`)
+- `APP_VERSION`
+- `DATABASE_URL`
+- `REDIS_URL`
+- `JWT_SECRET` (or `JWT_SECRETS`)
+- `EMAIL_BASE_URL`
+- `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_PUBLIC_BASE_URL`
+- `LOG_FORMAT=json`
+
+Optional but recommended:
+
+- `READ_DATABASE_URL` for read replicas
+- `PROMETHEUS_ENABLED=true`
+- `AUDIT_LOG_ENABLED=true`
+- `CACHE_WARMUP_INTERVAL_SEC`, `TOKEN_CLEANUP_INTERVAL_SEC` (for celery beat)
 
 ## Migrations
 
@@ -78,6 +100,14 @@ alembic -c alembic.ini upgrade head
 ```
 
 Avoid creating ad-hoc tables like `t_probe` in production databases.
+
+## Dev/Stage bootstrap
+
+For dev/stage you can use the bootstrap helper to reset empty schemas and run migrations:
+
+```bash
+python backend/scripts/bootstrap_db.py
+```
 
 ## Docker DB checklist
 

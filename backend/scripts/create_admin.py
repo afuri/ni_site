@@ -23,7 +23,7 @@ def _get_env(name: str) -> str:
 
 
 async def run() -> None:
-    env_path = Path(__file__).resolve().parents[1] / "dot.env"
+    env_path = Path(__file__).resolve().parents[1] / ".env"
     if env_path.exists():
         load_dotenv(env_path)
 

@@ -17,7 +17,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-alembic -c alembic.ini upgrade head
+python scripts/bootstrap_db.py
 uvicorn app.main:app --reload
 ```
 

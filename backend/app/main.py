@@ -7,6 +7,7 @@ import sentry_sdk
 from app.core.config import settings
 from app.core.errors import api_error
 from app.core.logging import setup_logging
+from app.core.request_id import get_request_id
 from app.middleware.audit import AuditMiddleware
 from app.middleware.rate_limit import GlobalRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
@@ -63,16 +64,25 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
         if exc.status_code == 405 and code == "Method Not Allowed":
             code = "method_not_allowed"
         payload = api_error(code)
-    return JSONResponse(status_code=exc.status_code, content={"error": payload})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": payload, "request_id": get_request_id()},
+    )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_request: Request, exc: RequestValidationError):
     payload = api_error("validation_error", details=jsonable_encoder(exc.errors()))
-    return JSONResponse(status_code=422, content={"error": payload})
+    return JSONResponse(
+        status_code=422,
+        content={"error": payload, "request_id": get_request_id()},
+    )
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(_request: Request, _exc: Exception):
     payload = api_error("internal_error")
-    return JSONResponse(status_code=500, content={"error": payload})
+    return JSONResponse(
+        status_code=500,
+        content={"error": payload, "request_id": get_request_id()},
+    )

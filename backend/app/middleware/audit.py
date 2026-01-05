@@ -42,6 +42,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
             sentry_sdk.set_tag("version", settings.APP_VERSION)
             sentry_sdk.set_tag("path", path)
             sentry_sdk.set_tag("method", request.method)
+            req_id = get_request_id()
+            if req_id:
+                sentry_sdk.set_tag("request_id", req_id)
             if user_id is not None:
                 sentry_sdk.set_user({"id": user_id})
                 try:
