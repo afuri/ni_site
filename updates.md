@@ -365,6 +365,7 @@ Shared foundation is in: API client with auth/refresh + error parsing, auth stor
   - Auth context tests: frontend/packages/ui/src/auth/__tests__/AuthContext.test.tsx
 
 
+
 0.5.0
 
 Next step: build the shared UI kit (layout shell, buttons, inputs, cards, tables, modal, toast, empty/loading).

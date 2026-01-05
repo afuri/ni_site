@@ -6,6 +6,6 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@ni/api": "workspace:*"
+    "@ni/api": "0.0.0"
   }
 }
