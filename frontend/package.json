@@ -1,0 +1,16 @@
+{
+  "name": "ni-site-frontend",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:app": "npm --workspace @ni/app-main run dev",
+    "dev:admin": "npm --workspace @ni/app-admin run dev",
+    "build:app": "npm --workspace @ni/app-main run build",
+    "build:admin": "npm --workspace @ni/app-admin run build",
+    "preview:app": "npm --workspace @ni/app-main run preview",
+    "preview:admin": "npm --workspace @ni/app-admin run preview"
+  }
+}

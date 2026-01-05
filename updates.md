@@ -195,3 +195,126 @@
   - backend/tests/test_api_negative.py — тест ожидает olympiad_age_group_mismatch.
   - NEGATIVE_TESTS.md и FRONTEND_CONTRACT.md — обновлены списки ошибок.
   - TECH_DEBT.md — список dependency warnings и рекомендации.
+
+## FRONTEND
+
+Переходим к созданию frontend. Я создал папку frontend там лежат некоторые файлы, которые надо проанализировать. Index_example.html и style.css - как бы
+  структурно выглядила main page. Main_page_picture.jpg - визуальное представление страницы сайта. Main_picture.jpg - главный банер, который надо использовать на
+  странице. Если можешь проанализируй цвета в main_picture.jpg для создания цветовой палитры проекта. В файле frontend/README.md собрана краткая техническая
+  спецификация. В любом случае, ориентируйся на все доступные документы и инструкции в NI_SITE и на файлы backend. Подготовь по всему этому детальный план
+  создания frontend, которому мы будем следовать. Если есть уточняющие вопросы, готов ответить
+
+
+### colors
+
+ Палитра (по изображению, приблизительно)
+
+  - #1f3b63 — основной глубокий сине‑стальной (header/фон CTA).
+  - #2f5c92 — насыщенный синий (акцентные кнопки, ссылки).
+  - #6fa3d1 — небесно‑синий (вторичный фон/градиенты).
+  - #dbe5f0 — холодный туман (светлые секции/карточки).
+  - #f0c3a1 — теплый рассветный (мягкие акценты, выделения).
+  - #f6eee7 — кремово‑песочный (фоновые блоки/подложки).
+    Если нужен точный подбор, могу сделать автоматический color‑pick после установки инструмента или если дадите бренд‑цвета.
+
+  План создания frontend
+
+  - Зафиксировать стек и MVP‑состав: SPA vs SSR; если SPA — React+TS+Vite, решение по UI‑библиотеке (или кастомная система компонентов, чтобы сохранить уникальный
+    стиль); определить список страниц первого релиза.
+  - Сформировать дизайн‑систему из визуала: пары шрифтов (например, выразительный serif для заголовков + современный sans для текста), сетка/брейкпоинты, radii/
+    тени, токены (CSS variables) и правила использования hero‑изображения с градиентной маской для читаемости.
+  - Описать IA и маршрутизацию: публичные страницы (главная, об олимпиаде, формат/задания, результаты, контакты, контент), auth‑потоки (login/register/verify/
+    reset), кабинеты по ролям согласно ROLES.md и UI_ENDPOINTS.md.
+  - Реализовать базовый лэйаут и главную: header/nav, hero с frontend/main_picture.jpg, CTA‑блоки, блоки аудитории как в main_page_example.jpg, footer; адаптив и
+    легкая анимация появления секций.
+  - Подключить публичный контент и страницы: /content список и деталь, карточки новостей/статей, единый стиль для медиа и цитат, базовые SEO‑метаданные.
+  - Реализовать функциональные кабинеты: auth+profile (/auth/*, /users/me), ученик (список олимпиад, старт, попытка с таймером, сабмит, результат), учитель/
+    модератор/админ (связи учеников, просмотр попыток, контент/банк задач/олимпиады), единая обработка ошибок по контракту и состояния загрузки/пустых экранов.
+
+выбираем: SPA (React+TS); Закладываем сразу все роли guest/student/teacher/moderator/admin; можно отталкиваться от текущего визуала; отдельный “admin panel”
+  как отдельное приложение. По этим данным подготовь детальный план, который шаг за шагом будем исполнять.
+
+
+### Детальный план
+
+Принял решения: SPA React+TS; все роли сразу; визуал — от текущих материалов; отдельное admin‑приложение. Ниже детальный, пошаговый план исполнения.
+
+  Пошаговый план
+
+  - Шаг 1. Архитектура и структура репозитория
+      - Два SPA: frontend/app (guest/student/teacher/moderator) и frontend/admin (admin).
+      - Общие пакеты: frontend/shared/ui, frontend/shared/api, frontend/shared/utils.
+      - Общие конфиги: линтеры, алиасы, env‑шаблоны (API base URL).
+  - Шаг 2. Дизайн‑система и токены
+      - Палитра и градиенты на основе frontend/main_picture.jpg.
+      - Типографика: выразительный serif для заголовков + читабельный sans для текста.
+      - Сетка, размеры, радиусы, тени, состояние кнопок/инпутов.
+      - Токены в CSS variables (scales: color/space/type/shadow).
+  - Шаг 3. Базовые инфраструктура и API‑слой
+      - API client (axios/fetch), базовый Base URL и Authorization из FRONTEND_CONTRACT.md.
+      - Единая обработка ошибок и request_id.
+      - Хранилище токенов + refresh flow.
+      - Route guards по роли.
+  - Шаг 4. UI‑кит
+      - Блоки: header/nav/footer, hero, buttons, cards, tabs, tables, inputs, selects, modal, toast, empty/loading.
+      - Валидация форм и текст ошибок по API_CONVENTIONS.md.
+  - Шаг 5. Публичная часть (guest)
+      - Главная по референсу frontend/main_page_example.jpg + frontend/main_picture.jpg.
+      - Страницы: об олимпиаде, формат/задания, результаты, контакты (MVP‑текст).
+      - Контент: список и детальная новость/статья из /content.
+      - Auth flows: register/login/verify/reset/change.
+  - Шаг 6. Student‑функционал
+      - Олимпиады: список/деталь, start attempt.
+      - Прохождение: задачи, ответы, таймер, submit, результат.
+      - Профиль и история попыток.
+  - Шаг 7. Teacher/Moderator‑функционал (в основном приложении)
+      - Teacher: связи учеников, подтверждения, просмотр попыток.
+      - Moderator: контент и task bank, загрузки изображений по uploads/presign*.
+  - Шаг 8. Admin‑приложение
+      - Управление олимпиадами, пользователями, модераторами, аудитом.
+      - Контент/задачи по необходимости.
+  - Шаг 9. QA и шлифовка
+      - Адаптивность, доступность, состояния ошибок.
+      - Проверка edge cases: olympiad_age_group_mismatch, publish_forbidden, attempt_expired.
+      - Сборка и инструкции запуска.
+
+0.1.0
+
+Foundation for the two‑app SPA is in place: workspace root with apps/main and apps/admin, shared packages (packages/ui, packages/api, packages/utils), and
+  minimal Vite+React scaffolds for both apps. I also documented the new layout and dev commands in frontend/README.md.
+
+  Files created/updated:
+
+  - frontend/package.json
+  - frontend/tsconfig.base.json
+  - frontend/apps/main/index.html
+  - frontend/apps/main/package.json
+  - frontend/apps/main/tsconfig.json
+  - frontend/apps/main/tsconfig.node.json
+  - frontend/apps/main/vite.config.ts
+  - frontend/apps/main/src/main.tsx
+  - frontend/apps/main/src/App.tsx
+  - frontend/apps/main/src/styles/base.css
+  - frontend/apps/admin/index.html
+  - frontend/apps/admin/package.json
+  - frontend/apps/admin/tsconfig.json
+  - frontend/apps/admin/tsconfig.node.json
+  - frontend/apps/admin/vite.config.ts
+  - frontend/apps/admin/src/main.tsx
+  - frontend/apps/admin/src/App.tsx
+  - frontend/apps/admin/src/styles/base.css
+  - frontend/packages/ui/package.json
+  - frontend/packages/ui/src/index.ts
+  - frontend/packages/api/package.json
+  - frontend/packages/api/src/index.ts
+  - frontend/packages/utils/package.json
+  - frontend/packages/utils/src/index.ts
+  - frontend/README.md
+
+  I didn’t run installs or builds.
+
+  Next step is the design system (tokens, typography, spacing, motion). Pick a typography pair and I’ll bake it into the tokens:
+
+  1. Cormorant Garamond (headings) + Manrope (body)
+
+
