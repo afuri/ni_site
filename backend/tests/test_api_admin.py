@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.models.user import UserRole
+from app.core.config import settings
 from app.core import error_codes as codes
 
 
@@ -228,3 +229,37 @@ async def test_admin_generate_temp_password_flow(client, create_user):
     resp = await client.post("/api/v1/auth/login", json={"login": "studentgen", "password": temp_password})
     assert resp.status_code == 200
     assert resp.json()["must_change_password"] is True
+
+
+@pytest.mark.asyncio
+async def test_service_token_can_update_user(client, create_user):
+    old_tokens = settings.SERVICE_TOKENS
+    settings.SERVICE_TOKENS = "svc-token"
+    try:
+        await create_user(
+            login="studentservice",
+            email="studentservice@example.com",
+            password="StrongPass1",
+            role=UserRole.student,
+            is_verified=True,
+            class_grade=7,
+            subject=None,
+        )
+
+        resp = await client.post("/api/v1/auth/login", json={"login": "studentservice", "password": "StrongPass1"})
+        assert resp.status_code == 200
+        token = resp.json()["access_token"]
+
+        resp = await client.get("/api/v1/auth/me", headers=_auth_headers(token))
+        assert resp.status_code == 200
+        user_id = resp.json()["id"]
+
+        resp = await client.put(
+            f"/api/v1/admin/users/{user_id}",
+            json={"city": "Сервис"},
+            headers={"X-Service-Token": "svc-token"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["city"] == "Сервис"
+    finally:
+        settings.SERVICE_TOKENS = old_tokens

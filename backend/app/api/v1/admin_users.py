@@ -2,18 +2,20 @@ from datetime import datetime, timezone, timedelta
 import secrets
 import string
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.core.deps import get_db
-from app.core.deps_auth import require_role
+from app.core.deps_auth import require_role, get_current_user_optional
 from app.core.errors import http_error
 from app.core.security import hash_password, validate_password_policy
+from app.tasks.email import send_email_task
 from app.models.user import UserRole, User
 from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.audit_logs import AuditLogsRepo
+from app.repos.user_changes import UserChangesRepo
 from app.repos.users import UsersRepo
 from app.schemas.user import (
     UserRead,
@@ -26,6 +28,21 @@ from app.api.v1.openapi_errors import response_example, response_examples
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/users")
+
+
+class AdminActor:
+    def __init__(self, *, user: User | None, is_super_admin: bool, label: str):
+        self.user = user
+        self.is_super_admin = is_super_admin
+        self.label = label
+
+    @property
+    def id(self) -> int | None:
+        return self.user.id if self.user else None
+
+    @property
+    def login(self) -> str:
+        return self.user.login if self.user else self.label
 
 
 def _generate_temp_password(length: int = 12) -> str:
@@ -46,6 +63,23 @@ def _super_admin_logins() -> set[str]:
 
 def _is_super_admin(user: User) -> bool:
     return user.login in _super_admin_logins()
+
+
+def _service_tokens() -> set[str]:
+    return {token.strip() for token in settings.SERVICE_TOKENS.split(",") if token.strip()}
+
+
+async def require_admin_or_service_actor(
+    service_token: str | None = Header(default=None, alias="X-Service-Token"),
+    user: User | None = Depends(get_current_user_optional),
+) -> AdminActor:
+    if service_token and service_token in _service_tokens():
+        return AdminActor(user=None, is_super_admin=True, label="service")
+    if user is None:
+        raise http_error(401, codes.MISSING_TOKEN)
+    if user.role != UserRole.admin:
+        raise http_error(403, codes.FORBIDDEN)
+    return AdminActor(user=user, is_super_admin=_is_super_admin(user), label=user.login)
 
 
 @router.put(
@@ -98,7 +132,7 @@ async def update_user(
     user_id: int,
     payload: AdminUserUpdate,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    admin_actor: AdminActor = Depends(require_admin_or_service_actor),
 ):
     repo = UsersRepo(db)
     user = await repo.get_by_id(user_id)
@@ -106,6 +140,8 @@ async def update_user(
         raise http_error(404, codes.USER_NOT_FOUND)
 
     patch = payload.model_dump(exclude_unset=True)
+    old_role = user.role
+    old_is_active = user.is_active
 
     if "login" in patch and patch["login"] != user.login:
         existing = await repo.get_by_login(patch["login"])
@@ -142,8 +178,9 @@ async def update_user(
 
     if (
         user.role == UserRole.admin
-        and user.id != admin.id
-        and not _is_super_admin(admin)
+        and admin_actor.id is not None
+        and user.id != admin_actor.id
+        and not admin_actor.is_super_admin
         and any(field in patch for field in ("role", "is_active"))
     ):
         raise http_error(403, codes.FORBIDDEN)
@@ -167,7 +204,7 @@ async def update_user(
         await db.rollback()
         raise http_error(409, codes.LOGIN_TAKEN)
     await AuditLogsRepo(db).create(
-        user_id=admin.id,
+        user_id=admin_actor.id,
         action="admin_user_update",
         method="PUT",
         path=f"/api/v1/admin/users/{user_id}",
@@ -177,8 +214,30 @@ async def update_user(
         details={"target_user_id": user_id, "fields": sorted(patch.keys())},
         created_at=datetime.now(timezone.utc),
     )
+    await UserChangesRepo(db).create(
+        actor_user_id=admin_actor.id,
+        target_user_id=user_id,
+        action="update",
+        details={"fields": sorted(patch.keys())},
+        created_at=datetime.now(timezone.utc),
+    )
     if needs_revoke:
         await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+
+    if settings.EMAIL_SEND_ENABLED:
+        if old_role != updated.role:
+            send_email_task.delay(
+                updated.email,
+                "Изменение роли",
+                f"Ваша роль изменена на {updated.role}.",
+            )
+        if old_is_active != updated.is_active:
+            status_label = "активирован" if updated.is_active else "деактивирован"
+            send_email_task.delay(
+                updated.email,
+                "Статус учетной записи",
+                f"Ваш аккаунт был {status_label} администратором.",
+            )
     return updated
 
 
@@ -198,7 +257,7 @@ async def set_temporary_password(
     user_id: int,
     payload: AdminTempPasswordRequest,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    admin_actor: AdminActor = Depends(require_admin_or_service_actor),
 ):
     repo = UsersRepo(db)
     user = await repo.get_by_id(user_id)
@@ -219,7 +278,7 @@ async def set_temporary_password(
     )
     await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
     await AuditLogsRepo(db).create(
-        user_id=admin.id,
+        user_id=admin_actor.id,
         action="admin_set_temp_password",
         method="POST",
         path=f"/api/v1/admin/users/{user_id}/temp-password",
@@ -229,6 +288,19 @@ async def set_temporary_password(
         details={"target_user_id": user_id},
         created_at=datetime.now(timezone.utc),
     )
+    await UserChangesRepo(db).create(
+        actor_user_id=admin_actor.id,
+        target_user_id=user_id,
+        action="temp_password_set",
+        details={"ttl_hours": settings.TEMP_PASSWORD_TTL_HOURS},
+        created_at=datetime.now(timezone.utc),
+    )
+    if settings.EMAIL_SEND_ENABLED:
+        send_email_task.delay(
+            user.email,
+            "Временный пароль",
+            f"Временный пароль: {payload.temp_password}. Срок действия: {settings.TEMP_PASSWORD_TTL_HOURS} ч.",
+        )
     return user
 
 
@@ -246,7 +318,7 @@ async def set_temporary_password(
 async def generate_temporary_password(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_role(UserRole.admin)),
+    admin_actor: AdminActor = Depends(require_admin_or_service_actor),
 ):
     repo = UsersRepo(db)
     user = await repo.get_by_id(user_id)
@@ -264,7 +336,7 @@ async def generate_temporary_password(
     )
     await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
     await AuditLogsRepo(db).create(
-        user_id=admin.id,
+        user_id=admin_actor.id,
         action="admin_generate_temp_password",
         method="POST",
         path=f"/api/v1/admin/users/{user_id}/temp-password/generate",
@@ -274,4 +346,17 @@ async def generate_temporary_password(
         details={"target_user_id": user_id},
         created_at=datetime.now(timezone.utc),
     )
+    await UserChangesRepo(db).create(
+        actor_user_id=admin_actor.id,
+        target_user_id=user_id,
+        action="temp_password_generate",
+        details={"ttl_hours": settings.TEMP_PASSWORD_TTL_HOURS},
+        created_at=datetime.now(timezone.utc),
+    )
+    if settings.EMAIL_SEND_ENABLED:
+        send_email_task.delay(
+            user.email,
+            "Временный пароль",
+            f"Временный пароль: {temp_password}. Срок действия: {settings.TEMP_PASSWORD_TTL_HOURS} ч.",
+        )
     return {"temp_password": temp_password}

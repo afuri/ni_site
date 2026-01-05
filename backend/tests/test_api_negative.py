@@ -644,6 +644,14 @@ async def test_admin_users_negative_cases(client, create_user):
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == codes.WEAK_PASSWORD
 
+    resp = await client.put(
+        f"/api/v1/admin/users/{student_id}",
+        json={"email": "new@example.com"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == codes.VALIDATION_ERROR
+
 
 @pytest.mark.asyncio
 async def test_refresh_and_endpoint_blocking_on_must_change_password(client, create_user):

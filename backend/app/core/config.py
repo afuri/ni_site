@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     TEMP_PASSWORD_TTL_HOURS: int = 24
     EMAIL_SEND_ENABLED: bool = False
     PASSWORD_MIN_LEN: int = 8
+    PASSWORD_REQUIRE_UPPER: bool = True
+    PASSWORD_REQUIRE_LOWER: bool = True
+    PASSWORD_REQUIRE_DIGIT: bool = True
 
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
@@ -68,6 +71,7 @@ class Settings(BaseSettings):
     AUTH_PASSWORD_CHANGE_RL_WINDOW_SEC: int = 60
 
     SUPER_ADMIN_LOGINS: str = ""
+    SERVICE_TOKENS: str = ""
 
     AUDIT_LOG_ENABLED: bool = True
     SENTRY_DSN: str | None = None

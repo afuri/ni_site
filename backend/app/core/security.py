@@ -55,5 +55,9 @@ def validate_password_policy(password: str) -> None:
     has_upper = any(c.isupper() for c in password)
     has_lower = any(c.islower() for c in password)
     has_digit = any(c.isdigit() for c in password)
-    if not (has_upper and has_lower and has_digit):
+    if settings.PASSWORD_REQUIRE_UPPER and not has_upper:
+        raise ValueError(codes.WEAK_PASSWORD)
+    if settings.PASSWORD_REQUIRE_LOWER and not has_lower:
+        raise ValueError(codes.WEAK_PASSWORD)
+    if settings.PASSWORD_REQUIRE_DIGIT and not has_digit:
         raise ValueError(codes.WEAK_PASSWORD)

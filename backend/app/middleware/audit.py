@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import time
 import logging
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -10,6 +11,7 @@ import sentry_sdk
 from app.db.session import SessionLocal
 from app.repos.audit_logs import AuditLogsRepo
 from app.repos.users import UsersRepo
+from app.core.metrics import REQUEST_LATENCY_SECONDS
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     pass
 
         status_code = 500
+        start = time.perf_counter()
         action = "request"
         if path.startswith("/api/v1/admin/users/") and request.method == "PUT":
             action = "admin_update_user"
@@ -64,6 +67,14 @@ class AuditMiddleware(BaseHTTPMiddleware):
             status_code = response.status_code
             return response
         finally:
+            try:
+                route = request.scope.get("route")
+                path_label = route.path if route is not None and hasattr(route, "path") else path
+                REQUEST_LATENCY_SECONDS.labels(path=path_label, method=request.method).observe(
+                    time.perf_counter() - start
+                )
+            except Exception:
+                pass
             try:
                 async with SessionLocal() as session:
                     repo = AuditLogsRepo(session)

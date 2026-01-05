@@ -52,6 +52,15 @@ async def get_current_user(
     return await _get_current_user_base(creds, db, allow_password_change=False)
 
 
+async def get_current_user_optional(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if creds is None or not creds.credentials:
+        return None
+    return await _get_current_user_base(creds, db, allow_password_change=False)
+
+
 async def get_current_user_allow_password_change(
     creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),

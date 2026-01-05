@@ -1,4 +1,4 @@
-from prometheus_client import Counter, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 RATE_LIMIT_BLOCKS = Counter(
     "rate_limit_blocks_total",
@@ -31,4 +31,10 @@ DB_HEALTH_LATENCY_SECONDS = Gauge(
 REDIS_HEALTH_LATENCY_SECONDS = Gauge(
     "redis_health_latency_seconds",
     "Latency for Redis health check",
+)
+
+REQUEST_LATENCY_SECONDS = Histogram(
+    "request_latency_seconds",
+    "HTTP request latency",
+    ["path", "method"],
 )
