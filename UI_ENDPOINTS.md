@@ -32,6 +32,7 @@ Moderator = teacher with `is_moderator=true`.
 ## API conventions
 
 Pagination/filtering/sorting rules: `API_CONVENTIONS.md`
+Uploads limits/types: `API_CONVENTIONS.md`
 
 ## Auth
 

@@ -36,3 +36,16 @@ Sorting is not globally exposed. If an endpoint supports sorting, it will declar
 - `sort_dir` (`asc` | `desc`)
 
 If absent, ordering is implementation-defined and documented in that endpoint.
+
+## Uploads (presign)
+
+- Allowed prefixes: `tasks/` or `content/` (max depth 3 segments)
+- Allowed content types: defined by `STORAGE_ALLOWED_CONTENT_TYPES`
+- Max file size: `STORAGE_MAX_UPLOAD_MB` (applies to presign-post)
+- Presign TTL: `STORAGE_PRESIGN_EXPIRES_SEC`
+
+Presign endpoints:
+```
+POST /uploads/presign
+POST /uploads/presign-post
+```

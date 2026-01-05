@@ -145,3 +145,8 @@
 
 Добавил отдельный документ API_CONVENTIONS.md с правилами пагинации/фильтров/сортировки и ссылки на него в README.md и UI_ENDPOINTS.md.
 
+
+0.9.14
+
+• Готово: добавил утвержденные лимиты/типы для upload/presign в API_CONVENTIONS.md и ссылку в UI_ENDPOINTS.md.
+
