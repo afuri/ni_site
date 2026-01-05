@@ -76,7 +76,27 @@
 
   - Авто‑reset выполняется только если ENV=dev или ENV=stage. В prod скрипт откажется трогать схему.
 
+0.9.11
 
+Сделал error schema в OpenAPI согласованной с текущими ответами (request_id везде):
 
+  Что изменилось
+
+  - В app/api/v1/openapi_errors.py примеры ошибок теперь автоматически включают "request_id": "req-...".
+  - В app/main.py обновил описание формата ошибок в OpenAPI, добавил request_id.
+
+  Это даёт единый формат во всех response examples без правки каждого эндпойнта.
+
+Добавил отдельную OpenAPI schema/response model для ошибок и подключил ее к response_example/response_examples.
+
+  Изменения:
+
+  - Новый компонент: app/schemas/errors.py с ErrorPayload и ErrorResponse.
+  - app/api/v1/openapi_errors.py теперь использует ErrorResponse как model для всех ошибок.
+
+  Теперь клиенты увидят типизированный ErrorResponse в OpenAPI. Если нужно — могу обновить отдельные эндпойнты, чтобы они ссылались на этот компонент в responses
+  явно (а не только через helper).
+
+  
 
 

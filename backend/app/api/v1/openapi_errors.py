@@ -1,4 +1,7 @@
 from app.core import error_codes as codes
+from app.schemas.errors import ErrorResponse
+
+REQUEST_ID_EXAMPLE = "req-123e4567-e89b-12d3-a456-426614174000"
 
 ERROR_EXAMPLES = {
     codes.MISSING_TOKEN: {"error": {"code": codes.MISSING_TOKEN, "message": codes.MISSING_TOKEN}},
@@ -57,19 +60,23 @@ ERROR_EXAMPLES = {
 }
 
 
+def _with_request_id(payload: dict) -> dict:
+    return {**payload, "request_id": REQUEST_ID_EXAMPLE}
+
+
 def response_example(code: str) -> dict:
     return {
-        "model": dict,
-        "content": {"application/json": {"example": ERROR_EXAMPLES[code]}},
+        "model": ErrorResponse,
+        "content": {"application/json": {"example": _with_request_id(ERROR_EXAMPLES[code])}},
     }
 
 
 def response_examples(*codes: str) -> dict:
     return {
-        "model": dict,
+        "model": ErrorResponse,
         "content": {
             "application/json": {
-                "examples": {code: {"value": ERROR_EXAMPLES[code]} for code in codes}
+                "examples": {code: {"value": _with_request_id(ERROR_EXAMPLES[code])} for code in codes}
             }
         },
     }

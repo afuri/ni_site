@@ -39,7 +39,8 @@ APP_DESCRIPTION = """
     "code": "some_error_code",
     "message": "some_error_code",
     "details": {}
-  }
+  },
+  "request_id": "req-..."
 }
 ```
 
