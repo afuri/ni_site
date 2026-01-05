@@ -42,3 +42,8 @@ Local dev:
 npm --workspace @ni/app-main run dev
 npm --workspace @ni/app-admin run dev
 ```
+
+Tests:
+```
+npm run test
+```

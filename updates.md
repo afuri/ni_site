@@ -350,3 +350,21 @@ Shared foundation is in: API client with auth/refresh + error parsing, auth stor
     src/routes/RequireAdmin.tsx
   - Env templates: frontend/apps/main/.env.example, frontend/apps/admin/.env.example
   - tsconfig alias additions: frontend/tsconfig.base.json
+
+0.4.0
+
+ Added a full test harness and high‑coverage unit tests for the shared foundation (API client, auth storage, roles, auth context), plus Vitest config and dev
+  deps.
+
+  Files added/updated:
+
+  - Test setup: frontend/vitest.config.ts, frontend/vitest.setup.ts
+  - Root tooling: frontend/package.json, frontend/README.md
+  - API client tests: frontend/packages/api/src/__tests__/client.test.ts
+  - Utils tests: frontend/packages/utils/src/__tests__/authStorage.test.ts, frontend/packages/utils/src/__tests__/roles.test.ts
+  - Auth context tests: frontend/packages/ui/src/auth/__tests__/AuthContext.test.tsx
+
+
+0.5.0
+
+Next step: build the shared UI kit (layout shell, buttons, inputs, cards, tables, modal, toast, empty/loading).
