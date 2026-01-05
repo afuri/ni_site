@@ -8,6 +8,7 @@ from app.core.redis import safe_redis, safe_redis_for_url
 from app.db.session import SessionLocal
 from app.core.config import settings
 from app.core.metrics import CELERY_QUEUE_LENGTH, DB_HEALTH_LATENCY_SECONDS, REDIS_HEALTH_LATENCY_SECONDS
+from app.core.storage import storage_health
 
 router = APIRouter()
 
@@ -78,3 +79,28 @@ async def queues():
     if queue_length is None:
         return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
     return payload
+
+
+@router.get(
+    "/health/deps",
+    tags=["health"],
+    description="Проверка внешних зависимостей (storage/email)",
+    responses={503: ERROR_RESPONSE_503},
+)
+async def deps():
+    storage_required = bool(settings.STORAGE_ENDPOINT and settings.STORAGE_ACCESS_KEY and settings.STORAGE_SECRET_KEY)
+    storage_ok = True if not storage_required else storage_health()
+
+    email_required = settings.EMAIL_SEND_ENABLED
+    email_ok = True if not email_required else bool(settings.SMTP_HOST)
+
+    payload = {
+        "status": "ok" if storage_ok and email_ok else "degraded",
+        "storage": storage_ok,
+        "email": email_ok,
+        "storage_required": storage_required,
+        "email_required": email_required,
+    }
+    if storage_ok and email_ok:
+        return payload
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)

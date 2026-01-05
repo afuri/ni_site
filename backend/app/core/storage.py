@@ -131,3 +131,14 @@ def presign_get(key: str) -> str:
         Params={"Bucket": settings.STORAGE_BUCKET, "Key": key},
         ExpiresIn=settings.STORAGE_PRESIGN_EXPIRES_SEC,
     )
+
+
+def storage_health() -> bool:
+    client = _get_s3_client()
+    if client is None:
+        return False
+    try:
+        client.head_bucket(Bucket=settings.STORAGE_BUCKET)
+        return True
+    except Exception:
+        return False

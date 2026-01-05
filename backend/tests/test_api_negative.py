@@ -5,6 +5,7 @@ import pytest
 from app.core.config import settings
 from app.core import error_codes as codes
 from app.models.user import UserRole
+from app.repos.users import UsersRepo
 
 
 def _auth_headers(token: str) -> dict:
@@ -843,3 +844,119 @@ async def test_admin_update_revokes_refresh_tokens(client, create_user):
     )
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == codes.INVALID_TOKEN
+
+
+@pytest.mark.asyncio
+async def test_temp_password_expired_blocks_login_and_refresh(client, create_user, db_session):
+    await create_user(
+        login="adminexpire",
+        email="adminexpire@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="studentexpire",
+        email="studentexpire@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=7,
+        subject=None,
+    )
+
+    admin_token = await _login(client, "adminexpire", "AdminPass1")
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(admin_token))
+    assert resp.status_code == 200
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentexpire", "password": "StrongPass1"})
+    assert resp.status_code == 200
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(resp.json()["access_token"]))
+    assert resp.status_code == 200
+    student_id = resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/admin/users/{student_id}/temp-password",
+        json={"temp_password": "TempPass1"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentexpire", "password": "TempPass1"})
+    assert resp.status_code == 200
+    refresh_token = resp.json()["refresh_token"]
+
+    repo = UsersRepo(db_session)
+    user = await repo.get_by_id(student_id)
+    user.temp_password_expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    await db_session.commit()
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentexpire", "password": "TempPass1"})
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == codes.TEMP_PASSWORD_EXPIRED
+
+    resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == codes.TEMP_PASSWORD_EXPIRED
+
+
+@pytest.mark.asyncio
+async def test_admin_update_other_admin_requires_super_admin(client, create_user):
+    old_super = settings.SUPER_ADMIN_LOGINS
+    settings.SUPER_ADMIN_LOGINS = "superadmin"
+    try:
+        await create_user(
+            login="superadmin",
+            email="superadmin@example.com",
+            password="AdminPass1",
+            role=UserRole.admin,
+            is_verified=True,
+            class_grade=None,
+            subject=None,
+        )
+        await create_user(
+            login="adminplain",
+            email="adminplain@example.com",
+            password="AdminPass1",
+            role=UserRole.admin,
+            is_verified=True,
+            class_grade=None,
+            subject=None,
+        )
+        await create_user(
+            login="adminother",
+            email="adminother@example.com",
+            password="AdminPass1",
+            role=UserRole.admin,
+            is_verified=True,
+            class_grade=None,
+            subject=None,
+        )
+
+        super_token = await _login(client, "superadmin", "AdminPass1")
+        admin_token = await _login(client, "adminplain", "AdminPass1")
+        other_token = await _login(client, "adminother", "AdminPass1")
+
+        resp = await client.get("/api/v1/auth/me", headers=_auth_headers(other_token))
+        assert resp.status_code == 200
+        other_id = resp.json()["id"]
+
+        resp = await client.put(
+            f"/api/v1/admin/users/{other_id}",
+            json={"is_active": False},
+            headers=_auth_headers(admin_token),
+        )
+        assert resp.status_code == 403
+        assert resp.json()["error"]["code"] == codes.FORBIDDEN
+
+        resp = await client.put(
+            f"/api/v1/admin/users/{other_id}",
+            json={"is_active": False},
+            headers=_auth_headers(super_token),
+        )
+        assert resp.status_code == 200
+        assert resp.json()["is_active"] is False
+    finally:
+        settings.SUPER_ADMIN_LOGINS = old_super

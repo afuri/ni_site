@@ -102,6 +102,10 @@ class AuthService:
         if not verify_password(password, user.password_hash):
             raise ValueError(codes.INVALID_CREDENTIALS)
 
+        if user.must_change_password and user.temp_password_expires_at is not None:
+            if user.temp_password_expires_at < self._now_utc():
+                raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
+
         access = create_access_token(str(user.id))
         refresh = create_refresh_token(str(user.id))
 
@@ -141,6 +145,10 @@ class AuthService:
         user = await self.users_repo.get_by_id(record.user_id)
         if not user or not user.is_active:
             raise ValueError(codes.INVALID_TOKEN)
+
+        if user.must_change_password and user.temp_password_expires_at is not None:
+            if user.temp_password_expires_at < self._now_utc():
+                raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
 
         await self.tokens_repo.revoke_refresh_token(record, now)
 
@@ -249,5 +257,10 @@ class AuthService:
 
         await self.tokens_repo.mark_password_reset_used(record, now)
         password_hash = hash_password(new_password)
-        await self.users_repo.set_password(user, password_hash, must_change_password=False)
+        await self.users_repo.set_password(
+            user,
+            password_hash,
+            must_change_password=False,
+            temp_password_expires_at=None,
+        )
         await self.tokens_repo.revoke_all_refresh_tokens(user.id, now)

@@ -131,6 +131,7 @@ async def register(
         401: response_example(codes.INVALID_CREDENTIALS),
         403: response_example(codes.EMAIL_NOT_VERIFIED),
         422: response_example(codes.VALIDATION_ERROR),
+        409: response_example(codes.TEMP_PASSWORD_EXPIRED),
     },
 )
 async def login(
@@ -151,6 +152,8 @@ async def login(
     except ValueError as e:
         if str(e) == codes.EMAIL_NOT_VERIFIED:
             raise http_error(403, codes.EMAIL_NOT_VERIFIED)
+        if str(e) == codes.TEMP_PASSWORD_EXPIRED:
+            raise http_error(409, codes.TEMP_PASSWORD_EXPIRED)
         raise http_error(status.HTTP_401_UNAUTHORIZED, codes.INVALID_CREDENTIALS)
     return TokenPair(access_token=access, refresh_token=refresh, must_change_password=must_change_password)
 
@@ -218,13 +221,22 @@ async def confirm_email_verification(
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.INVALID_CURRENT_PASSWORD),
         422: response_example(codes.WEAK_PASSWORD),
+        429: response_example(codes.RATE_LIMITED),
     },
 )
 async def change_password(
     payload: PasswordChangeRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user_allow_password_change),
 ):
+    await _apply_rate_limit(
+        request,
+        key_prefix="auth:password-change",
+        limit=settings.AUTH_PASSWORD_CHANGE_RL_LIMIT,
+        window_sec=settings.AUTH_PASSWORD_CHANGE_RL_WINDOW_SEC,
+        identity=str(user.id),
+    )
     if not verify_password(payload.current_password, user.password_hash):
         raise http_error(403, codes.INVALID_CURRENT_PASSWORD)
     try:
@@ -232,7 +244,12 @@ async def change_password(
     except ValueError:
         raise http_error(422, codes.WEAK_PASSWORD)
     password_hash = hash_password(payload.new_password)
-    await UsersRepo(db).set_password(user, password_hash, must_change_password=False)
+    await UsersRepo(db).set_password(
+        user,
+        password_hash,
+        must_change_password=False,
+        temp_password_expires_at=None,
+    )
     return {"status": "ok"}
 
 
@@ -295,6 +312,10 @@ async def confirm_password_reset(
     response_model=TokenPair,
     tags=["auth"],
     description="Обновить access и refresh токены",
+    responses={
+        422: response_example(codes.INVALID_TOKEN),
+        409: response_example(codes.TEMP_PASSWORD_EXPIRED),
+    },
 )
 async def refresh_tokens(
     payload: RefreshTokenRequest,
@@ -313,6 +334,8 @@ async def refresh_tokens(
         access, refresh, must_change_password = await service.refresh_tokens(refresh_token=payload.refresh_token)
     except ValueError as e:
         code = str(e)
+        if code == codes.TEMP_PASSWORD_EXPIRED:
+            raise http_error(409, codes.TEMP_PASSWORD_EXPIRED)
         if code == codes.INVALID_TOKEN_TYPE:
             raise http_error(422, codes.INVALID_TOKEN_TYPE)
         raise http_error(422, codes.INVALID_TOKEN)

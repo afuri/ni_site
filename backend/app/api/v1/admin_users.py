@@ -1,16 +1,19 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import secrets
 import string
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
+from app.core.config import settings
 from app.core.deps import get_db
 from app.core.deps_auth import require_role
 from app.core.errors import http_error
 from app.core.security import hash_password, validate_password_policy
 from app.models.user import UserRole, User
 from app.repos.auth_tokens import AuthTokensRepo
+from app.repos.audit_logs import AuditLogsRepo
 from app.repos.users import UsersRepo
 from app.schemas.user import (
     UserRead,
@@ -35,6 +38,14 @@ def _generate_temp_password(length: int = 12) -> str:
             and any(c.isdigit() for c in password)
         ):
             return password
+
+
+def _super_admin_logins() -> set[str]:
+    return {login.strip() for login in settings.SUPER_ADMIN_LOGINS.split(",") if login.strip()}
+
+
+def _is_super_admin(user: User) -> bool:
+    return user.login in _super_admin_logins()
 
 
 @router.put(
@@ -129,13 +140,43 @@ async def update_user(
     if requested_is_moderator and new_role != UserRole.teacher:
         raise http_error(409, codes.USER_NOT_TEACHER)
 
+    if (
+        user.role == UserRole.admin
+        and user.id != admin.id
+        and not _is_super_admin(admin)
+        and any(field in patch for field in ("role", "is_active"))
+    ):
+        raise http_error(403, codes.FORBIDDEN)
+
+    if patch.get("must_change_password") is True:
+        patch["temp_password_expires_at"] = datetime.now(timezone.utc) + timedelta(
+            hours=settings.TEMP_PASSWORD_TTL_HOURS
+        )
+    if patch.get("must_change_password") is False:
+        patch["temp_password_expires_at"] = None
+
     critical_fields = {"role", "is_active", "is_email_verified", "must_change_password", "login"}
     needs_revoke = any(
         field in patch and getattr(user, field) != patch[field]
         for field in critical_fields
     )
 
-    updated = await repo.update_profile(user, patch)
+    try:
+        updated = await repo.update_profile(user, patch)
+    except IntegrityError:
+        await db.rollback()
+        raise http_error(409, codes.LOGIN_TAKEN)
+    await AuditLogsRepo(db).create(
+        user_id=admin.id,
+        action="admin_user_update",
+        method="PUT",
+        path=f"/api/v1/admin/users/{user_id}",
+        status_code=200,
+        ip=None,
+        user_agent=None,
+        details={"target_user_id": user_id, "fields": sorted(patch.keys())},
+        created_at=datetime.now(timezone.utc),
+    )
     if needs_revoke:
         await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
     return updated
@@ -169,8 +210,25 @@ async def set_temporary_password(
     except ValueError:
         raise http_error(422, codes.WEAK_PASSWORD)
     password_hash = hash_password(payload.temp_password)
-    await repo.set_password(user, password_hash, must_change_password=True)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.TEMP_PASSWORD_TTL_HOURS)
+    await repo.set_password(
+        user,
+        password_hash,
+        must_change_password=True,
+        temp_password_expires_at=expires_at,
+    )
     await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    await AuditLogsRepo(db).create(
+        user_id=admin.id,
+        action="admin_set_temp_password",
+        method="POST",
+        path=f"/api/v1/admin/users/{user_id}/temp-password",
+        status_code=200,
+        ip=None,
+        user_agent=None,
+        details={"target_user_id": user_id},
+        created_at=datetime.now(timezone.utc),
+    )
     return user
 
 
@@ -197,6 +255,23 @@ async def generate_temporary_password(
 
     temp_password = _generate_temp_password()
     password_hash = hash_password(temp_password)
-    await repo.set_password(user, password_hash, must_change_password=True)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.TEMP_PASSWORD_TTL_HOURS)
+    await repo.set_password(
+        user,
+        password_hash,
+        must_change_password=True,
+        temp_password_expires_at=expires_at,
+    )
     await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    await AuditLogsRepo(db).create(
+        user_id=admin.id,
+        action="admin_generate_temp_password",
+        method="POST",
+        path=f"/api/v1/admin/users/{user_id}/temp-password/generate",
+        status_code=200,
+        ip=None,
+        user_agent=None,
+        details={"target_user_id": user_id},
+        created_at=datetime.now(timezone.utc),
+    )
     return {"temp_password": temp_password}

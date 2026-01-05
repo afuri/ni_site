@@ -1,6 +1,7 @@
 """User model."""
 import enum
-from sqlalchemy import String, Boolean, Enum, Integer
+from datetime import datetime
+from sqlalchemy import String, Boolean, Enum, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -25,6 +26,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
+    temp_password_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_moderator: Mapped[bool] = mapped_column(Boolean, default=False)
     moderator_requested: Mapped[bool] = mapped_column(Boolean, default=False)
 

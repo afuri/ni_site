@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "no-reply@example.com"
     EMAIL_VERIFY_TTL_HOURS: int = 24
     PASSWORD_RESET_TTL_HOURS: int = 2
+    TEMP_PASSWORD_TTL_HOURS: int = 24
     EMAIL_SEND_ENABLED: bool = False
     PASSWORD_MIN_LEN: int = 8
 
@@ -63,6 +64,10 @@ class Settings(BaseSettings):
     AUTH_VERIFY_RL_WINDOW_SEC: int = 60
     AUTH_RESET_RL_LIMIT: int = 5
     AUTH_RESET_RL_WINDOW_SEC: int = 60
+    AUTH_PASSWORD_CHANGE_RL_LIMIT: int = 5
+    AUTH_PASSWORD_CHANGE_RL_WINDOW_SEC: int = 60
+
+    SUPER_ADMIN_LOGINS: str = ""
 
     AUDIT_LOG_ENABLED: bool = True
     SENTRY_DSN: str | None = None

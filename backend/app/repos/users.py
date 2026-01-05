@@ -1,4 +1,6 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from app.core import error_codes as codes
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 
@@ -55,7 +57,17 @@ class UsersRepo:
             subject=subject,
         )
         self.db.add(user)
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except IntegrityError:
+            await self.db.rollback()
+            existing_login = await self.get_by_login(login)
+            if existing_login:
+                raise ValueError(codes.LOGIN_TAKEN)
+            existing_email = await self.get_by_email(email)
+            if existing_email:
+                raise ValueError(codes.EMAIL_TAKEN)
+            raise ValueError(codes.LOGIN_TAKEN)
         await self.db.refresh(user)
         return user
 
@@ -78,10 +90,13 @@ class UsersRepo:
         password_hash: str,
         *,
         must_change_password: bool | None = None,
+        temp_password_expires_at=None,
     ) -> User:
         user.password_hash = password_hash
         if must_change_password is not None:
             user.must_change_password = must_change_password
+        if temp_password_expires_at is not None:
+            user.temp_password_expires_at = temp_password_expires_at
         await self.db.commit()
         await self.db.refresh(user)
         return user
