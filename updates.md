@@ -335,3 +335,18 @@ Design system tokens + global styles are in place, and both apps now load Cormor
   - Removed local base CSS files:
       - frontend/apps/main/src/styles/base.css
       - frontend/apps/admin/src/styles/base.css
+
+0.3.0
+
+Shared foundation is in: API client with auth/refresh + error parsing, auth storage + role checks, auth context, and route guard stubs. Both apps now wire the
+  client and auth provider, and I added env examples for API base URL.
+
+  Key changes:
+
+  - API client + types: frontend/packages/api/src/client.ts, frontend/packages/api/src/types.ts, frontend/packages/api/src/index.ts
+  - Auth storage + roles utils: frontend/packages/utils/src/authStorage.ts, frontend/packages/utils/src/roles.ts, frontend/packages/utils/src/index.ts
+  - Auth context: frontend/packages/ui/src/auth/AuthContext.tsx, frontend/packages/ui/src/index.ts
+  - App wiring + guard stubs: frontend/apps/main/src/App.tsx, frontend/apps/main/src/routes/RequireRole.tsx, frontend/apps/admin/src/App.tsx, frontend/apps/admin/
+    src/routes/RequireAdmin.tsx
+  - Env templates: frontend/apps/main/.env.example, frontend/apps/admin/.env.example
+  - tsconfig alias additions: frontend/tsconfig.base.json

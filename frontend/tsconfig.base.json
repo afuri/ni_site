@@ -10,8 +10,11 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
+      "@ui": ["packages/ui/src/index.ts"],
       "@ui/*": ["packages/ui/src/*"],
+      "@api": ["packages/api/src/index.ts"],
       "@api/*": ["packages/api/src/*"],
+      "@utils": ["packages/utils/src/index.ts"],
       "@utils/*": ["packages/utils/src/*"]
     }
   }

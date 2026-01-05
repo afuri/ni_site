@@ -1,14 +1,38 @@
 import "@ui/styles/global.css";
+import { AuthProvider, useAuth } from "@ui";
+import { createApiClient } from "@api";
+import { createAuthStorage } from "@utils";
 
-export function App() {
+const storage = createAuthStorage({
+  tokensKey: "ni_admin_tokens",
+  userKey: "ni_admin_user"
+});
+
+const apiClient = createApiClient({
+  baseUrl: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1",
+  storage
+});
+
+function AppContent() {
+  const { status, user } = useAuth();
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <h1>Admin app scaffold</h1>
       </header>
       <main className="app-content">
-        <p>Admin routes and UI will be added in the next steps.</p>
+        <p>Auth status: {status}</p>
+        <p>Current role: {user?.role ?? "guest"}</p>
       </main>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider client={apiClient} storage={storage}>
+      <AppContent />
+    </AuthProvider>
   );
 }
