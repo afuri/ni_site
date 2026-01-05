@@ -10,6 +10,12 @@ from app.repos.content import ContentRepo
 from app.schemas.content import ContentCreate, ContentRead, ContentUpdate
 from app.services.content import ContentService
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import (
+    EXAMPLE_CONTENT_READ,
+    EXAMPLE_LISTS,
+    response_model_example,
+    response_model_list_example,
+)
 from app.core import error_codes as codes
 
 
@@ -22,6 +28,9 @@ admin_router = APIRouter(prefix="/admin/content")
     response_model=list[ContentRead],
     tags=["content"],
     description="Список опубликованных материалов",
+    responses={
+        200: response_model_list_example(EXAMPLE_LISTS["content"]),
+    },
 )
 async def list_published_content(
     content_type: ContentType | None = Query(default=None),
@@ -39,6 +48,7 @@ async def list_published_content(
     tags=["content"],
     description="Получить опубликованный материал",
     responses={
+        200: response_model_example(ContentRead, EXAMPLE_CONTENT_READ),
         404: response_example(codes.CONTENT_NOT_FOUND),
     },
 )
@@ -59,6 +69,7 @@ async def get_published_content(
     tags=["content"],
     description="Список материалов для управления",
     responses={
+        200: response_model_list_example(EXAMPLE_LISTS["content"]),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
     },
@@ -90,6 +101,7 @@ async def list_content_admin(
     tags=["content"],
     description="Получить материал для управления",
     responses={
+        200: response_model_example(ContentRead, EXAMPLE_CONTENT_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.CONTENT_NOT_FOUND),
@@ -116,6 +128,7 @@ async def get_content_admin(
     tags=["content"],
     description="Создать материал",
     responses={
+        201: response_model_example(ContentRead, EXAMPLE_CONTENT_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         422: response_examples(
@@ -141,6 +154,7 @@ async def create_content(
     tags=["content"],
     description="Обновить материал",
     responses={
+        200: response_model_example(ContentRead, EXAMPLE_CONTENT_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.CONTENT_NOT_FOUND),
@@ -173,6 +187,7 @@ async def update_content(
     tags=["content"],
     description="Опубликовать материал",
     responses={
+        200: response_model_example(ContentRead, EXAMPLE_CONTENT_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.CONTENT_NOT_FOUND),
@@ -203,6 +218,7 @@ async def publish_content(
     tags=["content"],
     description="Снять материал с публикации",
     responses={
+        200: response_model_example(ContentRead, EXAMPLE_CONTENT_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.CONTENT_NOT_FOUND),

@@ -14,6 +14,7 @@ from app.services.teacher import TeacherService
 from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow
 from app.schemas.user import ModeratorRequestResponse
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import EXAMPLE_TEACHER_ATTEMPT_VIEW, response_model_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/teacher")
@@ -73,6 +74,7 @@ async def list_attempts_for_olympiad(
     tags=["teacher"],
     description="Просмотр попытки ученика для учителя",
     responses={
+        200: response_model_example(TeacherAttemptView, EXAMPLE_TEACHER_ATTEMPT_VIEW),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_examples(codes.ATTEMPT_NOT_FOUND, codes.OLYMPIAD_NOT_FOUND),

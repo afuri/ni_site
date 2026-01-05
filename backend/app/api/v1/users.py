@@ -8,6 +8,7 @@ from app.models.user import User, UserRole
 from app.repos.users import UsersRepo
 from app.schemas.user import UserRead, UserUpdate
 from app.api.v1.openapi_errors import response_example
+from app.api.v1.openapi_examples import EXAMPLE_USER_READ, response_model_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/users")
@@ -19,6 +20,7 @@ router = APIRouter(prefix="/users")
     tags=["users"],
     description="Получить профиль пользователя",
     responses={
+        200: response_model_example(UserRead, EXAMPLE_USER_READ),
         401: response_example(codes.MISSING_TOKEN),
     },
 )
@@ -32,6 +34,7 @@ async def get_me(user: User = Depends(get_current_user)):
     tags=["users"],
     description="Обновить профиль пользователя",
     responses={
+        200: response_model_example(UserRead, EXAMPLE_USER_READ),
         401: response_example(codes.MISSING_TOKEN),
         404: response_example(codes.USER_NOT_FOUND),
         422: response_example(codes.VALIDATION_ERROR),

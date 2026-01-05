@@ -16,6 +16,14 @@ from app.services.olympiads_admin import AdminOlympiadsService
 from app.schemas.olympiads_admin import OlympiadTaskFullRead
 from app.schemas.tasks import TaskRead
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import (
+    EXAMPLE_OLYMPIAD_READ,
+    EXAMPLE_OLYMPIAD_TASK_FULL_READ_LIST,
+    EXAMPLE_OLYMPIAD_TASK_READ,
+    EXAMPLE_LISTS,
+    response_model_example,
+    response_model_list_example,
+)
 from app.core import error_codes as codes
 
 
@@ -30,6 +38,7 @@ router = APIRouter(prefix="/admin/olympiads")
     tags=["admin"],
     description="Создать олимпиаду (админ)",
     responses={
+        201: response_model_example(OlympiadRead, EXAMPLE_OLYMPIAD_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         422: response_example(codes.INVALID_AVAILABILITY),
@@ -55,6 +64,7 @@ async def create_olympiad(
     tags=["admin"],
     description="Список олимпиад админа",
     responses={
+        200: response_model_list_example(EXAMPLE_LISTS["olympiads"]),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
     },
@@ -77,6 +87,7 @@ async def list_olympiads(
     tags=["admin"],
     description="Получить олимпиаду (админ)",
     responses={
+        200: response_model_example(OlympiadRead, EXAMPLE_OLYMPIAD_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),
@@ -100,6 +111,7 @@ async def get_olympiad(
     tags=["admin"],
     description="Обновить олимпиаду (админ)",
     responses={
+        200: response_model_example(OlympiadRead, EXAMPLE_OLYMPIAD_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),
@@ -163,6 +175,7 @@ async def delete_olympiad(
     tags=["admin"],
     description="Добавить задание в олимпиаду",
     responses={
+        201: response_model_example(OlympiadTaskRead, EXAMPLE_OLYMPIAD_TASK_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_examples(codes.OLYMPIAD_NOT_FOUND, codes.TASK_NOT_FOUND),
@@ -203,6 +216,7 @@ async def add_task_to_olympiad(
     tags=["admin"],
     description="Список заданий олимпиады",
     responses={
+        200: response_model_list_example(EXAMPLE_LISTS["olympiad_tasks"]),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),
@@ -228,6 +242,7 @@ async def list_olympiad_tasks(
     tags=["admin"],
     description="Список заданий олимпиады с деталями",
     responses={
+        200: response_model_list_example(EXAMPLE_OLYMPIAD_TASK_FULL_READ_LIST),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),
@@ -300,6 +315,7 @@ async def remove_task_from_olympiad(
     tags=["admin"],
     description="Опубликовать или снять с публикации",
     responses={
+        200: response_model_example(OlympiadRead, EXAMPLE_OLYMPIAD_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),

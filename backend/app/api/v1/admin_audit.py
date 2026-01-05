@@ -12,6 +12,7 @@ from app.models.user import UserRole, User
 from app.repos.audit_logs import AuditLogsRepo
 from app.schemas.audit import AuditLogRead
 from app.api.v1.openapi_errors import response_example
+from app.api.v1.openapi_examples import EXAMPLE_LISTS, response_model_list_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/audit-logs")
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/admin/audit-logs")
     tags=["admin"],
     description="Список записей аудита",
     responses={
+        200: response_model_list_example(EXAMPLE_LISTS["audit_logs"]),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
     },

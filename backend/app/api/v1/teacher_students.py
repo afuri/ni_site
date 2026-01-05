@@ -11,6 +11,7 @@ from app.repos.teacher_students import TeacherStudentsRepo
 from app.services.teacher_students import TeacherStudentsService
 from app.schemas.teacher_students import TeacherStudentCreateRequest, TeacherStudentRead
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import EXAMPLE_LISTS, EXAMPLE_TEACHER_STUDENT_READ, response_model_example, response_model_list_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/teacher/students")
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/teacher/students")
     tags=["teacher"],
     description="Создать или прикрепить ученика к учителю",
     responses={
+        201: response_model_example(TeacherStudentRead, EXAMPLE_TEACHER_STUDENT_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.STUDENT_NOT_FOUND),
@@ -78,6 +80,7 @@ async def create_or_attach_student(
     tags=["teacher"],
     description="Подтвердить связь учитель-ученик",
     responses={
+        200: response_model_example(TeacherStudentRead, EXAMPLE_TEACHER_STUDENT_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.LINK_NOT_FOUND),
@@ -104,6 +107,7 @@ async def confirm_student(
     tags=["teacher"],
     description="Список учеников учителя",
     responses={
+        200: response_model_list_example(EXAMPLE_LISTS["teacher_students"]),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         422: response_example(codes.VALIDATION_ERROR),

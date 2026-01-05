@@ -15,6 +15,14 @@ from app.core.metrics import (
     REDIS_HEALTH_LATENCY_SECONDS,
 )
 from app.core.storage import storage_health
+from app.api.v1.openapi_examples import (
+    EXAMPLE_HEALTH_DEPS_OK,
+    EXAMPLE_HEALTH_OK,
+    EXAMPLE_HEALTH_QUEUES_OK,
+    EXAMPLE_HEALTH_READY_FAIL,
+    EXAMPLE_HEALTH_READY_OK,
+    response_payload_example,
+)
 
 router = APIRouter()
 
@@ -24,7 +32,12 @@ ERROR_RESPONSE_503 = {
 }
 
 
-@router.get("/health", tags=["health"], description="Проверка доступности сервиса")
+@router.get(
+    "/health",
+    tags=["health"],
+    description="Проверка доступности сервиса",
+    responses={200: response_payload_example(EXAMPLE_HEALTH_OK)},
+)
 async def health():
     return {"status": "ok"}
 
@@ -32,7 +45,10 @@ async def health():
     "/health/ready",
     tags=["health"],
     description="Проверка готовности сервиса",
-    responses={503: ERROR_RESPONSE_503},
+    responses={
+        200: response_payload_example(EXAMPLE_HEALTH_READY_OK),
+        503: response_payload_example(EXAMPLE_HEALTH_READY_FAIL),
+    },
 )
 async def readiness():
     db_ok = False
@@ -84,7 +100,10 @@ async def readiness():
     "/health/queues",
     tags=["health"],
     description="Проверка очередей фоновых задач",
-    responses={503: ERROR_RESPONSE_503},
+    responses={
+        200: response_payload_example(EXAMPLE_HEALTH_QUEUES_OK),
+        503: ERROR_RESPONSE_503,
+    },
 )
 async def queues():
     queue_length = None
@@ -108,7 +127,10 @@ async def queues():
     "/health/deps",
     tags=["health"],
     description="Проверка внешних зависимостей (storage/email)",
-    responses={503: ERROR_RESPONSE_503},
+    responses={
+        200: response_payload_example(EXAMPLE_HEALTH_DEPS_OK),
+        503: ERROR_RESPONSE_503,
+    },
 )
 async def deps():
     storage_required = bool(settings.STORAGE_ENDPOINT and settings.STORAGE_ACCESS_KEY and settings.STORAGE_SECRET_KEY)

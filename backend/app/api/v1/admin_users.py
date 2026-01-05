@@ -28,6 +28,12 @@ from app.schemas.user import (
     AdminActionOtpResponse,
 )
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import (
+    EXAMPLE_ADMIN_OTP_RESPONSE,
+    EXAMPLE_ADMIN_TEMP_PASSWORD,
+    EXAMPLE_USER_READ,
+    response_model_example,
+)
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/users")
@@ -123,6 +129,7 @@ async def require_admin_or_service_actor(
     tags=["admin"],
     description="Запросить одноразовый код подтверждения для критичных действий",
     responses={
+        200: response_model_example(AdminActionOtpResponse, EXAMPLE_ADMIN_OTP_RESPONSE),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         503: response_example(codes.OTP_UNAVAILABLE),
@@ -163,6 +170,7 @@ async def request_admin_otp(
     tags=["admin"],
     description="Назначить или снять статус модератора",
     responses={
+        200: response_model_example(UserRead, EXAMPLE_USER_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.USER_NOT_FOUND),
@@ -190,6 +198,7 @@ async def set_moderator_status(
     tags=["admin"],
     description="Обновить пользователя (админ, кроме email)",
     responses={
+        200: response_model_example(UserRead, EXAMPLE_USER_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_examples(codes.FORBIDDEN, codes.ADMIN_OTP_REQUIRED, codes.ADMIN_OTP_INVALID),
         404: response_example(codes.USER_NOT_FOUND),
@@ -328,6 +337,7 @@ async def update_user(
     tags=["admin"],
     description="Назначить временный пароль и потребовать смену при первом входе",
     responses={
+        200: response_model_example(UserRead, EXAMPLE_USER_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.USER_NOT_FOUND),
@@ -392,6 +402,7 @@ async def set_temporary_password(
     tags=["admin"],
     description="Сгенерировать временный пароль и потребовать смену при первом входе",
     responses={
+        200: response_model_example(AdminTempPasswordGenerated, EXAMPLE_ADMIN_TEMP_PASSWORD),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.USER_NOT_FOUND),

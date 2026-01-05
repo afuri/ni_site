@@ -16,6 +16,14 @@ from app.models.user import UserRole, User
 from app.repos.attempts import AttemptsRepo
 from app.services.attempts import AttemptsService
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import (
+    EXAMPLE_ATTEMPT_READ,
+    EXAMPLE_ATTEMPT_RESULT,
+    EXAMPLE_ATTEMPT_VIEW,
+    EXAMPLE_LISTS,
+    response_model_example,
+    response_model_list_example,
+)
 from app.schemas.attempt import (
     AttemptStartRequest,
     AttemptRead,
@@ -35,6 +43,7 @@ router = APIRouter(prefix="/attempts")
     tags=["attempts"],
     description="Старт попытки прохождения олимпиады",
     responses={
+        201: response_model_example(AttemptRead, EXAMPLE_ATTEMPT_READ),
         401: response_example(codes.MISSING_TOKEN),
         409: response_examples(
             codes.OLYMPIAD_NOT_AVAILABLE,
@@ -74,6 +83,7 @@ async def start_attempt(
     tags=["attempts"],
     description="Просмотр попытки и ответов",
     responses={
+        200: response_model_example(AttemptView, EXAMPLE_ATTEMPT_VIEW),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_examples(codes.ATTEMPT_NOT_FOUND, codes.OLYMPIAD_NOT_FOUND),
@@ -195,6 +205,7 @@ async def upsert_answer(
     tags=["attempts"],
     description="Отправить попытку на проверку",
     responses={
+        200: response_model_example(SubmitResponse, {"status": "submitted"}),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.ATTEMPT_NOT_FOUND),
@@ -224,6 +235,7 @@ async def submit_attempt(
     tags=["attempts"],
     description="Получить результат попытки",
     responses={
+        200: response_model_example(AttemptResult, EXAMPLE_ATTEMPT_RESULT),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.ATTEMPT_NOT_FOUND),
@@ -251,6 +263,9 @@ async def get_attempt_result(
     response_model=list[AttemptResult],
     tags=["attempts"],
     description="Список результатов текущего ученика",
+    responses={
+        200: response_model_list_example(EXAMPLE_LISTS["attempt_results"]),
+    },
 )
 async def list_my_results(
     db: AsyncSession = Depends(get_read_db),

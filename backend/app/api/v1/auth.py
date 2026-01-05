@@ -26,6 +26,7 @@ from app.schemas.user import UserRead
 from app.core.deps_auth import get_current_user, get_current_user_allow_password_change
 from app.core.security import verify_password, hash_password, validate_password_policy
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import EXAMPLE_TOKEN_PAIR, EXAMPLE_USER_READ, response_model_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/auth")
@@ -71,6 +72,7 @@ async def _apply_rate_limit(
     tags=["auth"],
     description="Регистрация пользователя",
     responses={
+        201: response_model_example(UserRead, EXAMPLE_USER_READ),
         409: response_examples(codes.LOGIN_TAKEN, codes.EMAIL_TAKEN),
         422: response_examples(codes.VALIDATION_ERROR, codes.WEAK_PASSWORD),
     },
@@ -128,6 +130,7 @@ async def register(
     tags=["auth"],
     description="Вход по логину и паролю",
     responses={
+        200: response_model_example(TokenPair, EXAMPLE_TOKEN_PAIR),
         401: response_example(codes.INVALID_CREDENTIALS),
         403: response_example(codes.EMAIL_NOT_VERIFIED),
         422: response_example(codes.VALIDATION_ERROR),
@@ -163,6 +166,9 @@ async def login(
     response_model=UserRead,
     tags=["auth"],
     description="Получить профиль текущего пользователя",
+    responses={
+        200: response_model_example(UserRead, EXAMPLE_USER_READ),
+    },
 )
 async def me(user=Depends(get_current_user)):
     return user
@@ -313,6 +319,7 @@ async def confirm_password_reset(
     tags=["auth"],
     description="Обновить access и refresh токены",
     responses={
+        200: response_model_example(TokenPair, EXAMPLE_TOKEN_PAIR),
         422: response_example(codes.INVALID_TOKEN),
         409: response_example(codes.TEMP_PASSWORD_EXPIRED),
     },

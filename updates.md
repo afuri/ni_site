@@ -98,5 +98,38 @@
   явно (а не только через helper).
 
   
+0.9.12
+
+собрал полный перечень UI‑эндпойнтов с примерами в UI_ENDPOINTS.md.
+
+  Что внутри:
+
+  - Полная карта эндпойнтов по группам: auth, profile, attempts, teacher/students, content, admin (tasks/olympiads/users/audit), uploads.
+  - Примеры запросов/ответов.
+  - Единый формат ошибок с request_id.
+
+  Файл: UI_ENDPOINTS.md
+
+• Добавил примеры ответов для ключевых моделей (UserRead/AttemptView и др.) в backend/UI_ENDPOINTS.md — теперь у каждого UI‑флоу есть конкретные payloads.
+
+Добавил примеры ответов для admin‑эндпойнтов в UI_ENDPOINTS.md и расширил OpenAPI ответами с примерами для ключевых моделей (UserRead, AttemptView, TaskRead,
+  OlympiadRead, ContentRead, AuditLogRead и т.д.) через общий helper.
+
+  Изменения по коду:
+
+  - Добавлен helper и набор примеров: backend/app/api/v1/openapi_examples.py.
+  - Примеры для success‑ответов добавлены в роуты: backend/app/api/v1/auth.py, backend/app/api/v1/users.py, backend/app/api/v1/attempts.py, backend/app/api/v1/
+    content.py, backend/app/api/v1/admin_tasks.py, backend/app/api/v1/admin_olympiads.py, backend/app/api/v1/admin_users.py, backend/app/api/v1/admin_audit.py,
+    backend/app/api/v1/teacher.py, backend/app/api/v1/teacher_students.py.
+  - Примеры для admin‑флоу в документации UI: UI_ENDPOINTS.md.
+
+  Добавил примеры ответов для uploads и health в OpenAPI и в UI_ENDPOINTS.md.
+
+  Что изменилось:
+
+  - OpenAPI примеры для uploads: backend/app/api/v1/uploads.py, backend/app/api/v1/openapi_examples.py.
+  - OpenAPI примеры для health: backend/app/api/v1/health.py, backend/app/api/v1/openapi_examples.py.
+  - Документация с примерами: UI_ENDPOINTS.md.
+
 
 

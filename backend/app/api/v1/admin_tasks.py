@@ -10,6 +10,7 @@ from app.repos.tasks import TasksRepo
 from app.services.tasks import TasksService
 from app.schemas.tasks import TaskCreate, TaskUpdate, TaskRead
 from app.api.v1.openapi_errors import response_example
+from app.api.v1.openapi_examples import EXAMPLE_LISTS, EXAMPLE_TASK_READ, response_model_example, response_model_list_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/tasks")
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/admin/tasks")
     tags=["admin"],
     description="Создать задание в банке",
     responses={
+        201: response_model_example(TaskRead, EXAMPLE_TASK_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         422: response_example(codes.VALIDATION_ERROR),
@@ -42,6 +44,7 @@ async def create_task(
     tags=["admin"],
     description="Список заданий банка",
     responses={
+        200: response_model_list_example(EXAMPLE_LISTS["tasks"]),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
     },
@@ -64,6 +67,7 @@ async def list_tasks(
     tags=["admin"],
     description="Получить задание банка",
     responses={
+        200: response_model_example(TaskRead, EXAMPLE_TASK_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.TASK_NOT_FOUND),
@@ -87,6 +91,7 @@ async def get_task(
     tags=["admin"],
     description="Обновить задание банка",
     responses={
+        200: response_model_example(TaskRead, EXAMPLE_TASK_READ),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.TASK_NOT_FOUND),

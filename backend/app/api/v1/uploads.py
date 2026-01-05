@@ -14,6 +14,12 @@ from app.schemas.uploads import (
     UploadGetResponse,
 )
 from app.api.v1.openapi_errors import response_example, response_examples
+from app.api.v1.openapi_examples import (
+    EXAMPLE_UPLOAD_GET,
+    EXAMPLE_UPLOAD_PRESIGN,
+    EXAMPLE_UPLOAD_PRESIGN_POST,
+    response_model_example,
+)
 
 
 router = APIRouter(prefix="/uploads")
@@ -35,6 +41,7 @@ def _normalize_prefix(prefix: str) -> str:
     tags=["uploads"],
     description="Получить ссылку для загрузки изображения в хранилище",
     responses={
+        200: response_model_example(UploadPresignResponse, EXAMPLE_UPLOAD_PRESIGN),
         401: response_example(codes.MISSING_TOKEN),
         422: response_examples(codes.INVALID_PREFIX, codes.CONTENT_TYPE_NOT_ALLOWED),
         503: response_example(codes.STORAGE_UNAVAILABLE),
@@ -74,6 +81,7 @@ async def presign_upload(
     tags=["uploads"],
     description="Получить форму для загрузки с лимитом размера",
     responses={
+        200: response_model_example(UploadPresignPostResponse, EXAMPLE_UPLOAD_PRESIGN_POST),
         401: response_example(codes.MISSING_TOKEN),
         422: response_examples(codes.INVALID_PREFIX, codes.CONTENT_TYPE_NOT_ALLOWED),
         503: response_example(codes.STORAGE_UNAVAILABLE),
@@ -118,6 +126,7 @@ async def presign_upload_post(
     tags=["uploads"],
     description="Получить временную ссылку на файл из хранилища",
     responses={
+        200: response_model_example(UploadGetResponse, EXAMPLE_UPLOAD_GET),
         401: response_example(codes.MISSING_TOKEN),
         503: response_example(codes.STORAGE_UNAVAILABLE),
     },
