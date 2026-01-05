@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core import error_codes as codes
 
 
-from app.core.deps import get_db
+from app.core.deps import get_db, get_read_db
 from app.core.deps_auth import require_role, get_current_user
 from app.models.user import UserRole, User
 from app.repos.attempts import AttemptsRepo
@@ -231,7 +231,7 @@ async def submit_attempt(
 )
 async def get_attempt_result(
     attempt_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
     student: User = Depends(require_role(UserRole.student)),
 ):
     service = AttemptsService(AttemptsRepo(db))
@@ -253,7 +253,7 @@ async def get_attempt_result(
     description="Список результатов текущего ученика",
 )
 async def list_my_results(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
     student: User = Depends(require_role(UserRole.student)),
 ):
     service = AttemptsService(AttemptsRepo(db))

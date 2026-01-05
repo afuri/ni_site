@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_db
+from app.core.deps import get_db, get_read_db
 from app.core.deps_auth import require_admin_or_moderator
 from app.core.errors import http_error
 from app.models.content import ContentStatus, ContentType
@@ -27,7 +27,7 @@ async def list_published_content(
     content_type: ContentType | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
 ):
     repo = ContentRepo(db)
     return await repo.list_published(content_type=content_type, limit=limit, offset=offset)
@@ -44,7 +44,7 @@ async def list_published_content(
 )
 async def get_published_content(
     content_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
 ):
     repo = ContentRepo(db)
     item = await repo.get(content_id)

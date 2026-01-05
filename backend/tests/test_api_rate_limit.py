@@ -143,3 +143,81 @@ async def test_answers_rate_limit(client, create_user, redis_client):
     finally:
         settings.ANSWERS_RL_LIMIT = old_limit
         settings.ANSWERS_RL_WINDOW_SEC = old_window
+
+
+@pytest.mark.asyncio
+async def test_global_rate_limit_by_ip(client, redis_client):
+    old_limit = settings.GLOBAL_RL_LIMIT
+    old_window = settings.GLOBAL_RL_WINDOW_SEC
+    settings.GLOBAL_RL_LIMIT = 1
+    settings.GLOBAL_RL_WINDOW_SEC = 60
+    try:
+        resp = await client.get("/api/v1/content")
+        assert resp.status_code == 200
+
+        resp = await client.get("/api/v1/content")
+        assert resp.status_code == 429
+        assert resp.json()["error"]["code"] == codes.RATE_LIMITED
+    finally:
+        settings.GLOBAL_RL_LIMIT = old_limit
+        settings.GLOBAL_RL_WINDOW_SEC = old_window
+
+
+@pytest.mark.asyncio
+async def test_critical_per_user_rate_limit(client, create_user, redis_client):
+    await create_user(
+        login="admincrit",
+        email="admincrit@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="studentcrit",
+        email="studentcrit@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=7,
+        subject=None,
+    )
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "admincrit", "password": "AdminPass1"})
+    assert resp.status_code == 200
+    admin_token = resp.json()["access_token"]
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentcrit", "password": "StrongPass1"})
+    assert resp.status_code == 200
+    student_token = resp.json()["access_token"]
+
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(student_token))
+    assert resp.status_code == 200
+    user_id = resp.json()["id"]
+
+    old_limit = settings.CRITICAL_RL_USER_LIMIT
+    old_window = settings.CRITICAL_RL_USER_WINDOW_SEC
+    old_paths = settings.CRITICAL_RL_PATHS
+    settings.CRITICAL_RL_USER_LIMIT = 1
+    settings.CRITICAL_RL_USER_WINDOW_SEC = 60
+    settings.CRITICAL_RL_PATHS = "/api/v1/admin/users"
+    try:
+        resp = await client.put(
+            f"/api/v1/admin/users/{user_id}",
+            json={"city": "Казань"},
+            headers=_auth_headers(admin_token),
+        )
+        assert resp.status_code == 200
+
+        resp = await client.put(
+            f"/api/v1/admin/users/{user_id}",
+            json={"city": "Москва"},
+            headers=_auth_headers(admin_token),
+        )
+        assert resp.status_code == 429
+        assert resp.json()["error"]["code"] == codes.RATE_LIMITED
+    finally:
+        settings.CRITICAL_RL_USER_LIMIT = old_limit
+        settings.CRITICAL_RL_USER_WINDOW_SEC = old_window
+        settings.CRITICAL_RL_PATHS = old_paths

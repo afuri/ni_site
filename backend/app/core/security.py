@@ -10,6 +10,17 @@ from app.core import error_codes as codes
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
+
+def _jwt_secrets() -> list[str]:
+    secrets_list = [s.strip() for s in settings.JWT_SECRETS.split(",") if s.strip()]
+    if settings.JWT_SECRET and settings.JWT_SECRET not in secrets_list:
+        secrets_list.append(settings.JWT_SECRET)
+    return secrets_list or [settings.JWT_SECRET]
+
+
+def _jwt_signing_secret() -> str:
+    return _jwt_secrets()[0]
+
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
@@ -19,7 +30,11 @@ def verify_password(password: str, password_hash: str) -> bool:
 def create_access_token(sub: str) -> str:
     now = datetime.now(timezone.utc)
     exp = now + timedelta(minutes=settings.JWT_ACCESS_TTL_MIN)
-    return jwt.encode({"sub": sub, "type": "access", "iat": int(now.timestamp()), "exp": exp}, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
+    return jwt.encode(
+        {"sub": sub, "type": "access", "iat": int(now.timestamp()), "exp": exp},
+        _jwt_signing_secret(),
+        algorithm=settings.JWT_ALG,
+    )
 
 def create_refresh_token(sub: str) -> str:
     now = datetime.now(timezone.utc)
@@ -32,12 +47,28 @@ def create_refresh_token(sub: str) -> str:
             "exp": exp,
             "jti": secrets.token_urlsafe(16),
         },
-        settings.JWT_SECRET,
+        _jwt_signing_secret(),
         algorithm=settings.JWT_ALG,
     )
 
 def decode_token(token: str) -> dict:
-    return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
+    last_error: Exception | None = None
+    for secret in _jwt_secrets():
+        try:
+            return jwt.decode(token, secret, algorithms=[settings.JWT_ALG])
+        except jwt.InvalidSignatureError as exc:
+            last_error = exc
+            continue
+        except jwt.InvalidTokenError as exc:
+            last_error = exc
+            break
+    if last_error:
+        raise last_error
+    raise jwt.InvalidTokenError("Invalid token")
+
+
+def encode_token(payload: dict) -> str:
+    return jwt.encode(payload, _jwt_signing_secret(), algorithm=settings.JWT_ALG)
 
 def generate_token() -> str:
     return secrets.token_urlsafe(32)

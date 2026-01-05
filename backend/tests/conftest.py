@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from redis.asyncio import Redis
 
 from app.core.config import settings
-from app.core.deps import get_db
+from app.core.deps import get_db, get_read_db
 from app.core.security import hash_password
 from app.db.base import Base
 from app.main import app as fastapi_app
@@ -77,10 +77,18 @@ async def db_session(db_engine):
 
 @pytest_asyncio.fixture
 async def client(db_session):
+    session_maker = async_sessionmaker(
+        bind=db_session.bind,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+
     async def _get_test_db():
-        yield db_session
+        async with session_maker() as session:
+            yield session
 
     fastapi_app.dependency_overrides[get_db] = _get_test_db
+    fastapi_app.dependency_overrides[get_read_db] = _get_test_db
     prev_audit = settings.AUDIT_LOG_ENABLED
     settings.AUDIT_LOG_ENABLED = False
     transport = ASGITransport(app=fastapi_app)

@@ -16,3 +16,15 @@ engine = create_async_engine(
     connect_args=connect_args,
 )
 SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
+
+read_database_url = settings.READ_DATABASE_URL or settings.DATABASE_URL
+read_engine = create_async_engine(
+    read_database_url,
+    pool_pre_ping=True,
+    pool_size=settings.READ_DB_POOL_SIZE,
+    max_overflow=settings.READ_DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT_SEC,
+    pool_recycle=settings.DB_POOL_RECYCLE_SEC,
+    connect_args=connect_args,
+)
+ReadSessionLocal = async_sessionmaker(bind=read_engine, expire_on_commit=False, class_=AsyncSession)

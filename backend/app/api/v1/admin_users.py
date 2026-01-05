@@ -10,7 +10,8 @@ from app.core.config import settings
 from app.core.deps import get_db
 from app.core.deps_auth import require_role, get_current_user_optional
 from app.core.errors import http_error
-from app.core.security import hash_password, validate_password_policy
+from app.core.redis import safe_redis
+from app.core.security import hash_password, validate_password_policy, hash_token
 from app.tasks.email import send_email_task
 from app.models.user import UserRole, User
 from app.repos.auth_tokens import AuthTokensRepo
@@ -23,6 +24,7 @@ from app.schemas.user import (
     AdminUserUpdate,
     AdminTempPasswordRequest,
     AdminTempPasswordGenerated,
+    AdminActionOtpResponse,
 )
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.core import error_codes as codes
@@ -69,6 +71,38 @@ def _service_tokens() -> set[str]:
     return {token.strip() for token in settings.SERVICE_TOKENS.split(",") if token.strip()}
 
 
+def _admin_otp_key(admin_id: int) -> str:
+    return f"admin:otp:{admin_id}"
+
+
+async def _store_admin_otp(admin_id: int, otp: str) -> None:
+    redis = await safe_redis()
+    if redis is None:
+        raise http_error(503, codes.OTP_UNAVAILABLE)
+    await redis.set(_admin_otp_key(admin_id), hash_token(otp), ex=settings.ADMIN_ACTION_OTP_TTL_SEC)
+
+
+async def _verify_admin_otp(admin_id: int, otp: str | None) -> None:
+    if not otp:
+        raise http_error(403, codes.ADMIN_OTP_REQUIRED)
+    redis = await safe_redis()
+    if redis is None:
+        raise http_error(503, codes.OTP_UNAVAILABLE)
+    stored = await redis.get(_admin_otp_key(admin_id))
+    if not stored:
+        raise http_error(403, codes.ADMIN_OTP_REQUIRED)
+    stored_value = stored.decode("utf-8") if isinstance(stored, (bytes, bytearray)) else str(stored)
+    if hash_token(otp) != stored_value:
+        raise http_error(403, codes.ADMIN_OTP_INVALID)
+    await redis.delete(_admin_otp_key(admin_id))
+
+
+def _requires_admin_otp(user: User, patch: dict) -> bool:
+    if user.role != UserRole.admin:
+        return False
+    return any(field in patch for field in ("role", "is_active"))
+
+
 async def require_admin_or_service_actor(
     service_token: str | None = Header(default=None, alias="X-Service-Token"),
     user: User | None = Depends(get_current_user_optional),
@@ -80,6 +114,45 @@ async def require_admin_or_service_actor(
     if user.role != UserRole.admin:
         raise http_error(403, codes.FORBIDDEN)
     return AdminActor(user=user, is_super_admin=_is_super_admin(user), label=user.login)
+
+
+@router.post(
+    "/otp",
+    response_model=AdminActionOtpResponse,
+    tags=["admin"],
+    description="Запросить одноразовый код подтверждения для критичных действий",
+    responses={
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        503: response_example(codes.OTP_UNAVAILABLE),
+    },
+)
+async def request_admin_otp(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    otp = "".join(secrets.choice(string.digits) for _ in range(settings.ADMIN_ACTION_OTP_LENGTH))
+    await _store_admin_otp(admin.id, otp)
+    await AuditLogsRepo(db).create(
+        user_id=admin.id,
+        action="admin_otp_requested",
+        method="POST",
+        path="/api/v1/admin/users/otp",
+        status_code=200,
+        ip=None,
+        user_agent=None,
+        details={},
+        created_at=datetime.now(timezone.utc),
+    )
+    if settings.EMAIL_SEND_ENABLED:
+        send_email_task.delay(
+            admin.email,
+            "Код подтверждения",
+            f"Код подтверждения: {otp}. Срок действия: {settings.ADMIN_ACTION_OTP_TTL_SEC} сек.",
+        )
+    if settings.ENV != "prod":
+        return {"sent": True, "otp": otp}
+    return {"sent": True}
 
 
 @router.put(
@@ -116,7 +189,7 @@ async def set_moderator_status(
     description="Обновить пользователя (админ, кроме email)",
     responses={
         401: response_example(codes.MISSING_TOKEN),
-        403: response_example(codes.FORBIDDEN),
+        403: response_examples(codes.FORBIDDEN, codes.ADMIN_OTP_REQUIRED, codes.ADMIN_OTP_INVALID),
         404: response_example(codes.USER_NOT_FOUND),
         409: response_examples(codes.LOGIN_TAKEN, codes.USER_NOT_TEACHER),
         422: response_examples(
@@ -126,6 +199,7 @@ async def set_moderator_status(
             codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
         ),
+        503: response_example(codes.OTP_UNAVAILABLE),
     },
 )
 async def update_user(
@@ -184,6 +258,10 @@ async def update_user(
         and any(field in patch for field in ("role", "is_active"))
     ):
         raise http_error(403, codes.FORBIDDEN)
+
+    if admin_actor.user is not None and _requires_admin_otp(user, patch):
+        await _verify_admin_otp(admin_actor.user.id, patch.get("admin_otp"))
+    patch.pop("admin_otp", None)
 
     if patch.get("must_change_password") is True:
         patch["temp_password_expires_at"] = datetime.now(timezone.utc) + timedelta(

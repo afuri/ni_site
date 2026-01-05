@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_db
+from app.core.deps import get_db, get_read_db
 from app.core.deps_auth import require_role
 from app.core.errors import http_error
 from app.models.user import UserRole, User
@@ -63,7 +63,7 @@ async def list_olympiads(
     mine: bool = Query(default=True, description="If true, only olympiads created by current admin"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
     admin: User = Depends(require_role(UserRole.admin)),
 ):
     repo = OlympiadsRepo(db)
@@ -84,7 +84,7 @@ async def list_olympiads(
 )
 async def get_olympiad(
     olympiad_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
     admin: User = Depends(require_role(UserRole.admin)),
 ):
     repo = OlympiadsRepo(db)
@@ -210,7 +210,7 @@ async def add_task_to_olympiad(
 )
 async def list_olympiad_tasks(
     olympiad_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
     admin: User = Depends(require_role(UserRole.admin)),
 ):
     o_repo = OlympiadsRepo(db)
@@ -235,7 +235,7 @@ async def list_olympiad_tasks(
 )
 async def list_olympiad_tasks_full(
     olympiad_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_read_db),
     admin: User = Depends(require_role(UserRole.admin)),
 ):
     o_repo = OlympiadsRepo(db)

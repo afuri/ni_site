@@ -47,7 +47,9 @@ server {
 ## Required env vars
 
 - `JWT_SECRET`
+- `JWT_SECRETS` (optional, for rotation)
 - `DATABASE_URL`
+- `READ_DATABASE_URL` (optional, for read replicas)
 - `REDIS_URL`
 - `EMAIL_BASE_URL`
 - `STORAGE_ENDPOINT`
@@ -63,6 +65,67 @@ server {
 alembic -c alembic.ini upgrade head
 ```
 
+## Docker DB checklist
+
+- Use container networking (`db:5432`) for `DATABASE_URL`/`ALEMBIC_DATABASE_URL` in `docker-compose.yml`.
+- Do not expose Postgres port publicly; keep `5432` bound only to localhost or remove host mapping.
+- Run migrations inside the API container:
+  ```bash
+  docker exec -it ni_site-api-1 alembic -c alembic.ini upgrade head
+  ```
+- Backups (daily):
+  ```bash
+  docker exec -it ni_site-db-1 pg_dump -U postgres -d ni_site | gzip > /var/backups/ni_site/ni_site_$(date +%F).sql.gz
+  ```
+- Restore:
+  ```bash
+  gunzip -c /var/backups/ni_site/ni_site_YYYY-MM-DD.sql.gz | docker exec -i ni_site-db-1 psql -U postgres -d ni_site
+  ```
+- Volume persistence: ensure `pgdata` is on durable storage.
+- Updates: upgrade Postgres image on maintenance window and validate backups before/after.
+
+## Backup cron example
+
+```bash
+sudo install -d -m 700 /var/backups/ni_site
+sudo tee /etc/cron.d/ni_site_db_backup >/dev/null <<'EOF'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+0 3 * * * root docker exec -i ni_site-db-1 pg_dump -U postgres -d ni_site | gzip > /var/backups/ni_site/ni_site_$(date +\%F).sql.gz
+EOF
+```
+
+## Backup rotation (daily, keep 14)
+
+```bash
+sudo tee /etc/cron.d/ni_site_db_backup_rotate >/dev/null <<'EOF'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+15 3 * * * root find /var/backups/ni_site -name "ni_site_*.sql.gz" -mtime +14 -delete
+EOF
+```
+
+## Backup to S3/Minio (rclone)
+
+```bash
+sudo apt-get install -y rclone
+rclone config
+# Create remote named "backups", type "s3", provider "Minio" or "AWS".
+# Example for Minio:
+# endpoint = https://minio.example.com
+# access_key_id = ...
+# secret_access_key = ...
+```
+
+```bash
+sudo tee /etc/cron.d/ni_site_db_backup_s3 >/dev/null <<'EOF'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+30 3 * * * root docker exec -i ni_site-db-1 pg_dump -U postgres -d ni_site | gzip > /var/backups/ni_site/ni_site_$(date +\%F).sql.gz && rclone copy /var/backups/ni_site/ni_site_$(date +\%F).sql.gz backups:ni-site/db/
+EOF
+```
+
+
 ## Observability
 
 - `SENTRY_DSN` — enable Sentry and tags.
@@ -76,6 +139,8 @@ alembic -c alembic.ini upgrade head
 - Rate limits:
   - `AUTH_*_RL_*`
   - `ANSWERS_RL_LIMIT`, `ANSWERS_RL_WINDOW_SEC`
+  - `GLOBAL_RL_LIMIT`, `GLOBAL_RL_WINDOW_SEC`
+  - `CRITICAL_RL_USER_LIMIT`, `CRITICAL_RL_USER_WINDOW_SEC`, `CRITICAL_RL_PATHS`
 - Idempotency lock:
   - `SUBMIT_LOCK_TTL_SEC`
 - Cache:
@@ -100,3 +165,9 @@ alembic -c alembic.ini upgrade head
 - Readiness: `GET /api/v1/health/ready`
 - Queues: `GET /api/v1/health/queues`
 - Metrics: `GET /metrics` (when enabled)
+
+## Secrets management
+
+- Dev/staging: keep secrets in `.env` and load via dotenv (Pydantic Settings).
+- Production: inject secrets at runtime from Vault or 1Password (or similar) and avoid storing `.env` in the repo.
+- Rotation: to rotate JWT secrets, prepend a new key to `JWT_SECRETS` and keep old keys for verification until all tokens expire.

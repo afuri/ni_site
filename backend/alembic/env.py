@@ -1,6 +1,15 @@
 from logging.config import fileConfig
+import logging
+import sys
+import os
+from pathlib import Path
 
-from sqlalchemy import engine_from_config
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+from sqlalchemy import engine_from_config, inspect, text
 from sqlalchemy import pool
 
 from alembic import context
@@ -24,6 +33,7 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+logger = logging.getLogger("alembic")
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -32,7 +42,17 @@ target_metadata = Base.metadata
 # Override sqlalchemy.url with our database URL
 # Convert asyncpg URL to psycopg2 for Alembic (Alembic needs sync driver)
 # Use 127.0.0.1 instead of localhost to avoid IPv6 issues
-database_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2").replace("localhost", "127.0.0.1")
+if load_dotenv is not None:
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+
+database_url = (
+    os.getenv("ALEMBIC_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or settings.DATABASE_URL
+)
+database_url = database_url.replace("+asyncpg", "+psycopg2").replace("localhost", "127.0.0.1")
 config.set_main_option("sqlalchemy.url", database_url)
 
 
@@ -49,6 +69,8 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
+    logger.info("alembic offline mode, url=%s", url)
+    print(f"alembic offline mode, url={url}", file=sys.stderr)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -67,6 +89,8 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    logger.info("alembic online mode, url=%s", config.get_main_option("sqlalchemy.url"))
+    print(f"alembic online mode, url={config.get_main_option('sqlalchemy.url')}", file=sys.stderr)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -74,12 +98,47 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # Ensure search_path is set outside the migration transaction.
+        connection.exec_driver_sql("SET search_path TO public")
+        connection.commit()
+        inspector = inspect(connection)
+        tables = set(inspector.get_table_names())
+        if "alembic_version" in tables and len(tables) == 1:
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
+            raise RuntimeError(
+                f"Alembic preflight failed: alembic_version={version} but no schema tables found. "
+                "Drop alembic_version or reset the database before running migrations."
+            )
         context.configure(
             connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():
             context.run_migrations()
+        # Make sure DDL changes are committed.
+        connection.commit()
+
+        try:
+            table_rows = connection.execute(
+                text(
+                    """
+                    select table_schema, table_name
+                    from information_schema.tables
+                    where table_schema not in ('pg_catalog','information_schema')
+                    order by 1,2
+                    """
+                )
+            ).fetchall()
+            logger.info("alembic tables after migrations: %s", table_rows)
+            print(f"alembic tables after migrations: {table_rows}", file=sys.stderr)
+            version_row = connection.execute(
+                text("select version_num from alembic_version")
+            ).fetchall()
+            logger.info("alembic version rows: %s", version_row)
+            print(f"alembic version rows: {version_row}", file=sys.stderr)
+        except Exception as exc:
+            logger.info("alembic post-migration check failed: %s", exc)
+            print(f"alembic post-migration check failed: {exc}", file=sys.stderr)
 
 
 if context.is_offline_mode():

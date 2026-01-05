@@ -5,11 +5,11 @@ import secrets
 import urllib.parse
 
 import httpx
-import jwt
 from fastapi import status
 
 from app.core.config import settings
 from app.core.errors import http_error
+from app.core.security import encode_token, decode_token
 from app.core import error_codes as codes
 
 
@@ -31,12 +31,12 @@ def make_state_jwt() -> str:
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=10)).timestamp()),
     }
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
+    return encode_token(payload)
 
 
 def validate_state_jwt(state: str) -> None:
     try:
-        payload = jwt.decode(state, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
+        payload = decode_token(state)
     except Exception:
         raise http_error(status.HTTP_400_BAD_REQUEST, codes.INVALID_STATE)
     if payload.get("typ") != "vk_state":

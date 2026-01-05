@@ -964,6 +964,29 @@ async def test_admin_update_other_admin_requires_super_admin(client, create_user
             json={"is_active": False},
             headers=_auth_headers(super_token),
         )
+        assert resp.status_code == 403
+        assert resp.json()["error"]["code"] == codes.ADMIN_OTP_REQUIRED
+
+        resp = await client.post(
+            "/api/v1/admin/users/otp",
+            headers=_auth_headers(super_token),
+        )
+        assert resp.status_code == 200
+        otp = resp.json()["otp"]
+
+        resp = await client.put(
+            f"/api/v1/admin/users/{other_id}",
+            json={"is_active": False, "admin_otp": "000000"},
+            headers=_auth_headers(super_token),
+        )
+        assert resp.status_code == 403
+        assert resp.json()["error"]["code"] == codes.ADMIN_OTP_INVALID
+
+        resp = await client.put(
+            f"/api/v1/admin/users/{other_id}",
+            json={"is_active": False, "admin_otp": otp},
+            headers=_auth_headers(super_token),
+        )
         assert resp.status_code == 200
         assert resp.json()["is_active"] is False
     finally:

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     DB_STATEMENT_TIMEOUT_MS: int = 15000
 
     JWT_SECRET: str = "change_me"
+    JWT_SECRETS: str = ""
     JWT_ALG: str = "HS256"
     JWT_ACCESS_TTL_MIN: int = 30
     JWT_REFRESH_TTL_DAYS: int = 30
@@ -70,8 +71,17 @@ class Settings(BaseSettings):
     AUTH_PASSWORD_CHANGE_RL_LIMIT: int = 5
     AUTH_PASSWORD_CHANGE_RL_WINDOW_SEC: int = 60
 
+    GLOBAL_RL_LIMIT: int = 0
+    GLOBAL_RL_WINDOW_SEC: int = 0
+    CRITICAL_RL_USER_LIMIT: int = 0
+    CRITICAL_RL_USER_WINDOW_SEC: int = 0
+    CRITICAL_RL_PATHS: str = "/api/v1/auth/login,/api/v1/auth/refresh,/api/v1/auth/password/change,/api/v1/admin/users"
+
     SUPER_ADMIN_LOGINS: str = ""
     SERVICE_TOKENS: str = ""
+
+    ADMIN_ACTION_OTP_TTL_SEC: int = 300
+    ADMIN_ACTION_OTP_LENGTH: int = 6
 
     AUDIT_LOG_ENABLED: bool = True
     SENTRY_DSN: str | None = None
@@ -87,6 +97,10 @@ class Settings(BaseSettings):
     STORAGE_PRESIGN_EXPIRES_SEC: int = 900
     STORAGE_MAX_UPLOAD_MB: int = 10
     STORAGE_ALLOWED_CONTENT_TYPES: str = "image/jpeg,image/png,image/webp"
+
+    READ_DATABASE_URL: str | None = None
+    READ_DB_POOL_SIZE: int = 5
+    READ_DB_MAX_OVERFLOW: int = 10
 
 
 settings = Settings()

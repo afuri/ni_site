@@ -61,6 +61,7 @@ class AdminUserUpdate(BaseModel):
     must_change_password: Optional[bool] = None
     is_moderator: Optional[bool] = None
     moderator_requested: Optional[bool] = None
+    admin_otp: Optional[str] = Field(default=None, min_length=4, max_length=32)
 
     surname: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
@@ -84,3 +85,8 @@ class AdminTempPasswordRequest(BaseModel):
 
 class AdminTempPasswordGenerated(BaseModel):
     temp_password: str
+
+
+class AdminActionOtpResponse(BaseModel):
+    sent: bool
+    otp: Optional[str] = None
