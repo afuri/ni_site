@@ -20,6 +20,6 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     const hero = screen.getByTestId("home-hero");
-    expect(hero).toHaveStyle({ backgroundImage: "url(hero-image)" });
+    expect(hero.style.backgroundImage).toContain("main_picture.jpg");
   });
 });

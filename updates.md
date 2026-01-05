@@ -430,6 +430,11 @@ Main page for the guest/public site is now built in frontend-app using the hero 
 
 0.6.1
 
+Adjusted the hero background test to assert the resolved asset path instead of the mock name.
+
+  File updated:
+
+  - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
 
 
 0.7.0
