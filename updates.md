@@ -318,3 +318,20 @@ Foundation for the two‑app SPA is in place: workspace root with apps/main and 
   1. Cormorant Garamond (headings) + Manrope (body)
 
 
+0.2.0
+
+Design system tokens + global styles are in place, and both apps now load Cormorant Garamond + Manrope via Google Fonts. The shared CSS is in frontend/packages/
+  ui/src/styles, and both apps import it.
+
+  Changes:
+
+  - New tokens and global styles: frontend/packages/ui/src/styles/tokens.css, frontend/packages/ui/src/styles/global.css
+  - Apps now import shared global CSS:
+      - frontend/apps/main/src/App.tsx
+      - frontend/apps/admin/src/App.tsx
+  - Fonts added to:
+      - frontend/apps/main/index.html
+      - frontend/apps/admin/index.html
+  - Removed local base CSS files:
+      - frontend/apps/main/src/styles/base.css
+      - frontend/apps/admin/src/styles/base.css

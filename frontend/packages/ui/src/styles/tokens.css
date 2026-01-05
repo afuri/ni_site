@@ -1,0 +1,56 @@
+:root {
+  --font-heading: "Cormorant Garamond", "Times New Roman", serif;
+  --font-body: "Manrope", "Arial", sans-serif;
+
+  --line-height-tight: 1.15;
+  --line-height-body: 1.6;
+
+  --color-ink-900: #0d1b2a;
+  --color-ink-700: #1f3b63;
+  --color-ink-500: #2f5c92;
+  --color-sky-400: #6fa3d1;
+  --color-mist-200: #dbe5f0;
+  --color-sand-100: #f6eee7;
+  --color-warm-300: #f0c3a1;
+  --color-white: #ffffff;
+
+  --gradient-page: linear-gradient(
+    180deg,
+    #f6eee7 0%,
+    #e7eef6 42%,
+    #dbe5f0 72%,
+    #f6f2ee 100%
+  );
+  --gradient-hero: linear-gradient(
+    180deg,
+    rgba(31, 59, 99, 0.78) 0%,
+    rgba(47, 92, 146, 0.45) 48%,
+    rgba(15, 27, 42, 0.2) 100%
+  );
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 10px 30px rgba(15, 32, 64, 0.12);
+  --shadow-2: 0 18px 45px rgba(15, 32, 64, 0.18);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 150ms var(--ease-out);
+  --transition-medium: 280ms var(--ease-out);
+
+  --container-width: 1200px;
+}

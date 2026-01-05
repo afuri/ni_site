@@ -1,4 +1,4 @@
-import "./styles/base.css";
+import "@ui/styles/global.css";
 
 export function App() {
   return (
