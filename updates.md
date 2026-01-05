@@ -150,3 +150,15 @@
 
 • Готово: добавил утвержденные лимиты/типы для upload/presign в API_CONVENTIONS.md и ссылку в UI_ENDPOINTS.md.
 
+0.9.16
+
+Добавил явную обработку удаления задания, если оно привязано к олимпиаде: теперь ловим IntegrityError, делаем rollback и возвращаем 409 с кодом
+  task_in_olympiad. Пример ошибки добавлен в OpenAPI, и ответ 409 прописан в DELETE /admin/tasks/{id}.
+
+  Изменения:
+
+  - Добавлен код ошибки task_in_olympiad и пример для OpenAPI: backend/app/core/error_codes.py, backend/app/api/v1/openapi_errors.py.
+  - Обработка IntegrityError и 409 ответ в DELETE /admin/tasks/{id}: backend/app/api/v1/admin_tasks.py.
+
+  - Включено: базовый URL, схема ошибки с request_id, ключевые эндпойнты и JSON‑формы, список базовых кодов ошибок, ссылки на подробные примеры в UI_ENDPOINTS.md.
+  - Файл: FRONTEND_CONTRACT.md

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
@@ -126,6 +127,7 @@ async def update_task(
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.TASK_NOT_FOUND),
+        409: response_example(codes.TASK_IN_OLYMPIAD),
     },
 )
 async def delete_task(
@@ -138,5 +140,9 @@ async def delete_task(
     if not task:
         raise http_error(404, codes.TASK_NOT_FOUND)
     service = TasksService(repo)
-    await service.delete(task=task)
+    try:
+        await service.delete(task=task)
+    except IntegrityError:
+        await db.rollback()
+        raise http_error(409, codes.TASK_IN_OLYMPIAD)
     return None

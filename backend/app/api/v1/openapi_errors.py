@@ -24,6 +24,7 @@ ERROR_EXAMPLES = {
     codes.PASSWORD_CHANGE_REQUIRED: {"error": {"code": codes.PASSWORD_CHANGE_REQUIRED, "message": codes.PASSWORD_CHANGE_REQUIRED}},
     codes.ALREADY_MODERATOR: {"error": {"code": codes.ALREADY_MODERATOR, "message": codes.ALREADY_MODERATOR}},
     codes.TASK_NOT_FOUND: {"error": {"code": codes.TASK_NOT_FOUND, "message": codes.TASK_NOT_FOUND}},
+    codes.TASK_IN_OLYMPIAD: {"error": {"code": codes.TASK_IN_OLYMPIAD, "message": codes.TASK_IN_OLYMPIAD}},
     codes.OLYMPIAD_NOT_FOUND: {"error": {"code": codes.OLYMPIAD_NOT_FOUND, "message": codes.OLYMPIAD_NOT_FOUND}},
     codes.ATTEMPT_NOT_FOUND: {"error": {"code": codes.ATTEMPT_NOT_FOUND, "message": codes.ATTEMPT_NOT_FOUND}},
     codes.ATTEMPT_EXPIRED: {"error": {"code": codes.ATTEMPT_EXPIRED, "message": codes.ATTEMPT_EXPIRED}},
