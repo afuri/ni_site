@@ -13,6 +13,7 @@ class AuditLogRead(BaseModel):
     status_code: int
     ip: Optional[str] = None
     user_agent: Optional[str] = None
+    request_id: Optional[str] = None
     details: Optional[dict] = None
     created_at: datetime
 

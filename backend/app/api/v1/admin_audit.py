@@ -84,7 +84,18 @@ async def export_audit_logs(
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(
-        ["id", "user_id", "action", "method", "path", "status_code", "ip", "user_agent", "created_at"]
+        [
+            "id",
+            "user_id",
+            "action",
+            "method",
+            "path",
+            "status_code",
+            "ip",
+            "user_agent",
+            "request_id",
+            "created_at",
+        ]
     )
     for row in rows:
         writer.writerow(
@@ -97,6 +108,7 @@ async def export_audit_logs(
                 row.status_code,
                 row.ip or "",
                 row.user_agent or "",
+                row.request_id or "",
                 row.created_at.isoformat(),
             ]
         )

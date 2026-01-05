@@ -9,10 +9,12 @@ class Settings(BaseSettings):
     REDIS_SOCKET_TIMEOUT_SEC: int = 2
     REDIS_CONNECT_TIMEOUT_SEC: int = 2
     OLYMPIAD_TASKS_CACHE_TTL_SEC: int = 300
+    CACHE_WARMUP_INTERVAL_SEC: int = 300
 
     APP_NAME: str = "NI_SITE API"
     ENV: str = "dev"
     APP_VERSION: str = "0.0.0"
+    LOG_FORMAT: str = "json"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:changethis@localhost:5432/ni_site"
     DB_POOL_SIZE: int = 5
@@ -47,6 +49,7 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    TOKEN_CLEANUP_INTERVAL_SEC: int = 3600
 
     VK_CLIENT_ID: str | None = None
     VK_CLIENT_SECRET: str | None = None

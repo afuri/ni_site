@@ -18,5 +18,6 @@ class AuditLog(Base):
     status_code: Mapped[int] = mapped_column(Integer)
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

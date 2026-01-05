@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.deps import get_db
 from app.core.deps_auth import require_role, get_current_user_optional
 from app.core.errors import http_error
+from app.core.request_id import get_request_id
 from app.core.redis import safe_redis
 from app.core.security import hash_password, validate_password_policy, hash_token
 from app.tasks.email import send_email_task
@@ -141,6 +142,7 @@ async def request_admin_otp(
         status_code=200,
         ip=None,
         user_agent=None,
+        request_id=get_request_id(),
         details={},
         created_at=datetime.now(timezone.utc),
     )
@@ -289,6 +291,7 @@ async def update_user(
         status_code=200,
         ip=None,
         user_agent=None,
+        request_id=get_request_id(),
         details={"target_user_id": user_id, "fields": sorted(patch.keys())},
         created_at=datetime.now(timezone.utc),
     )
@@ -363,6 +366,7 @@ async def set_temporary_password(
         status_code=200,
         ip=None,
         user_agent=None,
+        request_id=get_request_id(),
         details={"target_user_id": user_id},
         created_at=datetime.now(timezone.utc),
     )
@@ -421,6 +425,7 @@ async def generate_temporary_password(
         status_code=200,
         ip=None,
         user_agent=None,
+        request_id=get_request_id(),
         details={"target_user_id": user_id},
         created_at=datetime.now(timezone.utc),
     )

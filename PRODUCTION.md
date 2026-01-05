@@ -11,6 +11,10 @@
   ```bash
   celery -A app.core.celery_app.celery_app worker --loglevel=INFO
   ```
+- Run celery beat for maintenance tasks (cache warm-up, cleanup):
+  ```bash
+  celery -A app.core.celery_app.celery_app beat --loglevel=INFO
+  ```
 
 ## Minimal nginx example
 
@@ -64,6 +68,16 @@ server {
 ```bash
 alembic -c alembic.ini upgrade head
 ```
+
+If Alembic fails with "alembic_version but no app tables found", reset the schema
+before retrying:
+
+```bash
+psql "$DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+alembic -c alembic.ini upgrade head
+```
+
+Avoid creating ad-hoc tables like `t_probe` in production databases.
 
 ## Docker DB checklist
 
@@ -171,3 +185,19 @@ EOF
 - Dev/staging: keep secrets in `.env` and load via dotenv (Pydantic Settings).
 - Production: inject secrets at runtime from Vault or 1Password (or similar) and avoid storing `.env` in the repo.
 - Rotation: to rotate JWT secrets, prepend a new key to `JWT_SECRETS` and keep old keys for verification until all tokens expire.
+
+## Инструкция: запуск celery beat вместе с воркером (prod)
+
+  1. В отдельном процессе/контейнере запусти воркер:
+
+  celery -A app.core.celery_app.celery_app worker --loglevel=INFO
+
+  2. В отдельном процессе/контейнере запусти beat:
+
+  celery -A app.core.celery_app.celery_app beat --loglevel=INFO
+
+  Примечания:
+
+  - Beat обязателен, если нужны периодические задачи maintenance.warmup_olympiad_cache и maintenance.cleanup_expired_auth.
+  - Интервалы регулируются через .env: CACHE_WARMUP_INTERVAL_SEC и TOKEN_CLEANUP_INTERVAL_SEC.
+  - Если нужно запустить в Docker Compose — добавь сервис celery-beat с той же средой, что и worker.

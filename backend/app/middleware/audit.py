@@ -12,6 +12,7 @@ from app.db.session import SessionLocal
 from app.repos.audit_logs import AuditLogsRepo
 from app.repos.users import UsersRepo
 from app.core.metrics import REQUEST_LATENCY_SECONDS
+from app.core.request_id import get_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                         status_code=status_code,
                         ip=request.client.host if request.client else None,
                         user_agent=request.headers.get("user-agent"),
+                        request_id=get_request_id(),
                         details=None,
                         created_at=datetime.now(timezone.utc),
                     )

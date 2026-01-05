@@ -19,6 +19,7 @@ class AuditLogsRepo:
         status_code: int,
         ip: str | None,
         user_agent: str | None,
+        request_id: str | None,
         details: dict | None,
         created_at: datetime,
     ) -> AuditLog:
@@ -30,6 +31,7 @@ class AuditLogsRepo:
             status_code=status_code,
             ip=ip,
             user_agent=user_agent,
+            request_id=request_id,
             details=details,
             created_at=created_at,
         )

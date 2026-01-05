@@ -102,7 +102,9 @@ class AuthService:
         if not verify_password(password, user.password_hash):
             raise ValueError(codes.INVALID_CREDENTIALS)
 
-        if user.must_change_password and user.temp_password_expires_at is not None:
+        if user.must_change_password:
+            if user.temp_password_expires_at is None:
+                raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
             if user.temp_password_expires_at < self._now_utc():
                 raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
 
@@ -146,7 +148,9 @@ class AuthService:
         if not user or not user.is_active:
             raise ValueError(codes.INVALID_TOKEN)
 
-        if user.must_change_password and user.temp_password_expires_at is not None:
+        if user.must_change_password:
+            if user.temp_password_expires_at is None:
+                raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
             if user.temp_password_expires_at < self._now_utc():
                 raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
 

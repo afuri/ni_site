@@ -9,6 +9,7 @@ from app.core.errors import api_error
 from app.core.logging import setup_logging
 from app.middleware.audit import AuditMiddleware
 from app.middleware.rate_limit import GlobalRateLimitMiddleware
+from app.middleware.request_id import RequestIdMiddleware
 from app.api.v1.router import router as v1_router
 
 setup_logging()
@@ -41,6 +42,7 @@ APP_DESCRIPTION = """
 """
 
 app = FastAPI(title=settings.APP_NAME, description=APP_DESCRIPTION)
+app.add_middleware(RequestIdMiddleware)
 app.add_middleware(GlobalRateLimitMiddleware)
 app.add_middleware(AuditMiddleware)
 app.include_router(v1_router)

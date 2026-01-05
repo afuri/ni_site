@@ -2,10 +2,17 @@
 from datetime import datetime, timedelta, timezone
 import math
 import json
+import time
 from types import SimpleNamespace
 
 from app.core.config import settings
-from app.core.metrics import ATTEMPTS_STARTED_TOTAL, ATTEMPTS_SUBMITTED_TOTAL
+from app.core.metrics import (
+    ATTEMPTS_STARTED_TOTAL,
+    ATTEMPTS_SUBMITTED_TOTAL,
+    REDIS_CACHE_HITS_TOTAL,
+    REDIS_CACHE_MISSES_TOTAL,
+    REDIS_OP_LATENCY_SECONDS,
+)
 from app.core.redis import get_redis, safe_redis
 from app.core.cache import olympiad_tasks_key, olympiad_meta_key
 from app.core.security import generate_token
@@ -47,17 +54,25 @@ class AttemptsService:
             return await self.repo.list_tasks_full(olympiad_id)
 
         cache_key = olympiad_tasks_key(olympiad_id)
+        cached = None
+        start = time.perf_counter()
         try:
             cached = await redis.get(cache_key)
         except Exception:
             cached = None
+        REDIS_OP_LATENCY_SECONDS.labels(op="get", cache="olympiad_tasks").observe(
+            time.perf_counter() - start
+        )
 
         if cached:
+            REDIS_CACHE_HITS_TOTAL.labels(cache="olympiad_tasks").inc()
             try:
                 data = json.loads(cached)
                 return data
             except Exception:
                 pass
+        else:
+            REDIS_CACHE_MISSES_TOTAL.labels(cache="olympiad_tasks").inc()
 
         rows = await self.repo.list_tasks_full(olympiad_id)
         payload = []
@@ -80,6 +95,7 @@ class AttemptsService:
                 }
             )
 
+        start = time.perf_counter()
         try:
             await redis.set(
                 cache_key,
@@ -88,6 +104,9 @@ class AttemptsService:
             )
         except Exception:
             pass
+        REDIS_OP_LATENCY_SECONDS.labels(op="set", cache="olympiad_tasks").observe(
+            time.perf_counter() - start
+        )
 
         return payload
 
@@ -97,12 +116,18 @@ class AttemptsService:
             return await self.repo.get_olympiad(olympiad_id)
 
         cache_key = olympiad_meta_key(olympiad_id)
+        cached = None
+        start = time.perf_counter()
         try:
             cached = await redis.get(cache_key)
         except Exception:
             cached = None
+        REDIS_OP_LATENCY_SECONDS.labels(op="get", cache="olympiad_meta").observe(
+            time.perf_counter() - start
+        )
 
         if cached:
+            REDIS_CACHE_HITS_TOTAL.labels(cache="olympiad_meta").inc()
             try:
                 data = json.loads(cached)
                 data["available_from"] = datetime.fromisoformat(data["available_from"])
@@ -110,6 +135,8 @@ class AttemptsService:
                 return SimpleNamespace(**data)
             except Exception:
                 pass
+        else:
+            REDIS_CACHE_MISSES_TOTAL.labels(cache="olympiad_meta").inc()
 
         olympiad = await self.repo.get_olympiad(olympiad_id)
         if not olympiad:
@@ -125,6 +152,7 @@ class AttemptsService:
             "pass_percent": olympiad.pass_percent,
             "attempts_limit": olympiad.attempts_limit,
         }
+        start = time.perf_counter()
         try:
             await redis.set(
                 cache_key,
@@ -133,6 +161,9 @@ class AttemptsService:
             )
         except Exception:
             pass
+        REDIS_OP_LATENCY_SECONDS.labels(op="set", cache="olympiad_meta").observe(
+            time.perf_counter() - start
+        )
 
         payload["available_from"] = olympiad.available_from
         payload["available_to"] = olympiad.available_to
