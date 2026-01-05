@@ -181,3 +181,50 @@ async def test_admin_update_user_and_temp_password_flow(client, create_user):
     resp = await client.post("/api/v1/auth/login", json={"login": "studenttemp2", "password": "NewPass123"})
     assert resp.status_code == 200
     assert resp.json()["must_change_password"] is False
+
+
+@pytest.mark.asyncio
+async def test_admin_generate_temp_password_flow(client, create_user):
+    await create_user(
+        login="admingenerate",
+        email="admingenerate@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="studentgen",
+        email="studentgen@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=7,
+        subject=None,
+    )
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "admingenerate", "password": "AdminPass1"})
+    assert resp.status_code == 200
+    admin_token = resp.json()["access_token"]
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentgen", "password": "StrongPass1"})
+    assert resp.status_code == 200
+    student_token = resp.json()["access_token"]
+
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(student_token))
+    assert resp.status_code == 200
+    user_id = resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/admin/users/{user_id}/temp-password/generate",
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    temp_password = resp.json()["temp_password"]
+    assert isinstance(temp_password, str)
+    assert len(temp_password) >= 8
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentgen", "password": temp_password})
+    assert resp.status_code == 200
+    assert resp.json()["must_change_password"] is True

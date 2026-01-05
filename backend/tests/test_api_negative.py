@@ -728,3 +728,118 @@ async def test_refresh_and_endpoint_blocking_on_must_change_password(client, cre
     )
     assert resp.status_code == 403
     assert resp.json()["error"]["code"] == codes.PASSWORD_CHANGE_REQUIRED
+
+
+@pytest.mark.asyncio
+async def test_admin_blocked_when_password_change_required(client, create_user):
+    await create_user(
+        login="adminlock",
+        email="adminlock@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="adminlock2",
+        email="adminlock2@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+
+    admin_token = await _login(client, "adminlock", "AdminPass1")
+    resp = await client.post("/api/v1/auth/login", json={"login": "adminlock2", "password": "AdminPass1"})
+    assert resp.status_code == 200
+    admin2_refresh = resp.json()["refresh_token"]
+
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(resp.json()["access_token"]))
+    assert resp.status_code == 200
+    admin2_id = resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/admin/users/{admin2_id}/temp-password",
+        json={"temp_password": "TempPass1"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+
+    resp = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": admin2_refresh},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == codes.INVALID_TOKEN
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "adminlock2", "password": "TempPass1"})
+    assert resp.status_code == 200
+    temp_token = resp.json()["access_token"]
+
+    resp = await client.get("/api/v1/admin/tasks", headers=_auth_headers(temp_token))
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == codes.PASSWORD_CHANGE_REQUIRED
+
+    resp = await client.post(
+        "/api/v1/admin/content",
+        json={"content_type": "article", "title": "Blocked", "body": "A" * 120, "publish": False},
+        headers=_auth_headers(temp_token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == codes.PASSWORD_CHANGE_REQUIRED
+
+    resp = await client.post(
+        "/api/v1/attempts/start",
+        json={"olympiad_id": 9999},
+        headers=_auth_headers(temp_token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == codes.PASSWORD_CHANGE_REQUIRED
+
+
+@pytest.mark.asyncio
+async def test_admin_update_revokes_refresh_tokens(client, create_user):
+    await create_user(
+        login="adminrevoke",
+        email="adminrevoke@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        is_verified=True,
+        class_grade=None,
+        subject=None,
+    )
+    await create_user(
+        login="studentrevoke",
+        email="studentrevoke@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=7,
+        subject=None,
+    )
+
+    admin_token = await _login(client, "adminrevoke", "AdminPass1")
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentrevoke", "password": "StrongPass1"})
+    assert resp.status_code == 200
+    refresh_token = resp.json()["refresh_token"]
+
+    resp = await client.get("/api/v1/auth/me", headers=_auth_headers(resp.json()["access_token"]))
+    assert resp.status_code == 200
+    student_id = resp.json()["id"]
+
+    resp = await client.put(
+        f"/api/v1/admin/users/{student_id}",
+        json={"is_active": False},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_active"] is False
+
+    resp = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == codes.INVALID_TOKEN

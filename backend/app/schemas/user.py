@@ -73,6 +73,14 @@ class AdminUserUpdate(BaseModel):
 
     subject: Optional[str] = Field(default=None, max_length=120)
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class AdminTempPasswordRequest(BaseModel):
     temp_password: str = Field(min_length=8, max_length=128)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AdminTempPasswordGenerated(BaseModel):
+    temp_password: str

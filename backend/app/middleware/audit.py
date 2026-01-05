@@ -50,6 +50,15 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     pass
 
         status_code = 500
+        action = "request"
+        if path.startswith("/api/v1/admin/users/") and request.method == "PUT":
+            action = "admin_update_user"
+        elif path.endswith("/temp-password") and request.method == "POST":
+            action = "admin_set_temp_password"
+        elif path.endswith("/temp-password/generate") and request.method == "POST":
+            action = "admin_generate_temp_password"
+        elif path == "/api/v1/auth/password/change" and request.method == "POST":
+            action = "auth_password_change"
         try:
             response = await call_next(request)
             status_code = response.status_code
@@ -60,7 +69,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     repo = AuditLogsRepo(session)
                     await repo.create(
                         user_id=user_id,
-                        action="request",
+                        action=action,
                         method=request.method,
                         path=path,
                         status_code=status_code,

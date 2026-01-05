@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import secrets
+import string
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,11 +12,29 @@ from app.core.security import hash_password, validate_password_policy
 from app.models.user import UserRole, User
 from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.users import UsersRepo
-from app.schemas.user import UserRead, ModeratorStatusUpdate, AdminUserUpdate, AdminTempPasswordRequest
+from app.schemas.user import (
+    UserRead,
+    ModeratorStatusUpdate,
+    AdminUserUpdate,
+    AdminTempPasswordRequest,
+    AdminTempPasswordGenerated,
+)
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/admin/users")
+
+
+def _generate_temp_password(length: int = 12) -> str:
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        password = "".join(secrets.choice(alphabet) for _ in range(length))
+        if (
+            any(c.isupper() for c in password)
+            and any(c.islower() for c in password)
+            and any(c.isdigit() for c in password)
+        ):
+            return password
 
 
 @router.put(
@@ -109,7 +129,16 @@ async def update_user(
     if requested_is_moderator and new_role != UserRole.teacher:
         raise http_error(409, codes.USER_NOT_TEACHER)
 
-    return await repo.update_profile(user, patch)
+    critical_fields = {"role", "is_active", "is_email_verified", "must_change_password", "login"}
+    needs_revoke = any(
+        field in patch and getattr(user, field) != patch[field]
+        for field in critical_fields
+    )
+
+    updated = await repo.update_profile(user, patch)
+    if needs_revoke:
+        await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    return updated
 
 
 @router.post(
@@ -143,3 +172,31 @@ async def set_temporary_password(
     await repo.set_password(user, password_hash, must_change_password=True)
     await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
     return user
+
+
+@router.post(
+    "/{user_id}/temp-password/generate",
+    response_model=AdminTempPasswordGenerated,
+    tags=["admin"],
+    description="Сгенерировать временный пароль и потребовать смену при первом входе",
+    responses={
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.USER_NOT_FOUND),
+    },
+)
+async def generate_temporary_password(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    repo = UsersRepo(db)
+    user = await repo.get_by_id(user_id)
+    if not user:
+        raise http_error(404, codes.USER_NOT_FOUND)
+
+    temp_password = _generate_temp_password()
+    password_hash = hash_password(temp_password)
+    await repo.set_password(user, password_hash, must_change_password=True)
+    await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    return {"temp_password": temp_password}
