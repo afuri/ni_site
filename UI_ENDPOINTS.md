@@ -19,6 +19,16 @@ Error schema (all errors include `request_id`):
 }
 ```
 
+## Roles quick map
+
+Moderator = teacher with `is_moderator=true`.
+
+- Public: auth register/login/verify/reset, content read, health
+- Student: profile, auth refresh/logout/change password, attempts (own), uploads GET, content read
+- Teacher: student links, attempts review for linked students, moderator request, plus student access
+- Moderator: task bank, content management, uploads presign, plus teacher access
+- Admin: olympiads management, admin users, audit logs, plus moderator access
+
 ## Auth
 
 - `POST /auth/register` — регистрация
