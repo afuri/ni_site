@@ -4,7 +4,7 @@
 
 ```bash
 docker compose up --build
-docker compose exec api alembic -c /app/alembic.ini upgrade head
+docker compose exec api python /app/scripts/bootstrap_db.py
 ```
 
 - API health: `http://localhost:8000/api/v1/health`

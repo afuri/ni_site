@@ -57,5 +57,26 @@
   - request_id всегда в заголовке; для ошибок добавлен в JSON body.
   - Read‑replica fallback: если read‑DB недоступна, GET автоматически идут в write с метрикой.
 
+0.9.10 Стабилизацию пункта 1 сделал: теперь для clean‑DB используется bootstrap‑скрипт без ручных reset, и это закреплено в доке.
+
+  Что работает теперь
+
+  - backend/scripts/bootstrap_db.py сам проверяет схему и, если таблиц приложения нет, в dev/stage делает безопасный reset + alembic upgrade head.
+  - Для docker‑старта команда в Service_commands.md заменена на bootstrap.
+
+  Как использовать
+
+  - Локально:
+      - python backend/scripts/bootstrap_db.py
+  - Docker:
+      - docker compose exec api python /app/scripts/bootstrap_db.py
+      - docker compose exec api python /app/scripts/create_admin.py
+
+  Условие безопасности
+
+  - Авто‑reset выполняется только если ENV=dev или ENV=stage. В prod скрипт откажется трогать схему.
+
+
+
 
 
