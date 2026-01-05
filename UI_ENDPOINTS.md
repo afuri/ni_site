@@ -29,6 +29,10 @@ Moderator = teacher with `is_moderator=true`.
 - Moderator: task bank, content management, uploads presign, plus teacher access
 - Admin: olympiads management, admin users, audit logs, plus moderator access
 
+## API conventions
+
+Pagination/filtering/sorting rules: `API_CONVENTIONS.md`
+
 ## Auth
 
 - `POST /auth/register` — регистрация

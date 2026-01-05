@@ -140,3 +140,8 @@
 
   - Новый файл ROLES.md с матрицей доступа по ролям (public/student/teacher/moderator/admin) и примечаниями про OTP и бизнес‑ограничения.
   - В README.md добавлена ссылка на ROLES.md.
+
+0.9.14
+
+Добавил отдельный документ API_CONVENTIONS.md с правилами пагинации/фильтров/сортировки и ссылки на него в README.md и UI_ENDPOINTS.md.
+
