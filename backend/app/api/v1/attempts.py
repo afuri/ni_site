@@ -47,6 +47,7 @@ router = APIRouter(prefix="/attempts")
         401: response_example(codes.MISSING_TOKEN),
         409: response_examples(
             codes.OLYMPIAD_NOT_AVAILABLE,
+            codes.OLYMPIAD_AGE_GROUP_MISMATCH,
             codes.OLYMPIAD_NOT_PUBLISHED,
             codes.OLYMPIAD_HAS_NO_TASKS,
         ),
@@ -70,6 +71,8 @@ async def start_attempt(
             raise http_error(409, codes.OLYMPIAD_NOT_PUBLISHED)
         if code == codes.OLYMPIAD_NOT_AVAILABLE:
             raise http_error(409, codes.OLYMPIAD_NOT_AVAILABLE)
+        if code == codes.OLYMPIAD_AGE_GROUP_MISMATCH:
+            raise http_error(409, codes.OLYMPIAD_AGE_GROUP_MISMATCH)
         if code == codes.OLYMPIAD_HAS_NO_TASKS:
             raise http_error(409, codes.OLYMPIAD_HAS_NO_TASKS)
         raise

@@ -15,6 +15,7 @@
 - Start attempt for non‑existent olympiad -> 404 `olympiad_not_found`
 - Start attempt for unpublished olympiad -> 409 `olympiad_not_published`
 - Start attempt for out‑of‑window olympiad -> 409 `olympiad_not_available`
+- Start attempt for age group mismatch -> 409 `olympiad_age_group_mismatch`
 - Start attempt when olympiad has no tasks -> 409 `olympiad_has_no_tasks`
 - Upsert answer for чужая попытка -> 403 `forbidden`
 - Upsert answer after deadline -> 409 `attempt_expired`

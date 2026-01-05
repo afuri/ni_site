@@ -181,3 +181,17 @@
   проверка соответствия class_grade и age_group (с учётом кэша метаданных олимпиад), чтобы 9‑й класс больше не мог стартовать 7‑8. В backend/app/services/
   content.py разрешено publish=true для модератора. Добавлены тесты для обоих кейсов в backend/tests/test_api_negative.py и backend/tests/test_api_content.py.
 
+0.9.18
+
+Добавил явный код ошибки для несовпадения age_group и задокументировал предупреждения зависимостей как тех‑долг. Теперь при старте попытки с неподходящим
+  классом возвращается 409 olympiad_age_group_mismatch, это отражено в OpenAPI и негативных тестах; в TECH_DEBT.md собраны предупреждения passlib/opentelemetry/
+  protobuf с действиями.
+
+  Изменения:
+
+  - backend/app/services/attempts.py — отдельный код для несоответствия age_group.
+  - backend/app/api/v1/attempts.py — новый code в responses и маппинге ошибок.
+  - backend/app/api/v1/openapi_errors.py — пример для нового кода.
+  - backend/tests/test_api_negative.py — тест ожидает olympiad_age_group_mismatch.
+  - NEGATIVE_TESTS.md и FRONTEND_CONTRACT.md — обновлены списки ошибок.
+  - TECH_DEBT.md — список dependency warnings и рекомендации.

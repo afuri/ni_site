@@ -197,7 +197,7 @@ Error schema (все ошибки включают `request_id`):
 
 - `missing_token`, `invalid_token`, `invalid_credentials`, `email_not_verified`
 - `rate_limited`, `forbidden`, `password_change_required`
-- `task_not_found`, `task_in_olympiad`, `olympiad_not_found`
+- `task_not_found`, `task_in_olympiad`, `olympiad_not_found`, `olympiad_age_group_mismatch`
 - `attempt_not_found`, `attempt_expired`, `attempt_not_active`
 - `content_not_found`, `publish_forbidden`
 

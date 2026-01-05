@@ -331,7 +331,7 @@ class AttemptsService:
         if now < olympiad.available_from or now > olympiad.available_to:
             raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
         if not self._age_group_allows(class_grade=user.class_grade, age_group=olympiad.age_group):
-            raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
+            raise ValueError(codes.OLYMPIAD_AGE_GROUP_MISMATCH)
 
         cached = await self._get_tasks_cached(olympiad_id)
         tasks = self._inflate_tasks(cached)

@@ -250,7 +250,7 @@ async def test_attempt_start_negative_cases(client, create_user, redis_client):
         headers=_auth_headers(student9_token),
     )
     assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_AVAILABLE
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_AGE_GROUP_MISMATCH
 
 
 @pytest.mark.asyncio
