@@ -14,7 +14,7 @@ class RegisterRequest(BaseModel):
 
     surname: str = Field(max_length=120, pattern=CYRILLIC_RE)
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    father_name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
+    father_name: Optional[str] = None
 
     country: str = Field(max_length=120, pattern=CYRILLIC_RE)
     city: str = Field(max_length=120, pattern=CYRILLIC_RE)

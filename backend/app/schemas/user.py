@@ -35,7 +35,7 @@ class UserRead(BaseModel):
 class UserUpdate(BaseModel):
     surname: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    father_name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
+    father_name: Optional[str] = None
 
     country: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
@@ -65,7 +65,7 @@ class AdminUserUpdate(BaseModel):
 
     surname: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    father_name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
+    father_name: Optional[str] = None
 
     country: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)

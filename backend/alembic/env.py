@@ -1,6 +1,4 @@
 from logging.config import fileConfig
-import logging
-import sys
 import os
 from pathlib import Path
 
@@ -33,7 +31,6 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-logger = logging.getLogger("alembic")
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -69,8 +66,6 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    logger.info("alembic offline mode, url=%s", url)
-    print(f"alembic offline mode, url={url}", file=sys.stderr)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -89,8 +84,6 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    logger.info("alembic online mode, url=%s", config.get_main_option("sqlalchemy.url"))
-    print(f"alembic online mode, url={config.get_main_option('sqlalchemy.url')}", file=sys.stderr)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -103,10 +96,12 @@ def run_migrations_online() -> None:
         connection.commit()
         inspector = inspect(connection)
         tables = set(inspector.get_table_names())
-        if "alembic_version" in tables and len(tables) == 1:
+        metadata_tables = set(target_metadata.tables.keys())
+        has_schema_tables = bool(tables & metadata_tables)
+        if "alembic_version" in tables and not has_schema_tables:
             version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
             raise RuntimeError(
-                f"Alembic preflight failed: alembic_version={version} but no schema tables found. "
+                f"Alembic preflight failed: alembic_version={version} but no app tables found. "
                 "Drop alembic_version or reset the database before running migrations."
             )
         context.configure(
@@ -118,27 +113,7 @@ def run_migrations_online() -> None:
         # Make sure DDL changes are committed.
         connection.commit()
 
-        try:
-            table_rows = connection.execute(
-                text(
-                    """
-                    select table_schema, table_name
-                    from information_schema.tables
-                    where table_schema not in ('pg_catalog','information_schema')
-                    order by 1,2
-                    """
-                )
-            ).fetchall()
-            logger.info("alembic tables after migrations: %s", table_rows)
-            print(f"alembic tables after migrations: {table_rows}", file=sys.stderr)
-            version_row = connection.execute(
-                text("select version_num from alembic_version")
-            ).fetchall()
-            logger.info("alembic version rows: %s", version_row)
-            print(f"alembic version rows: {version_row}", file=sys.stderr)
-        except Exception as exc:
-            logger.info("alembic post-migration check failed: %s", exc)
-            print(f"alembic post-migration check failed: {exc}", file=sys.stderr)
+        # Connection closes here.
 
 
 if context.is_offline_mode():

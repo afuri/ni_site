@@ -15,7 +15,7 @@ class CreateStudentRequest(BaseModel):
 
     surname: str = Field(max_length=120, pattern=CYRILLIC_RE)
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    father_name: str | None = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
+    father_name: str | None = None
 
     country: str = Field(max_length=120, pattern=CYRILLIC_RE)
     city: str = Field(max_length=120, pattern=CYRILLIC_RE)
