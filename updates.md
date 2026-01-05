@@ -369,3 +369,39 @@ Shared foundation is in: API client with auth/refresh + error parsing, auth stor
 0.5.0
 
 Next step: build the shared UI kit (layout shell, buttons, inputs, cards, tables, modal, toast, empty/loading).
+
+Shared UI kit is implemented with styling and tests for each component.
+
+  What’s in:
+
+  - Components: Button, TextInput, Card, LayoutShell, Table, Modal, Toast, EmptyState, LoadingSpinner
+  - Styles: frontend/packages/ui/src/styles/components.css (imported by global.css)
+  - Exports: frontend/packages/ui/src/index.ts
+  - Tests: one per component under frontend/packages/ui/src/components/__tests__/
+
+  Files added:
+
+  - frontend/packages/ui/src/components/Button.tsx
+  - frontend/packages/ui/src/components/TextInput.tsx
+  - frontend/packages/ui/src/components/Card.tsx
+  - frontend/packages/ui/src/components/LayoutShell.tsx
+  - frontend/packages/ui/src/components/Table.tsx
+  - frontend/packages/ui/src/components/Modal.tsx
+  - frontend/packages/ui/src/components/Toast.tsx
+  - frontend/packages/ui/src/components/EmptyState.tsx
+  - frontend/packages/ui/src/components/LoadingSpinner.tsx
+  - frontend/packages/ui/src/styles/components.css
+  - frontend/packages/ui/src/components/__tests__/Button.test.tsx
+  - frontend/packages/ui/src/components/__tests__/TextInput.test.tsx
+  - frontend/packages/ui/src/components/__tests__/Card.test.tsx
+  - frontend/packages/ui/src/components/__tests__/LayoutShell.test.tsx
+  - frontend/packages/ui/src/components/__tests__/Table.test.tsx
+  - frontend/packages/ui/src/components/__tests__/Modal.test.tsx
+  - frontend/packages/ui/src/components/__tests__/Toast.test.tsx
+  - frontend/packages/ui/src/components/__tests__/EmptyState.test.tsx
+  - frontend/packages/ui/src/components/__tests__/LoadingSpinner.test.tsx
+
+  Files updated:
+
+  - frontend/packages/ui/src/styles/global.css
+  - frontend/packages/ui/src/index.ts
