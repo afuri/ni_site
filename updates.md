@@ -436,6 +436,27 @@ Adjusted the hero background test to assert the resolved asset path instead of t
 
   - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
 
+0.6.2
+
+• Обновил главную в стиле композиции Coursera и перенёс hero‑картинку в отдельный контейнер с обрезкой по высоте 400px.
+
+  Что сделано:
+
+  - Hero теперь двухколоночный: текст + отдельный контейнер под main_picture.jpg (crop 400px).
+  - Добавлены секции: промо‑полоса, 3 “маршрута” участия, партнёры, популярные олимпиады (горизонтальный скролл), категории, сценарии выбора, почему выбирают,
+    FAQ, контакты.
+  - Обновлён CSS под новую композицию.
+  - Тесты HomePage обновлены под новую структуру (проверка hero image по img).
+
+  Файлы:
+
+  - frontend/apps/main/src/pages/HomePage.tsx
+  - frontend/apps/main/src/styles/home.css
+  - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
+
+  Commit message:
+  feat(frontend): adapt home page layout with hero image container and Coursera-style sections
+
 
 0.7.0
 

@@ -13,13 +13,15 @@ describe("HomePage", () => {
 
     expect(screen.getByRole("heading", { name: "Олимпиада «Невский интеграл»" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Принять участие" })).toBeInTheDocument();
-    expect(screen.getByText("Для учеников")).toBeInTheDocument();
+    expect(screen.getByText("Стартуйте, развивайтесь, подтверждайте результат")).toBeInTheDocument();
   });
 
   it("sets hero background image", () => {
     render(<HomePage />);
 
-    const hero = screen.getByTestId("home-hero");
-    expect(hero.style.backgroundImage).toContain("main_picture.jpg");
+    const heroMedia = screen.getByTestId("hero-media");
+    const heroImage = screen.getByAltText("Невский интеграл над Невой") as HTMLImageElement;
+    expect(heroMedia).toBeInTheDocument();
+    expect(heroImage.src).toContain("main_picture.jpg");
   });
 });
