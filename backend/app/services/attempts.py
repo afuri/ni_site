@@ -48,6 +48,29 @@ class AttemptsService:
     def _serialize_task_type(task_type: TaskType):
         return task_type.value if isinstance(task_type, TaskType) else str(task_type)
 
+    @staticmethod
+    def _normalize_age_group(age_group) -> str | None:
+        if age_group is None:
+            return None
+        return str(getattr(age_group, "value", age_group))
+
+    @classmethod
+    def _age_group_allows(cls, *, class_grade: int | None, age_group) -> bool:
+        if class_grade is None:
+            return False
+        group = cls._normalize_age_group(age_group)
+        if group == "1":
+            return class_grade == 1
+        if group == "2":
+            return class_grade == 2
+        if group == "3-4":
+            return 3 <= class_grade <= 4
+        if group == "5-6":
+            return 5 <= class_grade <= 6
+        if group == "7-8":
+            return 7 <= class_grade <= 8
+        return False
+
     async def _get_tasks_cached(self, olympiad_id: int) -> list[dict]:
         redis = await safe_redis()
         if redis is None:
@@ -130,6 +153,8 @@ class AttemptsService:
             REDIS_CACHE_HITS_TOTAL.labels(cache="olympiad_meta").inc()
             try:
                 data = json.loads(cached)
+                if "age_group" not in data:
+                    raise ValueError("cache_missing_age_group")
                 data["available_from"] = datetime.fromisoformat(data["available_from"])
                 data["available_to"] = datetime.fromisoformat(data["available_to"])
                 return SimpleNamespace(**data)
@@ -146,6 +171,7 @@ class AttemptsService:
             "id": olympiad.id,
             "title": olympiad.title,
             "is_published": olympiad.is_published,
+            "age_group": self._normalize_age_group(olympiad.age_group),
             "available_from": olympiad.available_from.isoformat(),
             "available_to": olympiad.available_to.isoformat(),
             "duration_sec": olympiad.duration_sec,
@@ -303,6 +329,8 @@ class AttemptsService:
 
         now = self._now_utc()
         if now < olympiad.available_from or now > olympiad.available_to:
+            raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
+        if not self._age_group_allows(class_grade=user.class_grade, age_group=olympiad.age_group):
             raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
 
         cached = await self._get_tasks_cached(olympiad_id)

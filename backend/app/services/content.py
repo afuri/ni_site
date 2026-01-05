@@ -36,9 +36,10 @@ class ContentService:
         self._validate_by_type(content_type, body, image_keys)
 
     async def create(self, payload, user: User) -> ContentItem:
-        if payload.publish and user.role != UserRole.admin:
+        can_publish = user.role == UserRole.admin or (user.role == UserRole.teacher and user.is_moderator)
+        if payload.publish and not can_publish:
             raise http_error(403, codes.PUBLISH_FORBIDDEN)
-        publish = payload.publish and user.role == UserRole.admin
+        publish = payload.publish and can_publish
         self._validate_by_type(payload.content_type, payload.body, payload.image_keys)
         if publish:
             self._ensure_publishable(payload.content_type, payload.body, payload.image_keys)

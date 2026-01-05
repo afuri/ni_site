@@ -49,6 +49,17 @@ async def test_admin_and_moderator_content_flow(client, create_user):
     assert resp.json()["status"] == "published"
     assert resp.json()["published_by_id"] is not None
 
+    mod_article_payload = {
+        "content_type": "article",
+        "title": "Статья модератора",
+        "body": "B" * 120,
+        "publish": True,
+    }
+    resp = await client.post("/api/v1/admin/content", json=mod_article_payload, headers=_auth_headers(moderator_token))
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "published"
+    assert resp.json()["published_by_id"] is not None
+
     article_payload = {
         "content_type": "article",
         "title": "Статья",

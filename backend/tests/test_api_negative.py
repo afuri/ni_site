@@ -147,9 +147,19 @@ async def test_attempt_start_negative_cases(client, create_user, redis_client):
         class_grade=7,
         subject=None,
     )
+    await create_user(
+        login="studentneg9",
+        email="studentneg9@example.com",
+        password="StrongPass1",
+        role=UserRole.student,
+        is_verified=True,
+        class_grade=9,
+        subject=None,
+    )
 
     admin_token = await _login(client, "adminneg", "AdminPass1")
     student_token = await _login(client, "studentneg", "StrongPass1")
+    student9_token = await _login(client, "studentneg9", "StrongPass1")
 
     resp = await client.post(
         "/api/v1/attempts/start",
@@ -209,6 +219,35 @@ async def test_attempt_start_negative_cases(client, create_user, redis_client):
         "/api/v1/attempts/start",
         json={"olympiad_id": future_id},
         headers=_auth_headers(student_token),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_AVAILABLE
+
+    task_id = await _create_task(client, admin_token, title="Task Age Group")
+    age_group_id = await _create_olympiad(
+        client,
+        admin_token,
+        title="Olympiad Age Group",
+        available_from=now - timedelta(minutes=1),
+        available_to=now + timedelta(hours=1),
+    )
+    add_payload = {"task_id": task_id, "sort_order": 1, "max_score": 1}
+    resp = await client.post(
+        f"/api/v1/admin/olympiads/{age_group_id}/tasks",
+        json=add_payload,
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 201
+    resp = await client.post(
+        f"/api/v1/admin/olympiads/{age_group_id}/publish",
+        params={"publish": "true"},
+        headers=_auth_headers(admin_token),
+    )
+    assert resp.status_code == 200
+    resp = await client.post(
+        "/api/v1/attempts/start",
+        json={"olympiad_id": age_group_id},
+        headers=_auth_headers(student9_token),
     )
     assert resp.status_code == 409
     assert resp.json()["error"]["code"] == codes.OLYMPIAD_NOT_AVAILABLE
