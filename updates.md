@@ -414,3 +414,32 @@ Updated the TextInput tests to use regex name matching so helper/error text does
 
   - frontend/packages/ui/src/components/__tests__/TextInput.test.tsx
 
+0.6.0
+
+Main page for the guest/public site is now built in frontend-app using the hero image and styled to match frontend/example/main_page_example.jpg. I also added
+  tests for the new page.
+
+  Key changes:
+
+  - Added hero image asset: frontend/apps/main/src/assets/main_picture.jpg
+  - Home page + sections: frontend/apps/main/src/pages/HomePage.tsx
+  - Home page styles: frontend/apps/main/src/styles/home.css
+  - Wired into app: frontend/apps/main/src/App.tsx
+  - Tests: frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
+
+
+0.6.1
+
+
+
+0.7.0
+
+Next step: move into auth flows + content list/detail
+
+rest
+
+Student experience: olympiad list/detail, start attempt flow, attempt UI with timer/answer save/submit, results, profile
+    □ Teacher & moderator experience in `frontend-app`: student links, attempts review; moderator content/task workflows with uploads per `API_CONVENTIONS.md`
+    □ Admin app: admin auth, olympiad management, users/moderator management, audit logs, content/task management as needed; wire role-based navigation
+    □ QA pass: responsiveness, accessibility, error states, loading states, API edge cases, and build/deploy scripts; produce final checklist
+

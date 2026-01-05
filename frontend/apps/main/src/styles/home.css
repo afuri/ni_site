@@ -1,0 +1,131 @@
+.home-page .layout-main {
+  padding: 0;
+}
+
+.home-hero {
+  position: relative;
+  min-height: 100vh;
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.home-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-hero);
+}
+
+.home-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.25), transparent 45%);
+  opacity: 0.8;
+}
+
+.home-hero-content {
+  position: relative;
+  z-index: 1;
+  padding: calc(var(--space-10) + 40px) var(--space-6) var(--space-10);
+  max-width: 720px;
+}
+
+.home-hero h1 {
+  font-size: clamp(2.6rem, 4vw, 3.6rem);
+  margin-bottom: var(--space-4);
+}
+
+.home-hero-subtitle {
+  font-size: 1.1rem;
+  margin-bottom: var(--space-4);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.home-hero-quote {
+  font-style: italic;
+  margin-bottom: var(--space-6);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.home-hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.home-hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.home-hero-links a {
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.9rem;
+}
+
+.home-audience {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  padding: var(--space-10) var(--space-6);
+}
+
+.home-audience-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-6);
+}
+
+.home-audience ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+  color: rgba(31, 59, 99, 0.7);
+}
+
+.home-audience li::before {
+  content: "•";
+  margin-right: var(--space-2);
+  color: var(--color-ink-500);
+}
+
+.home-section {
+  padding: var(--space-10) var(--space-6);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.home-section h2 {
+  font-size: 2rem;
+  margin-bottom: var(--space-3);
+}
+
+.home-section p {
+  max-width: 720px;
+  color: rgba(31, 59, 99, 0.7);
+}
+
+.home-footer {
+  background: rgba(31, 59, 99, 0.95);
+  color: var(--color-white);
+  text-align: center;
+  padding: var(--space-6);
+}
+
+@media (max-width: 720px) {
+  .home-hero-content {
+    padding-top: calc(var(--space-10) + 80px);
+  }
+
+  .home-hero-actions {
+    align-items: flex-start;
+  }
+}

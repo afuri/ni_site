@@ -1,7 +1,8 @@
 import "@ui/styles/global.css";
-import { AuthProvider, useAuth } from "@ui";
+import { AuthProvider } from "@ui";
 import { createApiClient } from "@api";
 import { createAuthStorage } from "@utils";
+import { HomePage } from "./pages/HomePage";
 
 const storage = createAuthStorage({
   tokensKey: "ni_main_tokens",
@@ -13,26 +14,10 @@ const apiClient = createApiClient({
   storage
 });
 
-function AppContent() {
-  const { status, user } = useAuth();
-
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <h1>Main app scaffold</h1>
-      </header>
-      <main className="app-content">
-        <p>Auth status: {status}</p>
-        <p>Current role: {user?.role ?? "guest"}</p>
-      </main>
-    </div>
-  );
-}
-
 export function App() {
   return (
     <AuthProvider client={apiClient} storage={storage}>
-      <AppContent />
+      <HomePage />
     </AuthProvider>
   );
 }
