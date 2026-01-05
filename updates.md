@@ -405,3 +405,12 @@ Shared UI kit is implemented with styling and tests for each component.
 
   - frontend/packages/ui/src/styles/global.css
   - frontend/packages/ui/src/index.ts
+
+0.5.1
+
+Updated the TextInput tests to use regex name matching so helper/error text doesn’t break the accessible name lookup.
+
+  File updated:
+
+  - frontend/packages/ui/src/components/__tests__/TextInput.test.tsx
+

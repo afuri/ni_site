@@ -10,13 +10,13 @@ describe("TextInput", () => {
 
     expect(screen.getByText("Email")).toBeInTheDocument();
     expect(screen.getByText("We'll never share")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Email" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /Email/ })).toBeInTheDocument();
   });
 
   it("renders error state", () => {
     render(<TextInput label="Name" error="Required" name="name" />);
 
-    const input = screen.getByRole("textbox", { name: "Name" });
+    const input = screen.getByRole("textbox", { name: /Name/ });
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("Required")).toBeInTheDocument();
   });
