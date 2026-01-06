@@ -238,7 +238,7 @@ export function HomePage() {
         <div className="cat-widget">
           {isQuoteOpen ? (
             <div className="cat-quote" role="dialog" aria-label="Цитата" id="cat-quote">
-              <p>«Математика — королева наук.»</p>
+              <p>«Математика — царица наук»</p>
               <span>Карл Фридрих Гаусс</span>
             </div>
           ) : null}

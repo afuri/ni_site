@@ -11,7 +11,8 @@
   position: sticky;
   top: 0;
   width: 100%;
-  background: rgba(0, 86, 210, 0.8);
+  background: rgba(0, 33, 75, 0.894);
+  /*background: rgba(0, 86, 210, 0.8);*/
   color: var(--color-white);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
@@ -304,7 +305,7 @@
 }
 
 .home-footer {
-  background: rgba(0, 86, 210, 0.8);;
+  background: rgba(0, 33, 75, 0.894);
   color: var(--color-white);
   text-align: center;
   padding: var(--space-6);
