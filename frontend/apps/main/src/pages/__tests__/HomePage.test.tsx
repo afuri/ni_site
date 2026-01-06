@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { HomePage } from "../HomePage";
 import { describe, expect, it, vi } from "vitest";
@@ -33,5 +34,23 @@ describe("HomePage", () => {
 
     const hero = screen.getByTestId("home-hero");
     expect(hero.style.backgroundImage).toContain("main_banner_3.png");
+  });
+
+  it("toggles cat quote popover on click", async () => {
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+
+    expect(screen.queryByText(/Математика/)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Кот" }));
+    expect(screen.getByText(/Математика/)).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("cat-overlay"));
+    expect(screen.queryByText(/Математика/)).toBeNull();
   });
 });

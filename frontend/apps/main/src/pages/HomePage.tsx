@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button, Card, LayoutShell } from "@ui";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
+import catImage from "../assets/cat.png";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-02T00:00:00+03:00";
@@ -61,6 +62,7 @@ const FAQ_ITEMS = [
 
 export function HomePage() {
   const navigate = useNavigate();
+  const [isQuoteOpen, setIsQuoteOpen] = useState(false);
 
   return (
     <div className="home-page">
@@ -223,6 +225,33 @@ export function HomePage() {
             <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
           </div>
         </section>
+
+        {isQuoteOpen ? (
+          <div
+            className="cat-overlay"
+            onClick={() => setIsQuoteOpen(false)}
+            data-testid="cat-overlay"
+            aria-hidden="true"
+          />
+        ) : null}
+
+        <div className="cat-widget">
+          {isQuoteOpen ? (
+            <div className="cat-quote" role="dialog" aria-label="Цитата" id="cat-quote">
+              <p>«Математика — королева наук.»</p>
+              <span>Карл Фридрих Гаусс</span>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="cat-button"
+            onClick={() => setIsQuoteOpen((prev) => !prev)}
+            aria-expanded={isQuoteOpen}
+            aria-controls="cat-quote"
+          >
+            <img src={catImage} alt="Кот" />
+          </button>
+        </div>
       </LayoutShell>
     </div>
   );

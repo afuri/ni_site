@@ -544,6 +544,18 @@ Adjusted the hero background test to assert the resolved asset path instead of t
 
   - frontend/UI_elements.md
 
+0.6.4
+
+• Добавил фиксированного кота с интерактивной цитатой и обновил документацию.
+
+  Изменения:
+
+  - Кот и поповер: frontend/apps/main/src/pages/HomePage.tsx
+  - Стили кота/поповера: frontend/apps/main/src/styles/home.css
+  - Тесты поведения: frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
+  - Документация: frontend/UI_elements.md
+  - Asset: frontend/apps/main/src/assets/cat.png
+
 
 0.7.0
 

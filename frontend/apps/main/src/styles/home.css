@@ -315,6 +315,56 @@
   padding: 0;
 }
 
+.cat-overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 30;
+}
+
+.cat-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;
+}
+
+.cat-button {
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cat-button img {
+  width: 96px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 12px 24px rgba(15, 27, 42, 0.25));
+}
+
+.cat-quote {
+  position: absolute;
+  right: 100%;
+  bottom: 100%;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-2);
+  width: min(480px, 70vw);
+  color: var(--color-ink-700);
+}
+
+.cat-quote p {
+  margin: 0 0 var(--space-2);
+  font-style: italic;
+}
+
+.cat-quote span {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 900px) {
   .home-page .layout-header {
     background: #0d1b2a;

@@ -117,3 +117,14 @@
 - Общие стили UI: `frontend/packages/ui/src/styles/components.css`
 - Глобальные стили: `frontend/packages/ui/src/styles/global.css`
 - Токены (цвета/шрифты): `frontend/packages/ui/src/styles/tokens.css`
+
+## 13) Кот (fixed элемент внизу справа)
+- Что это: фиксированный интерактивный элемент `cat.png` с цитатой.
+- Код: `frontend/apps/main/src/pages/HomePage.tsx`
+- Стили: `frontend/apps/main/src/styles/home.css`
+  - Классы: `.cat-widget`, `.cat-button`, `.cat-quote`, `.cat-overlay`
+- Где менять:
+  - Изображение: `frontend/apps/main/src/assets/cat.png`
+  - Текст цитаты/подпись: `HomePage.tsx` (блок `.cat-quote`)
+  - Позиция/размер: `.cat-widget`, `.cat-button img`
+  - Позиция и ширина всплывающего окна: `.cat-quote` (`right: 100%`, `bottom: 100%`, `width`)
