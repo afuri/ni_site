@@ -1,27 +1,37 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { HomePage } from "../HomePage";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../assets/main_picture.jpg", () => ({
-  default: "hero-image"
+vi.mock("../assets/main_banner_3.png", () => ({
+  default: "hero-banner"
+}));
+vi.mock("../assets/logo2.png", () => ({
+  default: "logo-image"
 }));
 
 describe("HomePage", () => {
   it("renders hero content and CTA", () => {
-    render(<HomePage />);
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByRole("heading", { name: "Олимпиада «Невский интеграл»" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /Олимпиада/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Принять участие" })).toBeInTheDocument();
-    expect(screen.getByText("Стартуйте, развивайтесь, подтверждайте результат")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Об олимпиаде" })).toBeInTheDocument();
   });
 
   it("sets hero background image", () => {
-    render(<HomePage />);
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
 
-    const heroMedia = screen.getByTestId("hero-media");
-    const heroImage = screen.getByAltText("Невский интеграл над Невой") as HTMLImageElement;
-    expect(heroMedia).toBeInTheDocument();
-    expect(heroImage.src).toContain("main_picture.jpg");
+    const hero = screen.getByTestId("home-hero");
+    expect(hero.style.backgroundImage).toContain("main_banner_3.png");
   });
 });

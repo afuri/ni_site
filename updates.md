@@ -457,6 +457,93 @@ Adjusted the hero background test to assert the resolved asset path instead of t
   Commit message:
   feat(frontend): adapt home page layout with hero image container and Coursera-style sections
 
+0.6.3
+
+Обновил главную под структуру из frontend/UI_UX_specification.md, добавил banner‑hero с main_banner_3.png и контейнер с обрезкой высоты 400px, встроил логотип/
+  название, блоки и карусели, а также заглушку для “Прохождение олимпиады” с таймером и маршрутом /olympiad.
+
+  Что изменилось:
+
+  - Главная перестроена по структуре: верхнее меню, hero с фоном, блок “Об олимпиаде”, “Новости” (карусель), “Расписание” (кликабельный список),
+    “Результаты” (карусель), “Статьи” (details), FAQ, контакты, footer.
+  - Hero использует фон main_banner_3.png один раз; нижний яркий блок шириной ~30% с таймером и CTA.
+  - Добавлена заглушка страницы участия с таймером и навигацией назад.
+  - Переместил logo2.png и main_banner_3.png в frontend/apps/main/src/assets.
+
+  Файлы:
+
+  - frontend/apps/main/src/pages/HomePage.tsx
+  - frontend/apps/main/src/styles/home.css
+  - frontend/apps/main/src/components/Countdown.tsx
+  - frontend/apps/main/src/pages/ParticipationPlaceholder.tsx
+  - frontend/apps/main/src/styles/placeholder.css
+  - frontend/apps/main/src/App.tsx
+  - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
+  - frontend/apps/main/src/pages/__tests__/ParticipationPlaceholder.test.tsx
+  - frontend/apps/main/src/assets/logo2.png
+  - frontend/apps/main/src/assets/main_banner_3.png
+
+Обновил главную под структуру из frontend/UI_UX_specification.md, добавил banner‑hero с main_banner_3.png и контейнер с обрезкой высоты 400px, встроил логотип/
+  название, блоки и карусели, а также заглушку для “Прохождение олимпиады” с таймером и маршрутом /olympiad.
+
+  Что изменилось:
+
+  - Главная перестроена по структуре: верхнее меню, hero с фоном, блок “Об олимпиаде”, “Новости” (карусель), “Расписание” (кликабельный список),
+    “Результаты” (карусель), “Статьи” (details), FAQ, контакты, footer.
+  - Hero использует фон main_banner_3.png один раз; нижний яркий блок шириной ~30% с таймером и CTA.
+  - Добавлена заглушка страницы участия с таймером и навигацией назад.
+  - Переместил logo2.png и main_banner_3.png в frontend/apps/main/src/assets.
+
+  Файлы:
+
+  - frontend/apps/main/src/pages/HomePage.tsx
+  - frontend/apps/main/src/styles/home.css
+  - frontend/apps/main/src/components/Countdown.tsx
+  - frontend/apps/main/src/pages/ParticipationPlaceholder.tsx
+  - frontend/apps/main/src/styles/placeholder.css
+  - frontend/apps/main/src/App.tsx
+  - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
+  - frontend/apps/main/src/pages/__tests__/ParticipationPlaceholder.test.tsx
+  - frontend/apps/main/src/assets/logo2.png
+  - frontend/apps/main/src/assets/main_banner_3.png
+
+ Сделал правки по всем 5 пунктам:
+
+  - Меню теперь sticky и остаётся сверху при скролле.
+  - Логотип увеличен в 2 раза.
+  - Фон hero плавно перетекает в белый (градиент к низу поверх PNG).
+  - Блок “Ближайшая олимпиада” выровнен по центру, текст и элементы центрированы.
+  - Заголовки всех секций центрированы.
+
+  Файл изменён:
+
+  - frontend/apps/main/src/styles/home.css
+
+Готово: меню стало ярко‑синим с прозрачностью и вдвое ниже, логотип увеличен (контейнер 56px, логотип кадрируется), заголовок поднят и теперь расположен ~50px
+  ниже меню, цвет тёмно‑синий с тенью. Блок “Ближайшая олимпиада” — в 2 раза шире, полупрозрачный (30% прозрачности), таймер центрирован.
+
+  Файл изменён:
+
+  - frontend/apps/main/src/styles/home.css
+
+Готово.
+
+  - Логотип в меню вертикально выровнен (центр), кадрируется без смещения.
+  - Заголовок поднят (сразу под меню), цвет — ярко‑синий.
+  - Блок “Ближайшая олимпиада” теперь “Ближайшая олимпиада через”, увеличен шрифт, удалён текст “до 02.02.2026”.
+  - Кнопка “Принять участие” — текст строго по центру.
+
+  Файлы:
+
+  - frontend/apps/main/src/styles/home.css
+  - frontend/apps/main/src/pages/HomePage.tsx
+
+Создал файл с описанием всех элементов главной и ссылками на код/стили.
+
+  Файл:
+
+  - frontend/UI_elements.md
+
 
 0.7.0
 

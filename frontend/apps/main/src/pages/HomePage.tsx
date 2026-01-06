@@ -1,211 +1,218 @@
 import React from "react";
 import { Button, Card, LayoutShell } from "@ui";
-import heroImage from "../assets/main_picture.jpg";
+import { Link, useNavigate } from "react-router-dom";
+import { Countdown } from "../components/Countdown";
+import bannerImage from "../assets/main_banner_3.png";
+import logoImage from "../assets/logo2.png";
 import "../styles/home.css";
 
+const TARGET_DATE = "2026-02-02T00:00:00+03:00";
+
+const NEWS_ITEMS = [
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed quis aliquet massa.",
+  "Pellentesque habitant morbi tristique senectus et netus et malesuada fames.",
+  "Integer ut erat sed justo aliquet fermentum. Vestibulum euismod odio ut risus.",
+  "Mauris tincidunt, arcu nec facilisis aliquam, nunc leo tempor erat.",
+  "Donec volutpat lorem at suscipit gravida. Nulla facilisi in varius."
+];
+
+const RESULTS_ITEMS = [
+  "Итоги олимпиады по математике 1 класс: средний балл 78%.",
+  "Итоги олимпиады по математике 3-4 класс: средний балл 73%.",
+  "Итоги олимпиады по информатике 5-6 класс: средний балл 69%.",
+  "Итоги олимпиады по информатике 7 класс: средний балл 74%."
+];
+
+const SCHEDULE_ITEMS = [
+  "02.02.2026 олимпиада по математике «Невский интеграл» 1 класс",
+  "03.02.2026 олимпиада по математике «Невский интеграл» 2 класс",
+  "04.02.2026 олимпиада по математике «Невский интеграл» 3 класс",
+  "05.02.2026 олимпиада по математике «Невский интеграл» 4 класс",
+  "06.02.2026 олимпиада по математике «Невский интеграл» 5-6 класс",
+  "07.02.2026 олимпиада по математике «Невский интеграл» 7 класс",
+  "08.02.2026 олимпиада по информатике «Невский интеграл» 3-4 класс",
+  "09.02.2026 олимпиада по информатике «Невский интеграл» 5-6 класс",
+  "10.02.2026 олимпиада по информатике «Невский интеграл» 7 класс",
+  "01.04.2026 / очный этап"
+];
+
+const ARTICLE_ITEMS = [
+  "Как подготовиться к олимпиаде за 2 недели",
+  "Лучшие практики для учителей при организации участия",
+  "Почему логические задачи важны в начальной школе",
+  "Секреты успешного прохождения олимпиад",
+  "Как поддерживать мотивацию ребенка"
+];
+
+const FAQ_ITEMS = [
+  {
+    question: "Как долго длится олимпиада?",
+    answer: "Время зависит от уровня и класса, обычно от 30 до 75 минут."
+  },
+  {
+    question: "Можно ли пройти олимпиаду повторно?",
+    answer: "Для каждого ученика доступна одна попытка, результаты фиксируются сразу."
+  },
+  {
+    question: "Как получить диплом?",
+    answer: "Диплом доступен в личном кабинете после проверки результатов."
+  }
+];
+
 export function HomePage() {
+  const navigate = useNavigate();
+
   return (
     <div className="home-page">
       <LayoutShell
-        logo={<span>Невский интеграл</span>}
+        logo={
+          <a href="/" className="home-logo">
+            <img src={logoImage} alt="Невский интеграл" />
+            <span>НЕВСКИЙ<br />ИНТЕГРАЛ</span>
+          </a>
+        }
         nav={
           <>
-            <a href="#top">Главная</a>
             <a href="#about">Об олимпиаде</a>
-            <a href="#format">Формат и задания</a>
+            <a href="#news">Новости</a>
+            <a href="#schedule">Расписание</a>
             <a href="#results">Результаты</a>
-            <a href="#contacts">Контакты</a>
+            <a href="#articles">Статьи</a>
           </>
         }
-        actions={<Button variant="outline">Регистрация</Button>}
-        footer={<div className="home-footer">© 2025 Олимпиада «Невский интеграл»</div>}
-      >
-        <section id="top" className="home-hero">
-          <div className="container home-hero-grid">
-            <div className="home-hero-content">
-              <h1>Олимпиада «Невский интеграл»</h1>
-              <p className="home-hero-subtitle">
-                Развиваем логику и математическое мышление у учеников 1-7 классов.
-                Онлайн-формат, честные результаты, удобные кабинеты.
-              </p>
-              <p className="home-hero-quote">«Думать глубже. Расти сильнее.»</p>
-              <div className="home-hero-actions">
-                <Button>Принять участие</Button>
-                <Button variant="outline">Смотреть программы</Button>
-                <div className="home-hero-links">
-                  <a href="#about">Об олимпиаде</a>
-                  <a href="#parents">Для родителей</a>
-                  <a href="#teachers">Для учителей</a>
-                </div>
-              </div>
-            </div>
-            <div className="home-hero-media" data-testid="hero-media">
-              <img
-                src={heroImage}
-                alt="Невский интеграл над Невой"
-                className="home-hero-image"
-              />
-            </div>
+        actions={
+          <div className="home-header-actions">
+            <Button>Войти</Button>
+            <Button>Регистрация</Button>
           </div>
-        </section>
-
-        <section className="home-promo" aria-label="Промо">
-          <div className="container home-promo-inner">
-            <div>
-              <h2>Зимний набор открыт</h2>
-              <p>Скидка на участие для классов и школьных команд до конца месяца.</p>
+        }
+        footer={<div className="home-footer">© 2026 Олимпиада «Невский интеграл»</div>}
+      >
+        <section
+          id="top"
+          className="home-hero"
+          data-testid="home-hero"
+          style={{ backgroundImage: `url(${bannerImage})` }}
+        >
+          <div className="container home-hero-inner">
+            <div className="home-hero-title">
+              <h1>
+                Олимпиада
+                <br />
+                Невский интеграл
+              </h1>
             </div>
-            <Button variant="outline">Узнать условия</Button>
+            <div className="home-hero-panel">
+              <div className="home-hero-panel-title">Ближайшая олимпиада через</div>
+              <Countdown targetIso={TARGET_DATE} />
+              <Button onClick={() => navigate("/olympiad")}>Принять участие</Button>
+            </div>
           </div>
         </section>
 
         <section id="about" className="home-section">
           <div className="container">
-            <div className="home-section-heading">
-              <h2>Стартуйте, развивайтесь, подтверждайте результат</h2>
-              <p>Выберите маршрут участия - от первой олимпиады до устойчивых достижений.</p>
-            </div>
-            <div className="home-card-grid">
-              <Card title="Старт в олимпиадах">
-                <p>Первые шаги в математических и инженерных задачах без стресса.</p>
-                <ul>
-                  <li>Интересные задачи</li>
-                  <li>Без стресса</li>
-                  <li>Попробуй себя</li>
-                </ul>
-              </Card>
-              <div id="parents">
-                <Card title="Развитие мышления">
-                  <p>Прозрачные условия и понятные результаты для семей.</p>
-                  <ul>
-                    <li>Развитие мышления</li>
-                    <li>Прозрачные условия</li>
-                    <li>Понятные результаты</li>
-                  </ul>
-                </Card>
+            <h2>Об олимпиаде</h2>
+            <p className="home-text">
+              «Невский интеграл» - онлайн-олимпиада по математике и информатике
+              для учеников 1-7 классов. Мы развиваем мышление и формируем привычку
+              к инженерному подходу.
+            </p>
+            <div className="home-about-grid">
+              <div>
+                <h3>Партнеры</h3>
+                <div className="home-logo-grid">
+                  <span>ИТМО</span>
+                  <span>СПбГУ</span>
+                  <span>Политех</span>
+                  <span>ФТШ</span>
+                </div>
               </div>
-              <div id="teachers">
-                <Card title="Инструмент для школы">
-                  <p>Готовые форматы, методическая поддержка и дипломы.</p>
-                  <ul>
-                    <li>Готовый инструмент</li>
-                    <li>Методическая ценность</li>
-                    <li>Сертификаты и дипломы</li>
-                  </ul>
-                </Card>
+              <div>
+                <h3>Документы</h3>
+                <div className="home-docs">
+                  <a href="#" className="home-doc-link">Положение (PDF)</a>
+                  <a href="#" className="home-doc-link">Перечень (PDF)</a>
+                  <a href="#" className="home-doc-link">Важная информация (PDF)</a>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="home-section-alt" aria-label="Партнеры">
-          <div className="container">
-            <h2>Партнеры и поддержка</h2>
-            <div className="home-logo-grid">
-              <span>ИТМО</span>
-              <span>СПбГУ</span>
-              <span>Политех</span>
-              <span>ФТШ</span>
-              <span>Кванториум</span>
-              <span>ЦОПП</span>
-            </div>
-          </div>
-        </section>
-
-        <section id="format" className="home-section">
+        <section id="news" className="home-section-alt">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Популярные олимпиады</h2>
-              <p>Подберите формат по классу и уровню сложности.</p>
+              <h2>Новости</h2>
             </div>
-            <div className="home-slider">
-              <Card title="Логика и мышление">
-                <p>Для 1-2 классов, 30 минут.</p>
-              </Card>
-              <Card title="Математика 3-4">
-                <p>Для 3-4 классов, 45 минут.</p>
-              </Card>
-              <Card title="Инженерный старт">
-                <p>Для 5-6 классов, 60 минут.</p>
-              </Card>
-              <Card title="Глубокая математика">
-                <p>Для 7-8 классов, 75 минут.</p>
-              </Card>
+            <div className="home-carousel">
+              {NEWS_ITEMS.map((item, index) => (
+                <Card key={index} title={`Новость ${index + 1}`}>
+                  <p>{item}</p>
+                </Card>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="home-section-alt" aria-label="Категории">
+        <section id="schedule" className="home-section">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Категории заданий</h2>
-              <p>Разделы охватывают логику, математику, моделирование и инженерные задачи.</p>
+              <h2>Расписание олимпиад</h2>
             </div>
-            <div className="home-category-grid">
-              <Card title="Логика" />
-              <Card title="Комбинаторика" />
-              <Card title="Геометрия" />
-              <Card title="Теория чисел" />
-              <Card title="Моделирование" />
-              <Card title="Информатика" />
+            <div className="home-schedule">
+              {SCHEDULE_ITEMS.map((item) => (
+                <Link key={item} to="/olympiad" className="home-schedule-item">
+                  {item}
+                </Link>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="home-section" aria-label="Сценарии">
-          <div className="container home-split">
-            <div>
-              <h2>Что вы хотите сделать сегодня?</h2>
-              <p>
-                Выберите сценарий - мы подскажем подходящую олимпиаду и формат участия.
-              </p>
-            </div>
-            <div className="home-split-actions">
-              <Button variant="outline">Записать класс</Button>
-              <Button variant="outline">Подготовить ребенка</Button>
-              <Button variant="outline">Проверить уровень</Button>
-            </div>
-          </div>
-        </section>
-
-        <section id="results" className="home-section">
+        <section id="results" className="home-section-alt">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Почему выбирают «Невский интеграл»</h2>
-              <p>Прозрачность, надежность и понятная аналитика для каждой роли.</p>
+              <h2>Результаты</h2>
             </div>
-            <div className="home-card-grid">
-              <Card title="10 000+ участников">
-                <p>Масштабируемая платформа и честные проверки.</p>
-              </Card>
-              <Card title="Отчетность для учителей">
-                <p>Сводки по классу и динамике результатов.</p>
-              </Card>
-              <Card title="Понятные итоги">
-                <p>Ученик видит процент и время, без лишнего стресса.</p>
-              </Card>
+            <div className="home-carousel">
+              {RESULTS_ITEMS.map((item, index) => (
+                <Card key={index} title={`Результат ${index + 1}`}>
+                  <p>{item}</p>
+                </Card>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="home-section-alt" aria-label="FAQ">
+        <section id="articles" className="home-section">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Частые вопросы</h2>
+              <h2>Статьи</h2>
+            </div>
+            <div className="home-articles">
+              {ARTICLE_ITEMS.map((item) => (
+                <details key={item}>
+                  <summary>{item}</summary>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h2>Часто задаваемые вопросы</h2>
             </div>
             <div className="home-faq">
-              <details>
-                <summary>Как долго длится олимпиада?</summary>
-                <p>Время зависит от уровня и класса, обычно от 30 до 75 минут.</p>
-              </details>
-              <details>
-                <summary>Можно ли пройти олимпиаду повторно?</summary>
-                <p>Для каждого ученика доступна одна попытка, результаты фиксируются сразу.</p>
-              </details>
-              <details>
-                <summary>Как получить диплом?</summary>
-                <p>Диплом доступен в личном кабинете после проверки результатов.</p>
-              </details>
+              {FAQ_ITEMS.map((item) => (
+                <details key={item.question}>
+                  <summary>{item.question}</summary>
+                  <p>{item.answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
@@ -213,7 +220,7 @@ export function HomePage() {
         <section id="contacts" className="home-section">
           <div className="container">
             <h2>Контакты</h2>
-            <p>Пишите на support@nevsky-integral.ru или звоните +7 (812) 000-00-00.</p>
+            <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
           </div>
         </section>
       </LayoutShell>

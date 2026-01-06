@@ -1,0 +1,22 @@
+.placeholder-page .layout-main {
+  padding: var(--space-10) var(--space-6);
+}
+
+.placeholder-card {
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  padding: var(--space-8);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.placeholder-card h1 {
+  margin-bottom: var(--space-3);
+}
+
+.placeholder-card p {
+  color: rgba(31, 59, 99, 0.7);
+  margin-bottom: var(--space-4);
+}
