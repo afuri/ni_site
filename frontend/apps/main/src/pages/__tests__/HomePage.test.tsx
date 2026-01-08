@@ -36,6 +36,21 @@ describe("HomePage", () => {
     expect(hero.style.backgroundImage).toContain("main_banner_3.png");
   });
 
+  it("opens and closes the mobile menu dropdown", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole("menu")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Меню" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    await user.click(screen.getByTestId("nav-overlay"));
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
   it("toggles cat quote popover on click", async () => {
     render(
       <MemoryRouter>

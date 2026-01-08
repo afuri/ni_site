@@ -556,6 +556,18 @@ Adjusted the hero background test to assert the resolved asset path instead of t
   - Документация: frontend/UI_elements.md
   - Asset: frontend/apps/main/src/assets/cat.png
 
+0.6.5
+
+Сделал адаптивное меню с гамбургером и выпадающим списком, логотип и кнопки остаются видимыми. Меню прячется под слово “меню” при уменьшении ширины до 1000px, клик по оверлею закрывает список.
+Кот меняет размер относительной ширины страницы
+
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/HomePage.tsx — добавлен hamburger + dropdown и overlay.
+  - frontend/apps/main/src/styles/home.css — стили для nav/гамбургера/дропдауна + mobile поведение.
+  - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx — тест на открытие/закрытие меню.
+
 
 0.7.0
 

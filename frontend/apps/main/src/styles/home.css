@@ -40,6 +40,71 @@
   gap: var(--space-4);
 }
 
+.home-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  position: relative;
+  width: 100%;
+}
+
+.home-nav-links {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.home-nav-toggle {
+  display: none;
+  min-width: 60px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 0;
+  margin: 0 auto;
+  color: var(--color-white);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+}
+
+.home-nav-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 33, 75, 0.894);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  min-width: 200px;
+  box-shadow: var(--shadow-2);
+  z-index: 20;
+}
+
+.home-nav-dropdown a {
+  color: var(--color-white);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.home-nav-dropdown a:hover {
+  background: rgba(0, 86, 210, 0.8);
+}
+
+.home-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 5;
+}
+
 .home-logo {
   display: inline-flex;
   align-items: center;
@@ -51,12 +116,12 @@
   line-height: 1.1;
   height: 56px;
   overflow: hidden;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .home-logo img {
-  width: 88px;
-  height: 88px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
   object-position: center;
   display: block;
@@ -171,6 +236,7 @@
 .home-section,
 .home-section-alt {
   padding: var(--space-10) var(--space-6);
+  scroll-margin-top: 72px;
 }
 
 .home-section {
@@ -338,7 +404,7 @@
 }
 
 .cat-button img {
-  width: 96px;
+  width: clamp(96px, 12vw, 200px);
   height: auto;
   display: block;
   filter: drop-shadow(0 12px 24px rgba(15, 27, 42, 0.25));
@@ -346,8 +412,8 @@
 
 .cat-quote {
   position: absolute;
-  right: 100%;
-  bottom: 100%;
+  right: 70%;
+  bottom: 70%;
   background: rgba(255, 255, 255, 0.98);
   border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-5);
@@ -366,9 +432,17 @@
   font-size: 0.9rem;
 }
 
-@media (max-width: 900px) {
-  .home-page .layout-header {
-    background: #0d1b2a;
+@media (max-width: 1000px) {
+  .home-page .layout-nav {
+    justify-content: center;
+  }
+
+  .home-nav-links {
+    display: none;
+  }
+
+  .home-nav-toggle {
+    display: inline-flex;
   }
 
   .home-hero {

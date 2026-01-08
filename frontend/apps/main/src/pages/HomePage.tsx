@@ -63,6 +63,15 @@ const FAQ_ITEMS = [
 export function HomePage() {
   const navigate = useNavigate();
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const navItems = [
+    { label: "Об олимпиаде", href: "#about" },
+    { label: "Новости", href: "#news" },
+    { label: "Расписание", href: "#schedule" },
+    { label: "Результаты", href: "#results" },
+    { label: "Статьи", href: "#articles" }
+  ];
 
   return (
     <div className="home-page">
@@ -74,13 +83,38 @@ export function HomePage() {
           </a>
         }
         nav={
-          <>
-            <a href="#about">Об олимпиаде</a>
-            <a href="#news">Новости</a>
-            <a href="#schedule">Расписание</a>
-            <a href="#results">Результаты</a>
-            <a href="#articles">Статьи</a>
-          </>
+          <div className="home-nav">
+            <div className="home-nav-links">
+              {navItems.map((item) => (
+                <a key={item.href} href={item.href}>
+                  {item.label}
+                </a>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="home-nav-toggle"
+              aria-label="Меню"
+              aria-expanded={isMenuOpen}
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+            >
+              меню
+            </button>
+            {isMenuOpen ? (
+              <div className="home-nav-dropdown" role="menu">
+                {navItems.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    role="menuitem"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            ) : null}
+          </div>
         }
         actions={
           <div className="home-header-actions">
@@ -225,6 +259,15 @@ export function HomePage() {
             <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
           </div>
         </section>
+
+        {isMenuOpen ? (
+          <div
+            className="home-nav-overlay"
+            onClick={() => setIsMenuOpen(false)}
+            aria-hidden="true"
+            data-testid="nav-overlay"
+          />
+        ) : null}
 
         {isQuoteOpen ? (
           <div
