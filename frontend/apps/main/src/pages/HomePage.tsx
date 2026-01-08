@@ -380,7 +380,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="home-section-alt">
+        <section className="home-section">
           <div className="container">
             <div className="home-section-heading">
               <h2>Организраторы и партнеры</h2>
@@ -395,7 +395,7 @@ export function HomePage() {
           </div>
         </section>
 
-        <section id="contacts" className="home-section">
+        <section id="contacts" className="home-section-alt">
           <div className="container">
             <h2>Контакты</h2>
             <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
