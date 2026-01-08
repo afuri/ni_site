@@ -5,6 +5,7 @@ import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
 import catImage from "../assets/cat.png";
+import vkLink from "../assets/vk_link.png";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-02T00:00:00+03:00";
@@ -25,16 +26,16 @@ const RESULTS_ITEMS = [
 ];
 
 const SCHEDULE_ITEMS = [
-  "02.02.2026 олимпиада по математике «Невский интеграл» 1 класс",
-  "03.02.2026 олимпиада по математике «Невский интеграл» 2 класс",
-  "04.02.2026 олимпиада по математике «Невский интеграл» 3 класс",
-  "05.02.2026 олимпиада по математике «Невский интеграл» 4 класс",
-  "06.02.2026 олимпиада по математике «Невский интеграл» 5-6 класс",
-  "07.02.2026 олимпиада по математике «Невский интеграл» 7 класс",
-  "08.02.2026 олимпиада по информатике «Невский интеграл» 3-4 класс",
-  "09.02.2026 олимпиада по информатике «Невский интеграл» 5-6 класс",
-  "10.02.2026 олимпиада по информатике «Невский интеграл» 7 класс",
-  "01.04.2026 / очный этап"
+  { date: "02.02.2026", title: "Олимпиада по математике «Невский интеграл» 1 класс" },
+  { date: "03.02.2026", title: "Олимпиада по математике «Невский интеграл» 2 класс" },
+  { date: "04.02.2026", title: "Олимпиада по математике «Невский интеграл» 3 класс" },
+  { date: "05.02.2026", title: "Олимпиада по математике «Невский интеграл» 4 класс" },
+  { date: "06.02.2026", title: "Олимпиада по математике «Невский интеграл» 5-6 класс" },
+  { date: "07.02.2026", title: "Олимпиада по математике «Невский интеграл» 7 класс" },
+  { date: "08.02.2026", title: "Олимпиада по информатике «Невский интеграл» 3-4 класс" },
+  { date: "09.02.2026", title: "Олимпиада по информатике «Невский интеграл» 5-6 класс" },
+  { date: "10.02.2026", title: "Олимпиада по информатике «Невский интеграл» 7 класс" },
+  { date: "01.04.2026", title: "Очный этап" }
 ];
 
 const ARTICLE_ITEMS = [
@@ -118,6 +119,9 @@ export function HomePage() {
         }
         actions={
           <div className="home-header-actions">
+            <a href="https://vk.ru/olymp344" className="home-vk-link" aria-label="ВК Олимпиада">
+              <img src={vkLink} alt="ВК" />
+            </a>
             <Button>Войти</Button>
             <Button>Регистрация</Button>
           </div>
@@ -196,12 +200,21 @@ export function HomePage() {
             <div className="home-section-heading">
               <h2>Расписание олимпиад</h2>
             </div>
-            <div className="home-schedule">
-              {SCHEDULE_ITEMS.map((item) => (
-                <Link key={item} to="/olympiad" className="home-schedule-item">
-                  {item}
-                </Link>
-              ))}
+            <div className="home-schedule-scroll">
+              <div className="home-schedule-track">
+                {SCHEDULE_ITEMS.map((item, index) => (
+                  <div
+                    key={`${item.date}-${item.title}`}
+                    className={`home-schedule-item ${index % 2 === 0 ? "top" : "bottom"}`}
+                  >
+                    <span className="home-schedule-dot" aria-hidden="true" />
+                    <Link to="/olympiad" className="home-schedule-card">
+                      <div className="home-schedule-date">{item.date}</div>
+                      <div className="home-schedule-title">{item.title}</div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>

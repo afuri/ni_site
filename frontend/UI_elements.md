@@ -55,14 +55,15 @@
   - Контент новостей: `NEWS_ITEMS` в `HomePage.tsx`
   - Отступы/скролл: `.home-carousel`
 
-## 6) Раздел «Расписание олимпиад» (список)
-- Что это: список кликабельных элементов.
+## 6) Раздел «Расписание олимпиад» (горизонтальная временная линия)
+- Что это: горизонтальный скролл с временной линией и точками, подписи в шахматном порядке.
 - Код: `frontend/apps/main/src/pages/HomePage.tsx` (массив `SCHEDULE_ITEMS`)
 - Стили: `frontend/apps/main/src/styles/home.css`
-  - Классы: `.home-schedule`, `.home-schedule-item`
+  - Классы: `.home-schedule-scroll`, `.home-schedule-track`, `.home-schedule-item`, `.home-schedule-dot`, `.home-schedule-card`
 - Где менять:
   - Список дат/названий: `SCHEDULE_ITEMS`
-  - Внешний вид строк: `.home-schedule-item`
+  - Внешний вид линии/точек: `.home-schedule-track::before`, `.home-schedule-dot`
+  - Позиции карточек (верх/низ): `.home-schedule-item.top`, `.home-schedule-item.bottom`
   - Переход на заглушку: ссылка `to="/olympiad"`
 
 ## 7) Раздел «Результаты» (карусель)
