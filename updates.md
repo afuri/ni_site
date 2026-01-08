@@ -584,6 +584,28 @@ Adjusted the hero background test to assert the resolved asset path instead of t
 
 Поменял местами «Контакты» и блок партнеров, переименовал блок и сделал его каруселью карточек.
 
+0.6.8
+
+ Implemented the split “Результаты” section with two subject cards that open a detailed modal (dropdown, past tasks, prep tips, analytics), plus added subject
+  logos and a sizeable modal style hook in the UI kit so the results window feels full-page.
+
+  - New data + UI for math/informatics cards and modal flow in frontend/apps/main/src/pages/HomePage.tsx.
+  - Styling for the cards and modal layout in frontend/apps/main/src/styles/home.css.
+  - New assets frontend/apps/main/src/assets/math_logo.svg and frontend/apps/main/src/assets/cs_logo.svg.
+  - Modal component now accepts className/backdropClassName in frontend/packages/ui/src/components/Modal.tsx.
+  - Docs updated in frontend/UI_elements.md for the results section.
+
+  Tests: npm run test (passes; React Router future-flag warnings still show).
+
+  Commit: c4798c8e Add results modals for math and informatics.
+
+  Note: frontend/node_modules/.vite/vitest/results.json is modified by the test run and remains uncommitted.
+
+  Next steps (pick one):
+
+  1. Replace the placeholder results/tasks/tips with real content and/or links.
+  2. Tweak the results modal layout/visuals (sizes, stats cards, colors).
+
 0.7.0
 
 Next step: move into auth flows + content list/detail
