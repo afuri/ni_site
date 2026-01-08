@@ -37,13 +37,13 @@
   - Центрирование таймера: `.countdown`, `.countdown-timer`
 
 ## 4) Раздел «Об олимпиаде»
-- Что это: описание, партнёры, документы.
+- Что это: описание + документы в двухколоночной сетке 2/3 + 1/3.
 - Код: `frontend/apps/main/src/pages/HomePage.tsx`
 - Стили: `frontend/apps/main/src/styles/home.css`
-  - Классы: `.home-section`, `.home-about-grid`, `.home-logo-grid`, `.home-docs`, `.home-doc-link`
+  - Классы: `.home-section`, `.home-about-grid`, `.home-docs`, `.home-doc-link`, `.home-minpros`
 - Где менять:
-  - Текст описания: `HomePage.tsx` (абзац после заголовка)
-  - Список партнеров: `HomePage.tsx` (элементы внутри `.home-logo-grid`)
+  - Текст описания: `HomePage.tsx` (три абзаца внутри блока описания)
+  - Картинка Минпрос: `HomePage.tsx` (`minprosImage`) + `frontend/apps/main/src/assets/minpros.webp`
   - Ссылки на PDF: `HomePage.tsx` (блок `.home-docs`)
 
 ## 5) Раздел «Новости» (карусель)
@@ -129,3 +129,8 @@
   - Текст цитаты/подпись: `HomePage.tsx` (блок `.cat-quote`)
   - Позиция/размер: `.cat-widget`, `.cat-button img`
   - Позиция и ширина всплывающего окна: `.cat-quote` (`right: 100%`, `bottom: 100%`, `width`)
+## 14) Раздел «Организраторы и партнеры» (перед footer)
+- Что это: блок с карточками-логотипами в горизонтальном скролле.
+- Код: `frontend/apps/main/src/pages/HomePage.tsx`
+- Стили: `frontend/apps/main/src/styles/home.css`
+  - Классы: `.home-carousel`

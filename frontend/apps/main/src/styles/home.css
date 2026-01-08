@@ -287,8 +287,16 @@
 
 .home-about-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: var(--space-8);
+}
+
+.home-minpros {
+  max-width: 360px;
+  width: 100%;
+  height: auto;
+  margin-top: var(--space-4);
+  display: block;
 }
 
 .home-logo-grid {
@@ -523,5 +531,9 @@
 
   .home-hero-panel {
     width: 100%;
+  }
+
+  .home-about-grid {
+    grid-template-columns: 1fr;
   }
 }

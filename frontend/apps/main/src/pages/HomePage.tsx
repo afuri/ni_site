@@ -6,6 +6,7 @@ import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
 import catImage from "../assets/cat.png";
 import vkLink from "../assets/vk_link.png";
+import minprosImage from "../assets/minpros.webp";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-02T00:00:00+03:00";
@@ -153,20 +154,28 @@ export function HomePage() {
         <section id="about" className="home-section">
           <div className="container">
             <h2>Об олимпиаде</h2>
-            <p className="home-text">
-              «Невский интеграл» - онлайн-олимпиада по математике и информатике
-              для учеников 1-7 классов. Мы развиваем мышление и формируем привычку
-              к инженерному подходу.
-            </p>
             <div className="home-about-grid">
               <div>
-                <h3>Партнеры</h3>
-                <div className="home-logo-grid">
-                  <span>ИТМО</span>
-                  <span>СПбГУ</span>
-                  <span>Политех</span>
-                  <span>ФТШ</span>
-                </div>
+                <p className="home-text">
+                  Олимпиада «Невский интеграл» проводится с 2012 года и возникла как
+                  образовательная инициатива, созданная ко Дню рождения ГБОУ лицея №
+                  344 Невского района Санкт-Петербурга. Со временем эта идея переросла
+                  в самостоятельный и значимый проект, объединяющий школьников,
+                  увлечённых математикой и информатикой.
+                </p>
+                <p className="home-text">
+                  Олимпиада предоставляет участникам возможность выйти за рамки
+                  школьной программы, обратиться к нестандартным задачам, требующим
+                  логики, точности и вдумчивой работы с информацией, и объединяет
+                  учащихся из разных регионов, формируя общее интеллектуальное
+                  пространство.
+                </p>
+                <p className="home-text">
+                  Олимпиада «Невский интеграл» включена в перечень олимпиад и иных
+                  интеллектуальных конкурсов на 2025/26 учебный год, утвержденный
+                  приказом Министерства просвещения РФ от 31.08.2025 № 639.
+                </p>
+                <img src={minprosImage} alt="Министерство просвещения РФ" className="home-minpros" />
               </div>
               <div>
                 <h3>Документы</h3>
@@ -174,6 +183,7 @@ export function HomePage() {
                   <a href="#" className="home-doc-link">Положение (PDF)</a>
                   <a href="#" className="home-doc-link">Перечень (PDF)</a>
                   <a href="#" className="home-doc-link">Важная информация (PDF)</a>
+                  <a href="#" className="home-doc-link">Регламент проведения очного тура (PDF)</a>
                 </div>
               </div>
             </div>
@@ -262,6 +272,21 @@ export function HomePage() {
                   <p>{item.answer}</p>
                 </details>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h2>Организраторы и партнеры</h2>
+            </div>
+            <div className="home-carousel">
+              <Card title="ИТМО" />
+              <Card title="СПбГУ" />
+              <Card title="Политех" />
+              <Card title="ФТШ" />
+              <Card title="Кванториум" />
             </div>
           </div>
         </section>

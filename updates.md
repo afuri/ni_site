@@ -568,6 +568,21 @@ Adjusted the hero background test to assert the resolved asset path instead of t
   - frontend/apps/main/src/styles/home.css — стили для nav/гамбургера/дропдауна + mobile поведение.
   - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx — тест на открытие/закрытие меню.
 
+0.6.7
+
+Готово.
+
+  - Партнёры убраны из «Об олимпиаде» и перенесены перед footer.
+  - «Об олимпиаде» разделён на 2/3 + 1/3, добавлен длинный текст и картинка minpros.webp.
+  - В правой колонке добавлен документ «Регламент проведения очного тура».
+
+  Файлы:
+
+  - frontend/apps/main/src/pages/HomePage.tsx
+  - frontend/apps/main/src/styles/home.css
+  - frontend/UI_elements.md
+
+Поменял местами «Контакты» и блок партнеров, переименовал блок и сделал его каруселью карточек.
 
 0.7.0
 
