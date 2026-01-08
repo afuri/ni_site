@@ -6,18 +6,33 @@ export type ModalProps = {
   description?: string;
   children?: React.ReactNode;
   footer?: React.ReactNode;
+  className?: string;
+  backdropClassName?: string;
   onClose: () => void;
 };
 
-export function Modal({ isOpen, title, description, children, footer, onClose }: ModalProps) {
+export function Modal({
+  isOpen,
+  title,
+  description,
+  children,
+  footer,
+  className,
+  backdropClassName,
+  onClose
+}: ModalProps) {
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <div
+      className={`modal-backdrop ${backdropClassName ?? ""}`.trim()}
+      role="presentation"
+      onClick={onClose}
+    >
       <div
-        className="modal"
+        className={`modal ${className ?? ""}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}

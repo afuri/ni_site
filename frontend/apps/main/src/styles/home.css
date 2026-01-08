@@ -346,6 +346,120 @@
   min-height: 240px;
 }
 
+.home-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5);
+}
+
+.home-results-card {
+  display: grid;
+  gap: var(--space-4);
+  min-height: 280px;
+}
+
+.home-results-card-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.home-results-card-body img {
+  width: 72px;
+  height: 72px;
+}
+
+.home-results-card-body p {
+  margin: 0;
+  color: rgba(31, 59, 99, 0.7);
+}
+
+.home-results-card-footer {
+  margin-top: auto;
+}
+
+.home-results-modal {
+  width: min(960px, 95vw);
+  max-height: 85vh;
+  overflow: auto;
+}
+
+.home-results-modal-body {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.home-results-modal-top {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.home-results-modal-logo {
+  width: 96px;
+  height: 96px;
+}
+
+.home-results-modal-summary p {
+  margin: 0 0 var(--space-3);
+  color: rgba(31, 59, 99, 0.7);
+}
+
+.home-results-modal-summary label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.home-results-modal-summary select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(15, 27, 42, 0.2);
+  background: #ffffff;
+  font-size: 1rem;
+}
+
+.home-results-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.home-results-modal-section {
+  background: #f4f6fb;
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+}
+
+.home-results-modal-section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.1rem;
+  color: var(--color-ink-900);
+}
+
+.home-results-list {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(31, 59, 99, 0.75);
+  display: grid;
+  gap: 6px;
+}
+
+.home-results-analytics {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.home-results-stat {
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-weight: 600;
+  color: #0056d2;
+}
+
 .home-schedule-scroll {
   overflow-x: auto;
   padding-bottom: var(--space-3);
@@ -534,6 +648,10 @@
   }
 
   .home-about-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-results-modal-top {
     grid-template-columns: 1fr;
   }
 }

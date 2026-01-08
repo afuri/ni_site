@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Card, LayoutShell } from "@ui";
+import { Button, Card, LayoutShell, Modal } from "@ui";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -7,6 +7,8 @@ import logoImage from "../assets/logo2.png";
 import catImage from "../assets/cat.png";
 import vkLink from "../assets/vk_link.png";
 import minprosImage from "../assets/minpros.webp";
+import mathLogo from "../assets/math_logo.svg";
+import csLogo from "../assets/cs_logo.svg";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-02T00:00:00+03:00";
@@ -19,12 +21,81 @@ const NEWS_ITEMS = [
   "Donec volutpat lorem at suscipit gravida. Nulla facilisi in varius."
 ];
 
-const RESULTS_ITEMS = [
-  "Итоги олимпиады по математике 1 класс: средний балл 78%.",
-  "Итоги олимпиады по математике 3-4 класс: средний балл 73%.",
-  "Итоги олимпиады по информатике 5-6 класс: средний балл 69%.",
-  "Итоги олимпиады по информатике 7 класс: средний балл 74%."
+const RESULTS_SECTIONS = [
+  {
+    id: "math",
+    title: "Математика",
+    subtitle: "Очно и дистанционно, 1-7 классы",
+    summary:
+      "Итоги сезонов, протоколы, задания прошлых лет и аналитика по уровням сложности.",
+    logo: mathLogo,
+    olympiads: [
+      {
+        value: "2025",
+        label: "2025/26 учебный год",
+        results: ["Участников: 1280", "Средний балл: 78%", "Победителей: 120"]
+      },
+      {
+        value: "2024",
+        label: "2024/25 учебный год",
+        results: ["Участников: 1120", "Средний балл: 74%", "Победителей: 98"]
+      },
+      {
+        value: "2023",
+        label: "2023/24 учебный год",
+        results: ["Участников: 980", "Средний балл: 71%", "Победителей: 86"]
+      }
+    ],
+    tasks: ["Задания 2025/26", "Задания 2024/25", "Задания 2023/24"],
+    tips: [
+      "Разберите типовые задачи по темам 5-7 классов.",
+      "Тренируйте скорость вычислений и аккуратность оформления.",
+      "Проведите пробный тур с лимитом времени."
+    ],
+    analytics: [
+      "Рост участников: +14% к прошлому году",
+      "Доля победителей: 9%",
+      "Среднее время решения: 42 минуты"
+    ]
+  },
+  {
+    id: "informatics",
+    title: "Информатика",
+    subtitle: "Алгоритмы и логика, 3-7 классы",
+    summary:
+      "Результаты по уровням, подборка задач и советы по подготовке к очному туру.",
+    logo: csLogo,
+    olympiads: [
+      {
+        value: "2025",
+        label: "2025/26 учебный год",
+        results: ["Участников: 860", "Средний балл: 72%", "Победителей: 64"]
+      },
+      {
+        value: "2024",
+        label: "2024/25 учебный год",
+        results: ["Участников: 790", "Средний балл: 70%", "Победителей: 58"]
+      },
+      {
+        value: "2023",
+        label: "2023/24 учебный год",
+        results: ["Участников: 720", "Средний балл: 68%", "Победителей: 52"]
+      }
+    ],
+    tasks: ["Задания 2025/26", "Задания 2024/25", "Задания 2023/24"],
+    tips: [
+      "Повторите базовые конструкции и команды Scratch/Python.",
+      "Решайте задачи на таблицы, логические цепочки и алгоритмы.",
+      "Потренируйтесь работать с ограничением по времени."
+    ],
+    analytics: ["Рост участников: +9%", "Доля победителей: 7%", "Среднее время решения: 38 минут"]
+  }
 ];
+
+const INITIAL_RESULTS_SELECTION = RESULTS_SECTIONS.reduce<Record<string, string>>((acc, section) => {
+  acc[section.id] = section.olympiads[0]?.value ?? "";
+  return acc;
+}, {});
 
 const SCHEDULE_ITEMS = [
   { date: "02.02.2026", title: "Олимпиада по математике «Невский интеграл» 1 класс" },
@@ -66,6 +137,27 @@ export function HomePage() {
   const navigate = useNavigate();
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeResultsId, setActiveResultsId] = useState<string | null>(null);
+  const [selectedOlympiad, setSelectedOlympiad] = useState<Record<string, string>>(
+    INITIAL_RESULTS_SELECTION
+  );
+
+  const activeResultsSection = RESULTS_SECTIONS.find((section) => section.id === activeResultsId);
+  const activeOlympiad = activeResultsSection
+    ? activeResultsSection.olympiads.find(
+        (olympiad) => olympiad.value === selectedOlympiad[activeResultsSection.id]
+      ) ?? activeResultsSection.olympiads[0]
+    : null;
+  const activeSelectId = activeResultsSection
+    ? `results-select-${activeResultsSection.id}`
+    : "results-select";
+
+  const handleOlympiadChange = (sectionId: string, value: string) => {
+    setSelectedOlympiad((prev) => ({
+      ...prev,
+      [sectionId]: value
+    }));
+  };
 
   const navItems = [
     { label: "Об олимпиаде", href: "#about" },
@@ -234,10 +326,22 @@ export function HomePage() {
             <div className="home-section-heading">
               <h2>Результаты</h2>
             </div>
-            <div className="home-carousel">
-              {RESULTS_ITEMS.map((item, index) => (
-                <Card key={index} title={`Результат ${index + 1}`}>
-                  <p>{item}</p>
+            <div className="home-results-grid">
+              {RESULTS_SECTIONS.map((section) => (
+                <Card key={section.id} title={section.title} subtitle={section.subtitle} className="home-results-card">
+                  <div className="home-results-card-body">
+                    <img src={section.logo} alt={`${section.title} логотип`} />
+                    <p>{section.summary}</p>
+                  </div>
+                  <div className="home-results-card-footer">
+                    <Button
+                      size="sm"
+                      onClick={() => setActiveResultsId(section.id)}
+                      aria-label={`Открыть результаты: ${section.title}`}
+                    >
+                      Открыть результаты
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -297,6 +401,77 @@ export function HomePage() {
             <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
           </div>
         </section>
+
+        {activeResultsSection ? (
+          <Modal
+            isOpen
+            onClose={() => setActiveResultsId(null)}
+            title={`Результаты: ${activeResultsSection.title}`}
+            description="Выберите олимпиаду, чтобы посмотреть итоги и материалы."
+            className="home-results-modal"
+          >
+            <div className="home-results-modal-body">
+              <div className="home-results-modal-top">
+                <img
+                  className="home-results-modal-logo"
+                  src={activeResultsSection.logo}
+                  alt={`${activeResultsSection.title} логотип`}
+                />
+                <div className="home-results-modal-summary">
+                  <p>{activeResultsSection.summary}</p>
+                  <label htmlFor={activeSelectId}>Выберите олимпиаду</label>
+                  <select
+                    id={activeSelectId}
+                    value={selectedOlympiad[activeResultsSection.id]}
+                    onChange={(event) => handleOlympiadChange(activeResultsSection.id, event.target.value)}
+                  >
+                    {activeResultsSection.olympiads.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="home-results-modal-grid">
+                <div className="home-results-modal-section">
+                  <h3>Результаты</h3>
+                  <ul className="home-results-list">
+                    {activeOlympiad?.results.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="home-results-modal-section">
+                  <h3>Задания прошлых лет</h3>
+                  <ul className="home-results-list">
+                    {activeResultsSection.tasks.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="home-results-modal-section">
+                  <h3>Советы по подготовке</h3>
+                  <ul className="home-results-list">
+                    {activeResultsSection.tips.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="home-results-modal-section">
+                  <h3>Аналитика</h3>
+                  <div className="home-results-analytics">
+                    {activeResultsSection.analytics.map((item) => (
+                      <div key={item} className="home-results-stat">
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        ) : null}
 
         {isMenuOpen ? (
           <div

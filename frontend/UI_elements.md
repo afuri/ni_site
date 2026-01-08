@@ -66,13 +66,19 @@
   - Позиции карточек (верх/низ): `.home-schedule-item.top`, `.home-schedule-item.bottom`
   - Переход на заглушку: ссылка `to="/olympiad"`
 
-## 7) Раздел «Результаты» (карусель)
-- Что это: карточки с короткими итогами.
-- Код: `frontend/apps/main/src/pages/HomePage.tsx` (массив `RESULTS_ITEMS`)
+## 7) Раздел «Результаты» (Математика/Информатика + модальные окна)
+- Что это: две карточки предметов, каждая открывает модальное окно с результатами, заданиями и аналитикой.
+- Код: `frontend/apps/main/src/pages/HomePage.tsx`
+  - Данные: массив `RESULTS_SECTIONS`
+  - Состояния: `activeResultsId`, `selectedOlympiad`
 - Стили: `frontend/apps/main/src/styles/home.css`
-  - Классы: `.home-carousel`
+  - Карточки: `.home-results-grid`, `.home-results-card`, `.home-results-card-body`, `.home-results-card-footer`
+  - Модалка: `.home-results-modal`, `.home-results-modal-top`, `.home-results-modal-grid`, `.home-results-list`, `.home-results-analytics`
 - Где менять:
-  - Тексты результатов: `RESULTS_ITEMS`
+  - Названия, описание, пункты списков: `RESULTS_SECTIONS`
+  - Логотипы: `frontend/apps/main/src/assets/math_logo.svg`, `frontend/apps/main/src/assets/cs_logo.svg`
+  - Размер модального окна: `.home-results-modal`
+  - Оформление аналитики: `.home-results-stat`
 
 ## 8) Раздел «Статьи» (details)
 - Что это: список заголовков, раскрывающихся по клику.

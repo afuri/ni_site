@@ -1,0 +1,11 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mathGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0056d2" />
+      <stop offset="100%" stop-color="#3f8efc" />
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#mathGradient)" />
+  <circle cx="60" cy="60" r="46" fill="#ffffff" opacity="0.2" />
+  <text x="60" y="72" text-anchor="middle" font-size="48" font-family="Manrope, Arial, sans-serif" fill="#ffffff" font-weight="700">M</text>
+</svg>
