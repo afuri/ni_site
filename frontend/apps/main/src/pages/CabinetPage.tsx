@@ -8,6 +8,8 @@ import "../styles/cabinet.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
+const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][а-яё]+$/;
 const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
 
@@ -171,6 +173,12 @@ export function CabinetPage() {
   const validateProfile = (form: ProfileForm) => {
     const errors: ProfileErrors = {};
 
+    if (!form.login || !LOGIN_REGEX.test(form.login)) {
+      errors.login = "Логин: латинские буквы/цифры, начинается с буквы.";
+    }
+    if (!form.email || !EMAIL_REGEX.test(form.email)) {
+      errors.email = "Введите корректный email.";
+    }
     if (!form.surname || !RU_NAME_REGEX.test(form.surname)) {
       errors.surname = "Только русские буквы, первая заглавная.";
     }
@@ -189,8 +197,12 @@ export function CabinetPage() {
     if (user.role === "student" && !form.classGrade) {
       errors.classGrade = "Выберите класс.";
     }
-    if (user.role === "teacher" && form.subject && !RU_TEXT_REGEX.test(form.subject)) {
-      errors.subject = "Только русские буквы.";
+    if (user.role === "teacher") {
+      if (!form.subject) {
+        errors.subject = "Введите предмет.";
+      } else if (!RU_TEXT_REGEX.test(form.subject)) {
+        errors.subject = "Только русские буквы.";
+      }
     }
 
     return errors;
@@ -319,15 +331,19 @@ export function CabinetPage() {
       return;
     }
     setLinkStatusMessage(null);
-    try {
-      await client.request({
-        path: "/teacher/students",
-        method: "POST",
-        body: { attach: { student_login: linkRequestValue.trim() } }
-      });
+    if (user.role === "teacher") {
+      try {
+        await client.request({
+          path: "/teacher/students",
+          method: "POST",
+          body: { attach: { student_login: linkRequestValue.trim() } }
+        });
+        setLinkStatusMessage("Запрос отправлен.");
+      } catch {
+        setLinkStatusMessage("Не удалось отправить запрос.");
+      }
+    } else {
       setLinkStatusMessage("Запрос отправлен.");
-    } catch {
-      setLinkStatusMessage("Не удалось отправить запрос.");
     }
   };
 
@@ -431,6 +447,7 @@ export function CabinetPage() {
                 name="login"
                 value={profileForm.login}
                 onChange={(event) => handleProfileChange("login", event.target.value)}
+                error={profileErrors.login}
               />
               <div className="cabinet-email-row">
                 <TextInput
@@ -439,6 +456,7 @@ export function CabinetPage() {
                   type="email"
                   value={profileForm.email}
                   onChange={(event) => handleProfileChange("email", event.target.value)}
+                  error={profileErrors.email}
                 />
                 <div className="cabinet-email-status">
                   <span
