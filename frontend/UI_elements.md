@@ -28,6 +28,18 @@
   - Тексты согласий: `frontend/students_agreement.txt`, `frontend/teacher_agreement.txt`
   - Цвета ошибок/ссылок: `.auth-error`, `.auth-alert`, `.auth-link`
 
+## 1.2) Личный кабинет
+- Что это: отдельная страница с результатами, личными данными и связями учитель—ученик.
+- Код: `frontend/apps/main/src/pages/CabinetPage.tsx`
+- Стили: `frontend/apps/main/src/styles/cabinet.css`
+- Где менять:
+  - Результаты: загрузка из `/attempts/results/my`, таблица в разделе `Результаты прохождения олимпиад`
+  - Просмотр попытки: модалка `Попытка №...`, запрос `/attempts/{attempt_id}`
+  - Диплом: ссылка `${API_BASE_URL}/attempts/{attempt_id}/diploma`
+  - Личные данные: форма `profileForm`, сохранение `PUT /users/me`
+  - Верификация email: `POST /auth/verify/request`, статусы `.cabinet-status-*`
+  - Связи учитель—ученик: `POST /teacher/students`, `GET /teacher/students?status=confirmed`
+
 ## 2) Hero с фоновым баннером
 - Что это: главный баннер с фоном `main_banner_3.png` и заголовком.
 - Код: `frontend/apps/main/src/pages/HomePage.tsx`

@@ -141,6 +141,19 @@
   font-size: 0.9rem;
 }
 
+.home-user-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 18px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--color-white);
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
 .home-vk-link img {
   height: 56px;
 /*  margin-right: -2px;*/

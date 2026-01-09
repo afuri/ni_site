@@ -5,6 +5,7 @@ import { createAuthStorage } from "@utils";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
 import { ParticipationPlaceholder } from "./pages/ParticipationPlaceholder";
+import { CabinetPage } from "./pages/CabinetPage";
 
 const storage = createAuthStorage({
   tokensKey: "ni_main_tokens",
@@ -23,6 +24,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/olympiad" element={<ParticipationPlaceholder />} />
+          <Route path="/cabinet" element={<CabinetPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

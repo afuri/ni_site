@@ -171,7 +171,7 @@ type RegisterFormState = {
 type RegisterErrors = Partial<Record<keyof RegisterFormState, string>>;
 
 export function HomePage() {
-  const { signIn } = useAuth();
+  const { signIn, user, status } = useAuth();
   const navigate = useNavigate();
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -324,6 +324,8 @@ export function HomePage() {
     return errors;
   };
 
+  const isAuthenticated = status === "authenticated" && Boolean(user);
+
   const openLogin = () => {
     setIsRegisterOpen(false);
     setIsRecoveryOpen(false);
@@ -400,6 +402,7 @@ export function HomePage() {
       await signIn({ login: loginForm.login, password: loginForm.password });
       setLoginStatus("idle");
       setIsLoginOpen(false);
+      navigate("/cabinet");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Ошибка входа.";
       setLoginErrorMessage(message);
@@ -463,8 +466,16 @@ export function HomePage() {
             <a href="https://vk.ru/olymp344" className="home-vk-link" aria-label="ВК Олимпиада">
               <img src={vkLink} alt="ВК" />
             </a>
-            <Button onClick={openLogin}>Войти</Button>
-            <Button onClick={openRegister}>Регистрация</Button>
+            {isAuthenticated && user ? (
+              <Link to="/cabinet" className="home-user-link">
+                {user.login}
+              </Link>
+            ) : (
+              <>
+                <Button onClick={openLogin}>Войти</Button>
+                <Button onClick={openRegister}>Регистрация</Button>
+              </>
+            )}
           </div>
         }
         footer={<div className="home-footer">© 2026 Олимпиада «Невский интеграл»</div>}
