@@ -18,7 +18,7 @@ const TARGET_DATE = "2026-02-02T00:00:00+03:00";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 
-const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
+const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]{4,}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][а-яё]+$/;
 const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
@@ -161,6 +161,7 @@ type RegisterFormState = {
   surname: string;
   name: string;
   fatherName: string;
+  country: string;
   city: string;
   school: string;
   classGrade: string;
@@ -193,6 +194,7 @@ export function HomePage() {
     surname: "",
     name: "",
     fatherName: "",
+    country: "",
     city: "",
     school: "",
     classGrade: "",
@@ -269,7 +271,7 @@ export function HomePage() {
     if (!form.login) {
       errors.login = "Введите логин.";
     } else if (!LOGIN_REGEX.test(form.login)) {
-      errors.login = "Логин: латинские буквы/цифры, начинается с буквы.";
+      errors.login = "Логин: латинские буквы/цифры, от 5 символов, начинается с буквы.";
     }
     if (!form.email) {
       errors.email = "Введите email.";
@@ -278,6 +280,8 @@ export function HomePage() {
     }
     if (!form.password) {
       errors.password = "Введите пароль.";
+    } else if (form.password.length < 8) {
+      errors.password = "Пароль должен быть не короче 8 символов.";
     }
     if (!form.passwordConfirm) {
       errors.passwordConfirm = "Повторите пароль.";
@@ -296,6 +300,11 @@ export function HomePage() {
     }
     if (form.fatherName && !RU_NAME_REGEX.test(form.fatherName)) {
       errors.fatherName = "Только русские буквы, первая заглавная.";
+    }
+    if (!form.country) {
+      errors.country = "Введите страну.";
+    } else if (!RU_NAME_REGEX.test(form.country)) {
+      errors.country = "Только русские буквы, первая заглавная.";
     }
     if (!form.city) {
       errors.city = "Введите город.";
@@ -369,7 +378,7 @@ export function HomePage() {
         surname: registerForm.surname.trim(),
         name: registerForm.name.trim(),
         father_name: registerForm.fatherName ? registerForm.fatherName.trim() : null,
-        country: "Россия",
+        country: registerForm.country.trim(),
         city: registerForm.city.trim(),
         school: registerForm.school.trim(),
         class_grade: registerForm.role === "student" ? Number(registerForm.classGrade) : null,
@@ -742,6 +751,13 @@ export function HomePage() {
                 value={registerForm.fatherName}
                 onChange={(event) => updateRegisterField("fatherName", event.target.value)}
                 error={registerErrors.fatherName}
+              />
+              <TextInput
+                label="Страна"
+                name="country"
+                value={registerForm.country}
+                onChange={(event) => updateRegisterField("country", event.target.value)}
+                error={registerErrors.country}
               />
               <TextInput
                 label="Город"
