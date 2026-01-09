@@ -45,6 +45,7 @@ router = APIRouter(prefix="/attempts")
     responses={
         201: response_model_example(AttemptRead, EXAMPLE_ATTEMPT_READ),
         401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.EMAIL_NOT_VERIFIED),
         409: response_examples(
             codes.OLYMPIAD_NOT_AVAILABLE,
             codes.OLYMPIAD_AGE_GROUP_MISMATCH,
@@ -67,6 +68,8 @@ async def start_attempt(
         code = str(e)
         if code == codes.OLYMPIAD_NOT_FOUND:
             raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+        if code == codes.EMAIL_NOT_VERIFIED:
+            raise http_error(403, codes.EMAIL_NOT_VERIFIED)
         if code == codes.OLYMPIAD_NOT_PUBLISHED:
             raise http_error(409, codes.OLYMPIAD_NOT_PUBLISHED)
         if code == codes.OLYMPIAD_NOT_AVAILABLE:

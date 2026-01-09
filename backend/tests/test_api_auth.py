@@ -27,14 +27,6 @@ async def test_register_and_login_flow(client, db_session):
     assert data["role"] == "student"
 
     resp = await client.post("/api/v1/auth/login", json={"login": "student01", "password": "StrongPass1"})
-    assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == codes.EMAIL_NOT_VERIFIED
-
-    repo = UsersRepo(db_session)
-    user = await repo.get_by_login("student01")
-    await repo.set_email_verified(user)
-
-    resp = await client.post("/api/v1/auth/login", json={"login": "student01", "password": "StrongPass1"})
     assert resp.status_code == 200
     tokens = resp.json()
     assert "access_token" in tokens

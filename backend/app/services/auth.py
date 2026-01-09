@@ -96,9 +96,6 @@ class AuthService:
         if not user or not user.is_active:
             raise ValueError(codes.INVALID_CREDENTIALS)
 
-        if not user.is_email_verified:
-            raise ValueError(codes.EMAIL_NOT_VERIFIED)
-
         if not verify_password(password, user.password_hash):
             raise ValueError(codes.INVALID_CREDENTIALS)
 

@@ -321,6 +321,8 @@ class AttemptsService:
             raise ValueError(codes.OLYMPIAD_NOT_FOUND)
         if not olympiad.is_published:
             raise ValueError(codes.OLYMPIAD_NOT_PUBLISHED)
+        if not user.is_email_verified:
+            raise ValueError(codes.EMAIL_NOT_VERIFIED)
 
         existing = await self.repo.get_attempt_by_user_olympiad(user.id, olympiad_id)
         if existing:

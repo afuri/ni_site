@@ -132,7 +132,6 @@ async def register(
     responses={
         200: response_model_example(TokenPair, EXAMPLE_TOKEN_PAIR),
         401: response_example(codes.INVALID_CREDENTIALS),
-        403: response_example(codes.EMAIL_NOT_VERIFIED),
         422: response_example(codes.VALIDATION_ERROR),
         409: response_example(codes.TEMP_PASSWORD_EXPIRED),
     },
@@ -153,8 +152,6 @@ async def login(
     try:
         access, refresh, must_change_password = await service.login(payload.login, payload.password)
     except ValueError as e:
-        if str(e) == codes.EMAIL_NOT_VERIFIED:
-            raise http_error(403, codes.EMAIL_NOT_VERIFIED)
         if str(e) == codes.TEMP_PASSWORD_EXPIRED:
             raise http_error(409, codes.TEMP_PASSWORD_EXPIRED)
         raise http_error(status.HTTP_401_UNAUTHORIZED, codes.INVALID_CREDENTIALS)
