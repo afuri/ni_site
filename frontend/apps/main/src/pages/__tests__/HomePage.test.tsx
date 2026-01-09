@@ -1,9 +1,19 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { HomePage } from "../HomePage";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@ui", async () => {
+  const actual = await vi.importActual<typeof import("@ui")>("@ui");
+  return {
+    ...actual,
+    useAuth: () => ({
+      signIn: vi.fn()
+    })
+  };
+});
 
 vi.mock("../assets/main_banner_3.png", () => ({
   default: "hero-banner"
@@ -105,5 +115,38 @@ describe("HomePage", () => {
 
     await user.click(screen.getByRole("button", { name: "Открыть результаты: Информатика" }));
     expect(screen.getByText("Результаты: Информатика")).toBeInTheDocument();
+  });
+
+  it("opens registration modal and switches role fields", async () => {
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Регистрация" }));
+    expect(screen.getByRole("dialog", { name: "Регистрация" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Класс")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Роль"), "teacher");
+    expect(screen.getByLabelText("Предмет")).toBeInTheDocument();
+  });
+
+  it("opens login modal from header", async () => {
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Войти" }));
+    const dialog = screen.getByRole("dialog", { name: "Вход" });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("Регистрация")).toBeInTheDocument();
+    expect(within(dialog).getByText("Восстановить пароль")).toBeInTheDocument();
   });
 });

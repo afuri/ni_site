@@ -13,6 +13,21 @@
   - Размер/кадрирование логотипа: `.home-logo`, `.home-logo img`
   - Тексты кнопок: `HomePage.tsx` (props у `Button`)
 
+## 1.1) Окна «Регистрация», «Вход», «Восстановление», «Согласие»
+- Что это: модальные окна для регистрации и авторизации, а также текст согласия.
+- Код: `frontend/apps/main/src/pages/HomePage.tsx`
+  - Регистрация: `registerForm`, `registerErrors`, `handleRegisterSubmit`
+  - Вход: `loginForm`, `handleLoginSubmit`
+  - Восстановление: `recoveryEmail`, `isRecoveryOpen`
+  - Согласие: `studentAgreement`, `teacherAgreement`
+- Стили: `frontend/apps/main/src/styles/home.css`
+  - Формы: `.auth-modal`, `.auth-form`, `.auth-grid`, `.auth-actions`, `.auth-link`
+  - Текст согласия: `.agreement-modal`, `.agreement-body`
+- Где менять:
+  - Поля/валидации: `validateRegister` в `HomePage.tsx`
+  - Тексты согласий: `frontend/students_agreement.txt`, `frontend/teacher_agreement.txt`
+  - Цвета ошибок/ссылок: `.auth-error`, `.auth-alert`, `.auth-link`
+
 ## 2) Hero с фоновым баннером
 - Что это: главный баннер с фоном `main_banner_3.png` и заголовком.
 - Код: `frontend/apps/main/src/pages/HomePage.tsx`

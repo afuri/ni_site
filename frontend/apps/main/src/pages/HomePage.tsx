@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Button, Card, LayoutShell, Modal } from "@ui";
+import React, { useMemo, useState } from "react";
+import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
+import { createApiClient } from "@api";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -9,9 +10,25 @@ import vkLink from "../assets/vk_link.png";
 import minprosImage from "../assets/minpros.webp";
 import mathLogo from "../assets/math_logo.svg";
 import csLogo from "../assets/cs_logo.svg";
+import studentAgreement from "../../../../students_agreement.txt?raw";
+import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-02T00:00:00+03:00";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const registerClient = createApiClient({ baseUrl: API_BASE_URL });
+
+const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RU_NAME_REGEX = /^[А-ЯЁ][а-яё]+$/;
+const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
+
+const ROLE_OPTIONS = [
+  { value: "student", label: "Ученик" },
+  { value: "teacher", label: "Учитель/Родитель" }
+];
+
+const CLASS_GRADES = Array.from({ length: 12 }, (_, index) => String(index));
 
 const NEWS_ITEMS = [
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed quis aliquet massa.",
@@ -133,14 +150,66 @@ const FAQ_ITEMS = [
   }
 ];
 
+type RoleValue = "student" | "teacher";
+
+type RegisterFormState = {
+  role: RoleValue;
+  login: string;
+  email: string;
+  password: string;
+  passwordConfirm: string;
+  surname: string;
+  name: string;
+  fatherName: string;
+  city: string;
+  school: string;
+  classGrade: string;
+  subject: string;
+  consent: boolean;
+};
+
+type RegisterErrors = Partial<Record<keyof RegisterFormState, string>>;
+
 export function HomePage() {
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+  const [isAgreementOpen, setIsAgreementOpen] = useState(false);
+  const [agreementRole, setAgreementRole] = useState<RoleValue>("student");
   const [activeResultsId, setActiveResultsId] = useState<string | null>(null);
   const [selectedOlympiad, setSelectedOlympiad] = useState<Record<string, string>>(
     INITIAL_RESULTS_SELECTION
   );
+  const [registerForm, setRegisterForm] = useState<RegisterFormState>({
+    role: "student",
+    login: "",
+    email: "",
+    password: "",
+    passwordConfirm: "",
+    surname: "",
+    name: "",
+    fatherName: "",
+    city: "",
+    school: "",
+    classGrade: "",
+    subject: "",
+    consent: false
+  });
+  const [registerErrors, setRegisterErrors] = useState<RegisterErrors>({});
+  const [registerStatus, setRegisterStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [registerErrorMessage, setRegisterErrorMessage] = useState<string | null>(null);
+  const [loginForm, setLoginForm] = useState({
+    login: "",
+    password: "",
+    remember: false
+  });
+  const [loginStatus, setLoginStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [loginErrorMessage, setLoginErrorMessage] = useState<string | null>(null);
+  const [recoveryEmail, setRecoveryEmail] = useState("");
 
   const activeResultsSection = RESULTS_SECTIONS.find((section) => section.id === activeResultsId);
   const activeOlympiad = activeResultsSection
@@ -157,6 +226,185 @@ export function HomePage() {
       ...prev,
       [sectionId]: value
     }));
+  };
+
+  const agreementText = useMemo(
+    () => (agreementRole === "student" ? studentAgreement : teacherAgreement),
+    [agreementRole]
+  );
+
+  const updateRegisterField = <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => {
+    setRegisterForm((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+    if (registerErrors[field]) {
+      setRegisterErrors((prev) => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
+  };
+
+  const handleRoleChange = (value: RoleValue) => {
+    setRegisterForm((prev) => ({
+      ...prev,
+      role: value,
+      classGrade: value === "student" ? prev.classGrade : "",
+      subject: value === "teacher" ? prev.subject : ""
+    }));
+    setRegisterErrors((prev) => ({
+      ...prev,
+      classGrade: undefined,
+      subject: undefined
+    }));
+  };
+
+  const validateRegister = (form: RegisterFormState) => {
+    const errors: RegisterErrors = {};
+
+    if (!form.role) {
+      errors.role = "Укажите роль.";
+    }
+    if (!form.login) {
+      errors.login = "Введите логин.";
+    } else if (!LOGIN_REGEX.test(form.login)) {
+      errors.login = "Логин: латинские буквы/цифры, начинается с буквы.";
+    }
+    if (!form.email) {
+      errors.email = "Введите email.";
+    } else if (!EMAIL_REGEX.test(form.email)) {
+      errors.email = "Введите корректный email.";
+    }
+    if (!form.password) {
+      errors.password = "Введите пароль.";
+    }
+    if (!form.passwordConfirm) {
+      errors.passwordConfirm = "Повторите пароль.";
+    } else if (form.password !== form.passwordConfirm) {
+      errors.passwordConfirm = "Пароли не совпадают.";
+    }
+    if (!form.surname) {
+      errors.surname = "Введите фамилию.";
+    } else if (!RU_NAME_REGEX.test(form.surname)) {
+      errors.surname = "Только русские буквы, первая заглавная.";
+    }
+    if (!form.name) {
+      errors.name = "Введите имя.";
+    } else if (!RU_NAME_REGEX.test(form.name)) {
+      errors.name = "Только русские буквы, первая заглавная.";
+    }
+    if (form.fatherName && !RU_NAME_REGEX.test(form.fatherName)) {
+      errors.fatherName = "Только русские буквы, первая заглавная.";
+    }
+    if (!form.city) {
+      errors.city = "Введите город.";
+    } else if (!RU_NAME_REGEX.test(form.city)) {
+      errors.city = "Только русские буквы, первая заглавная.";
+    }
+    if (!form.school) {
+      errors.school = "Введите школу.";
+    }
+    if (form.role === "student") {
+      if (!form.classGrade) {
+        errors.classGrade = "Выберите класс.";
+      }
+    }
+    if (form.role === "teacher") {
+      if (!form.subject) {
+        errors.subject = "Введите предмет.";
+      } else if (!RU_TEXT_REGEX.test(form.subject)) {
+        errors.subject = "Только русские буквы.";
+      }
+    }
+    if (!form.consent) {
+      errors.consent = "Необходимо согласие.";
+    }
+
+    return errors;
+  };
+
+  const openLogin = () => {
+    setIsRegisterOpen(false);
+    setIsRecoveryOpen(false);
+    setRegisterErrors({});
+    setRegisterErrorMessage(null);
+    setLoginErrorMessage(null);
+    setIsLoginOpen(true);
+  };
+
+  const openRegister = () => {
+    setIsLoginOpen(false);
+    setIsRecoveryOpen(false);
+    setLoginErrorMessage(null);
+    setRegisterErrorMessage(null);
+    setRegisterErrors({});
+    setIsRegisterOpen(true);
+  };
+
+  const openRecovery = () => {
+    setIsLoginOpen(false);
+    setIsRegisterOpen(false);
+    setIsRecoveryOpen(true);
+  };
+
+  const handleRegisterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRegisterErrorMessage(null);
+    const errors = validateRegister(registerForm);
+    if (Object.keys(errors).length > 0) {
+      setRegisterErrors(errors);
+      return;
+    }
+
+    setRegisterStatus("loading");
+    try {
+      await registerClient.auth.register({
+        login: registerForm.login.trim(),
+        password: registerForm.password,
+        role: registerForm.role,
+        email: registerForm.email.trim(),
+        surname: registerForm.surname.trim(),
+        name: registerForm.name.trim(),
+        father_name: registerForm.fatherName ? registerForm.fatherName.trim() : null,
+        country: "Россия",
+        city: registerForm.city.trim(),
+        school: registerForm.school.trim(),
+        class_grade: registerForm.role === "student" ? Number(registerForm.classGrade) : null,
+        subject: registerForm.role === "teacher" ? registerForm.subject.trim() : null
+      });
+      setRegisterStatus("idle");
+      setIsRegisterOpen(false);
+      setLoginForm((prev) => ({
+        ...prev,
+        login: registerForm.login,
+        password: ""
+      }));
+      setIsLoginOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось зарегистрироваться.";
+      setRegisterErrorMessage(message);
+      setRegisterStatus("error");
+    }
+  };
+
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginErrorMessage(null);
+    if (!loginForm.login || !loginForm.password) {
+      setLoginErrorMessage("Введите логин и пароль.");
+      return;
+    }
+    setLoginStatus("loading");
+    try {
+      await signIn({ login: loginForm.login, password: loginForm.password });
+      setLoginStatus("idle");
+      setIsLoginOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Ошибка входа.";
+      setLoginErrorMessage(message);
+      setLoginStatus("error");
+    }
   };
 
   const navItems = [
@@ -215,8 +463,8 @@ export function HomePage() {
             <a href="https://vk.ru/olymp344" className="home-vk-link" aria-label="ВК Олимпиада">
               <img src={vkLink} alt="ВК" />
             </a>
-            <Button>Войти</Button>
-            <Button>Регистрация</Button>
+            <Button onClick={openLogin}>Войти</Button>
+            <Button onClick={openRegister}>Регистрация</Button>
           </div>
         }
         footer={<div className="home-footer">© 2026 Олимпиада «Невский интеграл»</div>}
@@ -401,6 +649,280 @@ export function HomePage() {
             <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
           </div>
         </section>
+
+        <Modal
+          isOpen={isRegisterOpen}
+          onClose={() => setIsRegisterOpen(false)}
+          title="Регистрация"
+          className="auth-modal"
+        >
+          <form className="auth-form" onSubmit={handleRegisterSubmit}>
+            <div className="auth-grid">
+              <label className="field">
+                <span className="field-label">Роль</span>
+                <select
+                  id="register-role"
+                  className={`field-input ${registerErrors.role ? "field-input-error" : ""}`.trim()}
+                  value={registerForm.role}
+                  onChange={(event) => handleRoleChange(event.target.value as RoleValue)}
+                >
+                  {ROLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {registerErrors.role ? (
+                  <span className="field-helper field-helper-error">{registerErrors.role}</span>
+                ) : null}
+              </label>
+              <TextInput
+                label="Логин"
+                name="login"
+                autoComplete="username"
+                value={registerForm.login}
+                onChange={(event) => updateRegisterField("login", event.target.value)}
+                error={registerErrors.login}
+              />
+              <TextInput
+                label="Email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                value={registerForm.email}
+                onChange={(event) => updateRegisterField("email", event.target.value)}
+                error={registerErrors.email}
+              />
+              <TextInput
+                label="Пароль"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                value={registerForm.password}
+                onChange={(event) => updateRegisterField("password", event.target.value)}
+                error={registerErrors.password}
+              />
+              <TextInput
+                label="Повтор пароля"
+                name="passwordConfirm"
+                type="password"
+                autoComplete="new-password"
+                value={registerForm.passwordConfirm}
+                onChange={(event) => updateRegisterField("passwordConfirm", event.target.value)}
+                error={registerErrors.passwordConfirm}
+              />
+              <TextInput
+                label="Фамилия"
+                name="surname"
+                value={registerForm.surname}
+                onChange={(event) => updateRegisterField("surname", event.target.value)}
+                error={registerErrors.surname}
+              />
+              <TextInput
+                label="Имя"
+                name="name"
+                value={registerForm.name}
+                onChange={(event) => updateRegisterField("name", event.target.value)}
+                error={registerErrors.name}
+              />
+              <TextInput
+                label="Отчество"
+                name="fatherName"
+                value={registerForm.fatherName}
+                onChange={(event) => updateRegisterField("fatherName", event.target.value)}
+                error={registerErrors.fatherName}
+              />
+              <TextInput
+                label="Город"
+                name="city"
+                value={registerForm.city}
+                onChange={(event) => updateRegisterField("city", event.target.value)}
+                error={registerErrors.city}
+              />
+              <TextInput
+                label="Школа"
+                name="school"
+                value={registerForm.school}
+                onChange={(event) => updateRegisterField("school", event.target.value)}
+                error={registerErrors.school}
+              />
+              {registerForm.role === "student" ? (
+                <label className="field">
+                  <span className="field-label">Класс</span>
+                  <select
+                    id="register-class"
+                    className={`field-input ${registerErrors.classGrade ? "field-input-error" : ""}`.trim()}
+                    value={registerForm.classGrade}
+                    onChange={(event) => updateRegisterField("classGrade", event.target.value)}
+                  >
+                    <option value="">Выберите класс</option>
+                    {CLASS_GRADES.map((grade) => (
+                      <option key={grade} value={grade}>
+                        {grade}
+                      </option>
+                    ))}
+                  </select>
+                  {registerErrors.classGrade ? (
+                    <span className="field-helper field-helper-error">{registerErrors.classGrade}</span>
+                  ) : null}
+                </label>
+              ) : null}
+              {registerForm.role === "teacher" ? (
+                <TextInput
+                  label="Предмет"
+                  name="subject"
+                  value={registerForm.subject}
+                  onChange={(event) => updateRegisterField("subject", event.target.value)}
+                  error={registerErrors.subject}
+                />
+              ) : null}
+            </div>
+
+            <div className="auth-consent">
+              <label className="auth-checkbox">
+                <input
+                  type="checkbox"
+                  checked={registerForm.consent}
+                  onChange={(event) => updateRegisterField("consent", event.target.checked)}
+                />
+                <span>
+                  Даю{" "}
+                  <button
+                    type="button"
+                    className="auth-link"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setAgreementRole(registerForm.role);
+                      setIsAgreementOpen(true);
+                    }}
+                  >
+                    согласие на обработку персональных данных и информирование
+                  </button>
+                </span>
+              </label>
+              {registerErrors.consent ? (
+                <span className="auth-error">{registerErrors.consent}</span>
+              ) : null}
+            </div>
+
+            {registerErrorMessage ? (
+              <div className="auth-alert" role="alert">
+                {registerErrorMessage}
+              </div>
+            ) : null}
+
+            <div className="auth-actions">
+              <Button
+                type="submit"
+                isLoading={registerStatus === "loading"}
+                className="auth-primary-button"
+              >
+                Зарегистрироваться
+              </Button>
+              <button type="button" className="auth-link" onClick={openLogin}>
+                Уже есть аккаунт? Войти
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal
+          isOpen={isLoginOpen}
+          onClose={() => setIsLoginOpen(false)}
+          title="Вход"
+          className="auth-modal"
+        >
+          <form className="auth-form" onSubmit={handleLoginSubmit}>
+            <div className="auth-grid auth-grid-single">
+              <TextInput
+                label="Логин"
+                name="login"
+                autoComplete="username"
+                value={loginForm.login}
+                onChange={(event) => setLoginForm((prev) => ({ ...prev, login: event.target.value }))}
+              />
+              <TextInput
+                label="Пароль"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={loginForm.password}
+                onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
+              />
+            </div>
+
+            <label className="auth-checkbox">
+              <input
+                type="checkbox"
+                checked={loginForm.remember}
+                onChange={(event) => setLoginForm((prev) => ({ ...prev, remember: event.target.checked }))}
+              />
+              <span>Запомнить меня</span>
+            </label>
+
+            {loginErrorMessage ? (
+              <div className="auth-alert" role="alert">
+                {loginErrorMessage}
+              </div>
+            ) : null}
+
+            <div className="auth-actions">
+              <Button
+                type="submit"
+                isLoading={loginStatus === "loading"}
+                className="auth-primary-button"
+              >
+                Войти
+              </Button>
+              <div className="auth-links">
+                <button type="button" className="auth-link" onClick={openRegister}>
+                  Регистрация
+                </button>
+                <button type="button" className="auth-link" onClick={openRecovery}>
+                  Восстановить пароль
+                </button>
+              </div>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal
+          isOpen={isRecoveryOpen}
+          onClose={() => setIsRecoveryOpen(false)}
+          title="Восстановление пароля"
+          className="auth-modal"
+        >
+          <form className="auth-form">
+            <div className="auth-grid auth-grid-single">
+              <TextInput
+                label="Email или логин"
+                name="recovery"
+                value={recoveryEmail}
+                onChange={(event) => setRecoveryEmail(event.target.value)}
+              />
+            </div>
+            <div className="auth-actions">
+              <Button type="button" disabled>
+                Отправить инструкцию
+              </Button>
+              <button type="button" className="auth-link" onClick={openLogin}>
+                Назад к входу
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal
+          isOpen={isAgreementOpen}
+          onClose={() => setIsAgreementOpen(false)}
+          title="Согласие на обработку персональных данных"
+          className="agreement-modal"
+        >
+          <div className="agreement-body">
+            <pre>{agreementText}</pre>
+          </div>
+        </Modal>
 
         {activeResultsSection ? (
           <Modal
