@@ -15,7 +15,7 @@ import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-02T00:00:00+03:00";
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;

@@ -6,7 +6,7 @@ import { Link, Navigate } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import "../styles/cabinet.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
