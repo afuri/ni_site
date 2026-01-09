@@ -5,7 +5,7 @@ from app.models.user import UserRole
 
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
-CYRILLIC_RE = r"^[А-ЯЁ][а-яё]+$"
+CYRILLIC_RE = r"^[А-ЯЁ][А-ЯËа-яё]+$-"
 
 
 class UserRead(BaseModel):

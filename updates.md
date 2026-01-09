@@ -196,6 +196,28 @@
   - NEGATIVE_TESTS.md и FRONTEND_CONTRACT.md — обновлены списки ошибок.
   - TECH_DEBT.md — список dependency warnings и рекомендации.
 
+0.9.19
+
+Сделал: вход теперь разрешён даже с неподтверждённым email, но старт олимпиады блокируется.
+
+  Что изменено:
+
+  - Убрана проверка is_email_verified из AuthService.login: backend/app/services/auth.py.
+  - Блокировка перенесена в старт попытки: backend/app/services/attempts.py.
+  - Добавлен маппинг ошибки email_not_verified в POST /attempts/start: backend/app/api/v1/attempts.py.
+  - Тесты обновлены: backend/tests/test_api_auth.py, backend/tests/test_api_attempts.py.
+  - Удалён 403 email_not_verified из /auth/login в backend/app/api/v1/auth.py.
+
+  Коммит: 687defd1 Allow login without verified email.
+
+  Что нужно сделать:
+
+  1. Перезапустить backend (uvicorn), чтобы изменения вступили в силу.
+  2. Проверка:
+      - POST /auth/login для неподтверждённого email → 200 OK
+      - POST /attempts/start для такого пользователя → 403 email_not_verified
+
+
 ## FRONTEND
 
 Переходим к созданию frontend. Я создал папку frontend там лежат некоторые файлы, которые надо проанализировать. Index_example.html и style.css - как бы
@@ -622,6 +644,30 @@ Adjusted the hero background test to assert the resolved asset path instead of t
 Созданы окна регистрации и авторизации
 
 0.8.0
+
+Личный кабинет добавлен и подключен: после входа идет переход на /cabinet, а на главной вместо кнопок «Войти/Регистрация» показывается логин как ссылка в
+  кабинет. В кабинете есть результаты с просмотром попытки, редактируемые личные данные с зелёной кнопкой «Сохранить», статус верификации email и предупреждение,
+  а также блок связи учитель—ученик. Всё стилизовано отдельным файлом и покрыто тестами.
+
+  Изменения по коду:
+
+  - Новый кабинет и логика: frontend/apps/main/src/pages/CabinetPage.tsx
+  - Маршруты и переход после входа: frontend/apps/main/src/App.tsx, frontend/apps/main/src/pages/HomePage.tsx
+  - Стили: frontend/apps/main/src/styles/cabinet.css, frontend/apps/main/src/styles/home.css
+  - Тесты: frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx, frontend/apps/main/src/pages/__tests__/HomePage.test.tsx
+  - Документация: frontend/UI_elements.md
+
+  Тесты: npm run test.
+
+  Открытые вопросы/уточнения:
+
+  - Ссылку на диплом сделал как ${API_BASE_URL}/attempts/{id}/diploma. Подтверди фактический endpoint (в API контракте его нет).
+  - Для ученика нет backend‑эндпойнта «запрос связи с учителем по логину/email» и для учителя список привязанных учеников не содержит ФИО/класс. Сейчас в кабинете
+    у учителя показываю только student_id. Нужен эндпойнт/расширение ответа.
+  - В форме личных данных логин/email редактируемые и валидируются, но /users/me обновляет только поля профиля. Если нужно реально менять логин/email — нужен
+    backend‑endpoint; иначе предложи сделать их read‑only.
+
+0.9.0
 
 Next step: move into auth flows + content list/detail
 
