@@ -205,14 +205,14 @@ async def test_critical_per_user_rate_limit(client, create_user, redis_client):
     try:
         resp = await client.put(
             f"/api/v1/admin/users/{user_id}",
-            json={"city": "Казань"},
+            json={"school": "Rate School 1"},
             headers=_auth_headers(admin_token),
         )
         assert resp.status_code == 200
 
         resp = await client.put(
             f"/api/v1/admin/users/{user_id}",
-            json={"city": "Москва"},
+            json={"school": "Rate School 2"},
             headers=_auth_headers(admin_token),
         )
         assert resp.status_code == 429

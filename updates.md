@@ -218,6 +218,19 @@
       - POST /attempts/start для такого пользователя → 403 email_not_verified
 
 
+0.9.20
+
+• Оставил CYRILLIC_RE без изменений и подстроил тесты admin‑update так, чтобы они не упирались в этот паттерн: везде, где обновляли city, теперь обновляется
+  school.
+
+  Изменения:
+
+  - backend/tests/test_api_admin.py — update payload/asserions → school.
+  - backend/tests/test_api_negative.py — 404‑кейс admin update → school.
+  - backend/tests/test_api_rate_limit.py — rate‑limit кейс admin update → school.
+
+  
+
 ## FRONTEND
 
 Переходим к созданию frontend. Я создал папку frontend там лежат некоторые файлы, которые надо проанализировать. Index_example.html и style.css - как бы

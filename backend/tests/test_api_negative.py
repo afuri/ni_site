@@ -637,7 +637,7 @@ async def test_admin_users_negative_cases(client, create_user):
 
     resp = await client.put(
         "/api/v1/admin/users/9999",
-        json={"city": "Казань"},
+        json={"school": "Test School"},
         headers=_auth_headers(admin_token),
     )
     assert resp.status_code == 404

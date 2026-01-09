@@ -120,7 +120,7 @@ async def test_admin_update_user_and_temp_password_flow(client, create_user):
     assert resp.status_code == 200
     user_id = resp.json()["id"]
 
-    update_payload = {"login": "studenttemp2", "city": "Казань"}
+    update_payload = {"login": "studenttemp2", "school": "School 99"}
     resp = await client.put(
         f"/api/v1/admin/users/{user_id}",
         json=update_payload,
@@ -129,7 +129,7 @@ async def test_admin_update_user_and_temp_password_flow(client, create_user):
     assert resp.status_code == 200
     assert resp.json()["login"] == "studenttemp2"
     assert resp.json()["email"] == "studenttemp@example.com"
-    assert resp.json()["city"] == "Казань"
+    assert resp.json()["school"] == "School 99"
 
     temp_payload = {"temp_password": "TempPass1"}
     resp = await client.post(
@@ -217,14 +217,14 @@ async def test_service_token_allows_admin_update(client, create_user):
     try:
         resp = await client.put(
             f"/api/v1/admin/users/{student_id}",
-            json={"city": "Казань"},
+            json={"school": "School 1"},
             headers={"X-Service-Token": "svc-token"},
         )
     finally:
         settings.SERVICE_TOKENS = old_tokens
 
     assert resp.status_code == 200
-    assert resp.json()["city"] == "Казань"
+    assert resp.json()["school"] == "School 1"
 
 
 @pytest.mark.asyncio
@@ -299,10 +299,10 @@ async def test_service_token_can_update_user(client, create_user):
 
         resp = await client.put(
             f"/api/v1/admin/users/{user_id}",
-            json={"city": "Сервис"},
+            json={"school": "Service School"},
             headers={"X-Service-Token": "svc-token"},
         )
         assert resp.status_code == 200
-        assert resp.json()["city"] == "Сервис"
+        assert resp.json()["school"] == "Service School"
     finally:
         settings.SERVICE_TOKENS = old_tokens
