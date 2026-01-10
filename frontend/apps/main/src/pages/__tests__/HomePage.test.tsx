@@ -11,6 +11,7 @@ vi.mock("@ui", async () => {
     ...actual,
     useAuth: () => ({
       signIn: vi.fn(),
+      signOut: vi.fn(),
       user: null,
       status: "unauthenticated"
     })

@@ -229,7 +229,7 @@
   - backend/tests/test_api_negative.py — 404‑кейс admin update → school.
   - backend/tests/test_api_rate_limit.py — rate‑limit кейс admin update → school.
 
-  
+
 
 ## FRONTEND
 
@@ -691,3 +691,36 @@ Student experience: olympiad list/detail, start attempt flow, attempt UI with ti
     □ Admin app: admin auth, olympiad management, users/moderator management, audit logs, content/task management as needed; wire role-based navigation
     □ QA pass: responsiveness, accessibility, error states, loading states, API edge cases, and build/deploy scripts; produce final checklist
 
+0.9.1
+
+Обновил верхнее меню: клик по логину теперь открывает небольшой поп‑ап с “Выйти/Отмена” и лог-аут вызывает signOut; также убрал проверку формата города в формах
+  регистрации и профиля. Это сделано в frontend/apps/main/src/pages/HomePage.tsx, frontend/apps/main/src/pages/CabinetPage.tsx и стили для поп-апа добавлены в
+  frontend/apps/main/src/styles/home.css.
+
+  Детали:
+
+  - frontend/apps/main/src/pages/HomePage.tsx: добавлено состояние и обработчики пользовательского меню, логин-кнопка теперь открывает pop‑up.
+  - frontend/apps/main/src/styles/home.css: стили для .home-user-menu и .home-user-popup.
+  - frontend/apps/main/src/pages/HomePage.tsx, frontend/apps/main/src/pages/CabinetPage.tsx: убрана валидация формата города, осталось только обязательное
+    заполнение.
+
+  Сделал закрытие пользовательского поп-апа по клику вне него, добавил отмену редактирования профиля и логику выхода с предупреждением о несохранённых данных.
+
+  Что изменилось
+
+  - frontend/apps/main/src/pages/HomePage.tsx: добавлен обработчик клика вне pop‑up, логин‑кнопка теперь закрывается при клике за пределами.
+  - frontend/apps/main/src/pages/CabinetPage.tsx: добавлен cancel для профиля (возврат к сохранённым значениям), кнопка “Выйти” с проверкой несохранённых
+    изменений и подтверждающим модальным окном.
+  - frontend/apps/main/src/styles/cabinet.css: стили для новых кнопок/контейнеров (красные “Отмена/Выйти”, выравнивание).
+  - frontend/apps/main/src/pages/__tests__/HomePage.test.tsx, frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx: обновлены моки useAuth (добавлен
+    signOut).
+
+
+• Готово. Обновил поп‑ап в верхнем меню: теперь везде (и на главной, и в личном кабинете) при клике по логину открывается меню с кнопками “Личный кабинет” и
+  “Выйти”. Для кабинета “Выйти” учитывает предупреждение о несохранённых данных.
+
+  Что сделал
+
+  - frontend/apps/main/src/pages/HomePage.tsx: заменил пункты поп‑апа на “Личный кабинет” и “Выйти”.
+  - frontend/apps/main/src/pages/CabinetPage.tsx: добавил такой же поп‑ап в шапке кабинета.
+  - frontend/apps/main/src/styles/home.css и frontend/apps/main/src/styles/cabinet.css: стили для пунктов меню (и для <a>, и для <button>).

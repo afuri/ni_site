@@ -39,7 +39,8 @@ vi.mock("@ui", async () => {
       status: "authenticated",
       user: mockUser,
       tokens: { access_token: "access", refresh_token: "refresh", token_type: "bearer" },
-      setSession: vi.fn()
+      setSession: vi.fn(),
+      signOut: vi.fn()
     })
   };
 });

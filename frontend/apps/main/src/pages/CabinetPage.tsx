@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
 import { createApiClient, type UserRead } from "@api";
 import { createAuthStorage } from "@utils";
@@ -62,8 +62,24 @@ type StudentLink = {
   status: string;
 };
 
+const buildProfileFromUser = (currentUser: UserRead): ProfileForm => ({
+  login: currentUser.login ?? "",
+  email: currentUser.email ?? "",
+  surname: currentUser.surname ?? "",
+  name: currentUser.name ?? "",
+  fatherName: currentUser.father_name ?? "",
+  country: currentUser.country ?? "Россия",
+  city: currentUser.city ?? "",
+  school: currentUser.school ?? "",
+  classGrade:
+    currentUser.class_grade !== null && currentUser.class_grade !== undefined
+      ? String(currentUser.class_grade)
+      : "",
+  subject: currentUser.subject ?? ""
+});
+
 export function CabinetPage() {
-  const { status, user, tokens, setSession } = useAuth();
+  const { status, user, tokens, setSession, signOut } = useAuth();
   const storage = useMemo(
     () =>
       createAuthStorage({
@@ -86,9 +102,12 @@ export function CabinetPage() {
     classGrade: "",
     subject: ""
   });
+  const [savedProfile, setSavedProfile] = useState<ProfileForm | null>(null);
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
   const [profileStatus, setProfileStatus] = useState<"idle" | "saving" | "error">("idle");
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [attemptResults, setAttemptResults] = useState<AttemptResult[]>([]);
   const [attemptsStatus, setAttemptsStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -109,23 +128,31 @@ export function CabinetPage() {
   const [linkStatusMessage, setLinkStatusMessage] = useState<string | null>(null);
 
   const [students, setStudents] = useState<StudentLink[]>([]);
+  const [isLogoutPromptOpen, setIsLogoutPromptOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   useEffect(() => {
     if (!user) {
       return;
     }
-    setProfileForm({
-      login: user.login ?? "",
-      email: user.email ?? "",
-      surname: user.surname ?? "",
-      name: user.name ?? "",
-      fatherName: user.father_name ?? "",
-      country: user.country ?? "Россия",
-      city: user.city ?? "",
-      school: user.school ?? "",
-      classGrade: user.class_grade !== null && user.class_grade !== undefined ? String(user.class_grade) : "",
-      subject: user.subject ?? ""
-    });
+    const nextProfile = buildProfileFromUser(user);
+    setProfileForm(nextProfile);
+    setSavedProfile(nextProfile);
   }, [user]);
 
   useEffect(() => {
@@ -162,6 +189,15 @@ export function CabinetPage() {
       .catch(() => setStudents([]));
   }, [client, user]);
 
+  const hasProfileChanges = useMemo(() => {
+    if (!savedProfile) {
+      return false;
+    }
+    return (Object.keys(profileForm) as (keyof ProfileForm)[]).some(
+      (key) => profileForm[key] !== savedProfile[key]
+    );
+  }, [profileForm, savedProfile]);
+
   if (status === "loading" || status === "idle") {
     return <div className="cabinet-page">Загрузка...</div>;
   }
@@ -188,8 +224,8 @@ export function CabinetPage() {
     if (form.fatherName && !RU_NAME_REGEX.test(form.fatherName)) {
       errors.fatherName = "Только русские буквы, первая заглавная.";
     }
-    if (!form.city || !RU_NAME_REGEX.test(form.city)) {
-      errors.city = "Только русские буквы, первая заглавная.";
+    if (!form.city) {
+      errors.city = "Введите город.";
     }
     if (!form.school) {
       errors.school = "Введите школу.";
@@ -248,12 +284,46 @@ export function CabinetPage() {
       if (tokens) {
         setSession(tokens, updated);
       }
+      const nextProfile = buildProfileFromUser(updated);
+      setProfileForm(nextProfile);
+      setSavedProfile(nextProfile);
       setProfileStatus("idle");
       setProfileMessage("Данные сохранены.");
     } catch {
       setProfileStatus("error");
       setProfileMessage("Не удалось сохранить изменения.");
     }
+  };
+
+  const handleProfileCancel = () => {
+    if (!savedProfile) {
+      return;
+    }
+    setProfileForm(savedProfile);
+    setProfileErrors({});
+    setProfileMessage(null);
+  };
+
+  const handleUserMenuToggle = () => {
+    setIsUserMenuOpen((prev) => !prev);
+  };
+
+  const handleUserMenuClose = () => {
+    setIsUserMenuOpen(false);
+  };
+
+  const handleLogoutClick = () => {
+    setIsUserMenuOpen(false);
+    if (hasProfileChanges) {
+      setIsLogoutPromptOpen(true);
+      return;
+    }
+    void signOut();
+  };
+
+  const handleLogoutConfirm = async () => {
+    await signOut();
+    setIsLogoutPromptOpen(false);
   };
 
   const handleEmailVerifyRequest = async () => {
@@ -364,7 +434,27 @@ export function CabinetPage() {
         }
         actions={
           <div className="cabinet-actions">
-            <span className="cabinet-user">{user.login}</span>
+            <div className="cabinet-user-menu" ref={userMenuRef}>
+              <button
+                type="button"
+                className="cabinet-user-button"
+                onClick={handleUserMenuToggle}
+                aria-haspopup="menu"
+                aria-expanded={isUserMenuOpen}
+              >
+                {user.login}
+              </button>
+              {isUserMenuOpen ? (
+                <div className="cabinet-user-popup" role="menu">
+                  <Link to="/cabinet" role="menuitem" onClick={handleUserMenuClose}>
+                    Личный кабинет
+                  </Link>
+                  <button type="button" onClick={handleLogoutClick} role="menuitem">
+                    Выйти
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         }
         footer={<div className="home-footer">© 2026 Олимпиада «Невский интеграл»</div>}
@@ -551,9 +641,22 @@ export function CabinetPage() {
               ) : null}
 
               {profileMessage ? <div className="cabinet-alert">{profileMessage}</div> : null}
-              <Button type="submit" className="cabinet-save-button" isLoading={profileStatus === "saving"}>
-                Сохранить
-              </Button>
+              <div className="cabinet-form-actions">
+                <Button
+                  type="submit"
+                  className="cabinet-save-button cabinet-action-button"
+                  isLoading={profileStatus === "saving"}
+                >
+                  Сохранить
+                </Button>
+                <Button
+                  type="button"
+                  className="cabinet-cancel-button cabinet-action-button"
+                  onClick={handleProfileCancel}
+                >
+                  Отмена
+                </Button>
+              </div>
             </form>
           </section>
 
@@ -643,6 +746,11 @@ export function CabinetPage() {
               </div>
             )}
           </section>
+          <div className="cabinet-logout">
+            <Button type="button" className="cabinet-logout-button" onClick={handleLogoutClick}>
+              Выйти
+            </Button>
+          </div>
         </main>
       </LayoutShell>
 
@@ -655,6 +763,22 @@ export function CabinetPage() {
           Необходимо подтвердить email. На ваш электронный почтовый ящик {profileForm.email} выслано письмо с
           ссылкой подтверждением. Пользователи с неподтвержденным email не могут участвовать в олимпиаде.
         </p>
+      </Modal>
+
+      <Modal
+        isOpen={isLogoutPromptOpen}
+        onClose={() => setIsLogoutPromptOpen(false)}
+        title="Несохраненные изменения"
+      >
+        <p>Есть несохраненные данные. Выйти без сохранения?</p>
+        <div className="cabinet-modal-actions">
+          <Button type="button" className="cabinet-logout-button" onClick={handleLogoutConfirm}>
+            Выход
+          </Button>
+          <Button type="button" className="cabinet-cancel-button" onClick={() => setIsLogoutPromptOpen(false)}>
+            Отмена
+          </Button>
+        </div>
       </Modal>
 
       <Modal

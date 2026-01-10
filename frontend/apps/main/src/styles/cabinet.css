@@ -77,12 +77,53 @@
   gap: var(--space-3);
 }
 
-.cabinet-user {
+.cabinet-user-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cabinet-user-button {
   padding: 6px 16px;
   border-radius: var(--radius-pill);
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: var(--color-white);
   font-weight: 600;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.cabinet-user-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: rgba(0, 33, 75, 0.94);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  min-width: 160px;
+  box-shadow: 0 12px 24px rgba(6, 22, 48, 0.3);
+  z-index: 20;
+}
+
+.cabinet-user-popup button,
+.cabinet-user-popup a {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--color-white);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  text-align: center;
+}
+
+.cabinet-user-popup button:hover,
+.cabinet-user-popup a:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .cabinet-content {
@@ -169,6 +210,55 @@
   border-color: #12813a;
 }
 
+.cabinet-form-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.cabinet-action-button {
+  width: 45%;
+  margin: 0;
+}
+
+.cabinet-cancel-button {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+  justify-content: center;
+}
+
+.cabinet-cancel-button:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.cabinet-logout {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-6) 0 var(--space-8);
+}
+
+.cabinet-logout-button {
+  width: 50%;
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+  justify-content: center;
+}
+
+.cabinet-logout-button:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.cabinet-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
 .cabinet-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -235,6 +325,15 @@
   }
 
   .cabinet-save-button {
+    width: 100%;
+  }
+
+  .cabinet-form-actions {
+    flex-direction: column;
+  }
+
+  .cabinet-action-button,
+  .cabinet-logout-button {
     width: 100%;
   }
 }

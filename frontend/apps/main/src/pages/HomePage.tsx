@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient } from "@api";
 import { Link, useNavigate } from "react-router-dom";
@@ -172,10 +172,12 @@ type RegisterFormState = {
 type RegisterErrors = Partial<Record<keyof RegisterFormState, string>>;
 
 export function HomePage() {
-  const { signIn, user, status } = useAuth();
+  const { signIn, signOut, user, status } = useAuth();
   const navigate = useNavigate();
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
@@ -234,6 +236,22 @@ export function HomePage() {
     () => (agreementRole === "student" ? studentAgreement : teacherAgreement),
     [agreementRole]
   );
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   const updateRegisterField = <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => {
     setRegisterForm((prev) => ({
@@ -308,8 +326,6 @@ export function HomePage() {
     }
     if (!form.city) {
       errors.city = "Введите город.";
-    } else if (!RU_NAME_REGEX.test(form.city)) {
-      errors.city = "Только русские буквы, первая заглавная.";
     }
     if (!form.school) {
       errors.school = "Введите школу.";
@@ -351,6 +367,22 @@ export function HomePage() {
     setRegisterErrorMessage(null);
     setRegisterErrors({});
     setIsRegisterOpen(true);
+  };
+
+  const handleUserMenuToggle = () => {
+    setIsUserMenuOpen((prev) => !prev);
+  };
+
+  const handleUserMenuClose = () => {
+    setIsUserMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } finally {
+      setIsUserMenuOpen(false);
+    }
   };
 
   const openRecovery = () => {
@@ -476,9 +508,27 @@ export function HomePage() {
               <img src={vkLink} alt="ВК" />
             </a>
             {isAuthenticated && user ? (
-              <Link to="/cabinet" className="home-user-link">
-                {user.login}
-              </Link>
+              <div className="home-user-menu" ref={userMenuRef}>
+                <button
+                  type="button"
+                  className="home-user-link"
+                  onClick={handleUserMenuToggle}
+                  aria-haspopup="menu"
+                  aria-expanded={isUserMenuOpen}
+                >
+                  {user.login}
+                </button>
+                {isUserMenuOpen ? (
+                  <div className="home-user-popup" role="menu">
+                    <Link to="/cabinet" role="menuitem" onClick={handleUserMenuClose}>
+                      Личный кабинет
+                    </Link>
+                    <button type="button" onClick={handleLogout} role="menuitem">
+                      Выйти
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <>
                 <Button onClick={openLogin}>Войти</Button>
