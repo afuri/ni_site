@@ -24,23 +24,37 @@ class UsersRepo:
     async def list(
         self,
         *,
+        user_id: int | None = None,
         role=None,
         is_active: bool | None = None,
         is_email_verified: bool | None = None,
+        must_change_password: bool | None = None,
         is_moderator: bool | None = None,
         moderator_requested: bool | None = None,
         login: str | None = None,
         email: str | None = None,
+        surname: str | None = None,
+        name: str | None = None,
+        father_name: str | None = None,
+        country: str | None = None,
+        city: str | None = None,
+        school: str | None = None,
+        class_grade: int | None = None,
+        subject: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[User]:
         stmt = select(User).order_by(User.id).limit(limit).offset(offset)
+        if user_id is not None:
+            stmt = stmt.where(User.id == user_id)
         if role is not None:
             stmt = stmt.where(User.role == role)
         if is_active is not None:
             stmt = stmt.where(User.is_active == is_active)
         if is_email_verified is not None:
             stmt = stmt.where(User.is_email_verified == is_email_verified)
+        if must_change_password is not None:
+            stmt = stmt.where(User.must_change_password == must_change_password)
         if is_moderator is not None:
             stmt = stmt.where(User.is_moderator == is_moderator)
         if moderator_requested is not None:
@@ -49,6 +63,22 @@ class UsersRepo:
             stmt = stmt.where(User.login.ilike(f"%{login}%"))
         if email:
             stmt = stmt.where(User.email.ilike(f"%{email}%"))
+        if surname:
+            stmt = stmt.where(User.surname.ilike(f"%{surname}%"))
+        if name:
+            stmt = stmt.where(User.name.ilike(f"%{name}%"))
+        if father_name:
+            stmt = stmt.where(User.father_name.ilike(f"%{father_name}%"))
+        if country:
+            stmt = stmt.where(User.country.ilike(f"%{country}%"))
+        if city:
+            stmt = stmt.where(User.city.ilike(f"%{city}%"))
+        if school:
+            stmt = stmt.where(User.school.ilike(f"%{school}%"))
+        if class_grade is not None:
+            stmt = stmt.where(User.class_grade == class_grade)
+        if subject:
+            stmt = stmt.where(User.subject.ilike(f"%{subject}%"))
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
 

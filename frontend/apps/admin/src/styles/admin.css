@@ -4,10 +4,13 @@
 }
 
 .admin-app .layout-header {
+  position: sticky;
+  top: 0;
   background: rgba(0, 33, 75, 0.94);
   color: var(--color-white);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(12px);
+  z-index: 30;
 }
 
 .admin-app .layout-header-inner {
@@ -121,6 +124,182 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.admin-options {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-options-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  color: var(--color-ink-700);
+}
+
+.admin-option-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 140px auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.admin-option-id {
+  font-weight: 600;
+  color: var(--color-ink-700);
+}
+
+.admin-option-correct {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--color-ink-700);
+}
+
+.admin-short-answer {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-markdown-preview {
+  display: grid;
+  gap: var(--space-2);
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.admin-markdown-body {
+  font-size: 0.95rem;
+  color: var(--color-ink-900);
+}
+
+.admin-markdown-body h1,
+.admin-markdown-body h2,
+.admin-markdown-body h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.admin-markdown-body ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.admin-markdown-body ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.admin-markdown-body blockquote {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid rgba(31, 59, 99, 0.3);
+  color: rgba(31, 59, 99, 0.8);
+}
+
+.admin-markdown-body pre {
+  margin: 0;
+  padding: var(--space-3);
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.admin-markdown-body code {
+  background: rgba(15, 23, 42, 0.1);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.admin-markdown-body hr {
+  border: none;
+  border-top: 1px solid rgba(31, 59, 99, 0.2);
+  margin: var(--space-3) 0;
+}
+
+.admin-markdown-body a {
+  color: #0056d2;
+  text-decoration: underline;
+}
+
+.admin-image-field {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.admin-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-upload-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.admin-upload-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(31, 59, 99, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  color: var(--color-ink-700);
+  cursor: pointer;
+}
+
+.admin-image-preview {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  margin: 0 auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+}
+
+.admin-task-preview {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-task-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: 0.9rem;
+  color: rgba(31, 59, 99, 0.7);
+}
+
+.admin-task-preview-body {
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.admin-task-preview-options ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.admin-task-preview-options li.is-correct {
+  color: #15803d;
+  font-weight: 600;
+}
+
 .admin-textarea {
   min-height: 120px;
   resize: vertical;
@@ -136,6 +315,33 @@
 .admin-table-actions {
   display: flex;
   gap: var(--space-2);
+}
+
+.admin-table-scroll {
+  width: 100%;
+}
+
+.admin-users-wide {
+  min-width: 2400px;
+}
+
+.admin-table-scroll .table-wrap {
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: visible;
+}
+
+.admin-users-wide .table-wrap {
+  overflow-x: visible;
+}
+
+.admin-table-wide .table {
+  min-width: 2200px;
+}
+
+.admin-table-wide .table th,
+.admin-table-wide .table td {
+  white-space: nowrap;
 }
 
 .admin-tag {
@@ -174,6 +380,12 @@
   display: grid;
   gap: var(--space-4);
   text-align: center;
+}
+
+.admin-task-modal {
+  width: min(1100px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .admin-login-card h1 {

@@ -470,7 +470,7 @@ Uploads limits/types: `API_CONVENTIONS.md`
 ## Admin: Users & Audit
 
 - `GET /admin/users` — список пользователей
-  - Query: `role`, `is_active`, `is_email_verified`, `is_moderator`, `moderator_requested`, `login`, `email`, `limit`, `offset`
+  - Query: `user_id`, `role`, `is_active`, `is_email_verified`, `must_change_password`, `is_moderator`, `moderator_requested`, `login`, `email`, `surname`, `name`, `father_name`, `country`, `city`, `school`, `class_grade`, `subject`, `limit`, `offset`
   Пример ответа (`UserRead[]`):
   ```json
   [

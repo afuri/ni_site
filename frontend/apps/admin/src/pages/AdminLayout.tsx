@@ -40,7 +40,6 @@ export function AdminLayout() {
             </Button>
           </div>
         }
-        footer={<div className="admin-footer">© 2026 Олимпиада «Невский интеграл»</div>}
       >
         <div className="admin-content">
           <Outlet />

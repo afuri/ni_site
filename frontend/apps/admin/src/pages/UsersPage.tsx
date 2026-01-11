@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Table, TextInput } from "@ui";
 import type { UserRead } from "@api";
 import { adminApiClient } from "../lib/adminClient";
@@ -53,6 +53,62 @@ const parseBoolean = (value: string) => {
   return undefined;
 };
 
+const escapeCsvValue = (value: string) => {
+  if (value.includes("\"")) {
+    value = value.replace(/"/g, "\"\"");
+  }
+  if (/[",\n]/.test(value)) {
+    return `"${value}"`;
+  }
+  return value;
+};
+
+const buildUsersCsv = (users: UserRead[]) => {
+  const headers = [
+    "ID",
+    "Логин",
+    "Email",
+    "Роль",
+    "Активен",
+    "Email подтвержден",
+    "Требует смены пароля",
+    "Модератор",
+    "Запрос модератора",
+    "Фамилия",
+    "Имя",
+    "Отчество",
+    "Страна",
+    "Город",
+    "Школа",
+    "Класс",
+    "Предмет"
+  ];
+
+  const rows = users.map((user) => [
+    String(user.id),
+    user.login,
+    user.email,
+    user.role,
+    user.is_active ? "Да" : "Нет",
+    user.is_email_verified ? "Да" : "Нет",
+    user.must_change_password ? "Да" : "Нет",
+    user.is_moderator ? "Да" : "Нет",
+    user.moderator_requested ? "Да" : "Нет",
+    user.surname,
+    user.name,
+    user.father_name ?? "",
+    user.country,
+    user.city,
+    user.school,
+    user.class_grade !== null && user.class_grade !== undefined ? String(user.class_grade) : "",
+    user.subject ?? ""
+  ]);
+
+  return [headers, ...rows]
+    .map((row) => row.map((value) => escapeCsvValue(String(value))).join(","))
+    .join("\n");
+};
+
 export function UsersPage() {
   const [form, setForm] = useState<UserUpdateForm>(emptyForm);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -66,12 +122,23 @@ export function UsersPage() {
   const [managedUsers, setManagedUsers] = useState<UserRead[]>([]);
   const [usersList, setUsersList] = useState<UserRead[]>([]);
   const [filters, setFilters] = useState({
+    userId: "",
     role: "",
     isActive: "",
     isEmailVerified: "",
+    mustChangePassword: "",
     isModerator: "",
+    moderatorRequested: "",
     login: "",
-    email: ""
+    email: "",
+    surname: "",
+    name: "",
+    fatherName: "",
+    country: "",
+    city: "",
+    school: "",
+    classGrade: "",
+    subject: ""
   });
 
   const handleOtpRequest = async () => {
@@ -97,12 +164,23 @@ export function UsersPage() {
     setListStatus("loading");
     setListError(null);
     const params = new URLSearchParams();
+    if (filters.userId) params.set("user_id", filters.userId);
     if (filters.role) params.set("role", filters.role);
     if (filters.isActive) params.set("is_active", filters.isActive);
     if (filters.isEmailVerified) params.set("is_email_verified", filters.isEmailVerified);
+    if (filters.mustChangePassword) params.set("must_change_password", filters.mustChangePassword);
     if (filters.isModerator) params.set("is_moderator", filters.isModerator);
+    if (filters.moderatorRequested) params.set("moderator_requested", filters.moderatorRequested);
     if (filters.login) params.set("login", filters.login);
     if (filters.email) params.set("email", filters.email);
+    if (filters.surname) params.set("surname", filters.surname);
+    if (filters.name) params.set("name", filters.name);
+    if (filters.fatherName) params.set("father_name", filters.fatherName);
+    if (filters.country) params.set("country", filters.country);
+    if (filters.city) params.set("city", filters.city);
+    if (filters.school) params.set("school", filters.school);
+    if (filters.classGrade) params.set("class_grade", filters.classGrade);
+    if (filters.subject) params.set("subject", filters.subject);
     try {
       const data = await adminApiClient.request<UserRead[]>({
         path: `/admin/users?${params.toString()}`,
@@ -115,6 +193,23 @@ export function UsersPage() {
       setListError("Не удалось загрузить пользователей.");
     }
   };
+
+  const handleDownloadCsv = () => {
+    const csv = buildUsersCsv(usersList);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "users_filtered.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  useEffect(() => {
+    void loadUsers();
+  }, []);
 
   const handleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -214,14 +309,15 @@ export function UsersPage() {
 
   return (
     <section className="admin-section">
-      <div className="admin-toolbar">
-        <div>
-          <h1>Управление пользователями</h1>
-          <p className="admin-hint">Редактируйте пользователей и управляйте доступом.</p>
+      <div className="admin-users-wide">
+        <div className="admin-toolbar">
+          <div>
+            <h1>Управление пользователями</h1>
+            <p className="admin-hint">Редактируйте пользователей и управляйте доступом.</p>
+          </div>
         </div>
-      </div>
 
-      <form className="admin-form" onSubmit={handleUpdate}>
+        <form className="admin-form" onSubmit={handleUpdate}>
         <div className="admin-form-grid">
           <TextInput
             label="ID пользователя"
@@ -363,12 +459,18 @@ export function UsersPage() {
           </Button>
         </div>
         {message ? <p className={status === "error" ? "admin-error" : "admin-hint"}>{message}</p> : null}
-      </form>
+        </form>
 
-      <div className="admin-section" style={{ marginTop: "24px" }}>
-        <h2>Список пользователей</h2>
-        <p className="admin-hint">Фильтруйте список по роли, статусам и логину.</p>
-        <div className="admin-report-filters">
+        <div className="admin-section" style={{ marginTop: "24px" }}>
+            <h2>Список пользователей</h2>
+            <p className="admin-hint">Фильтруйте список по роли, статусам и логину.</p>
+            <div className="admin-report-filters">
+          <TextInput
+            label="ID"
+            name="userId"
+            value={filters.userId}
+            onChange={(event) => setFilters((prev) => ({ ...prev, userId: event.target.value }))}
+          />
           <label className="field">
             <span className="field-label">Роль</span>
             <select
@@ -407,11 +509,35 @@ export function UsersPage() {
             </select>
           </label>
           <label className="field">
+            <span className="field-label">Пароль сменить</span>
+            <select
+              className="field-input"
+              value={filters.mustChangePassword}
+              onChange={(event) => setFilters((prev) => ({ ...prev, mustChangePassword: event.target.value }))}
+            >
+              <option value="">Все</option>
+              <option value="true">Да</option>
+              <option value="false">Нет</option>
+            </select>
+          </label>
+          <label className="field">
             <span className="field-label">Модератор</span>
             <select
               className="field-input"
               value={filters.isModerator}
               onChange={(event) => setFilters((prev) => ({ ...prev, isModerator: event.target.value }))}
+            >
+              <option value="">Все</option>
+              <option value="true">Да</option>
+              <option value="false">Нет</option>
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Запрошен модератор</span>
+            <select
+              className="field-input"
+              value={filters.moderatorRequested}
+              onChange={(event) => setFilters((prev) => ({ ...prev, moderatorRequested: event.target.value }))}
             >
               <option value="">Все</option>
               <option value="true">Да</option>
@@ -430,105 +556,186 @@ export function UsersPage() {
             value={filters.email}
             onChange={(event) => setFilters((prev) => ({ ...prev, email: event.target.value }))}
           />
-        </div>
-        <div className="admin-toolbar-actions">
-          <Button type="button" variant="outline" onClick={loadUsers}>
-            Загрузить
-          </Button>
-        </div>
-        {listStatus === "error" && listError ? <div className="admin-alert">{listError}</div> : null}
-        <Table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Логин</th>
-              <th>Роль</th>
-              <th>Email</th>
-              <th>Активен</th>
-              <th>Email OK</th>
-              <th>Модератор</th>
-            </tr>
-          </thead>
-          <tbody>
-            {listStatus === "loading" ? (
-              <tr>
-                <td colSpan={7}>Загрузка...</td>
-              </tr>
-            ) : usersList.length === 0 ? (
-              <tr>
-                <td colSpan={7}>Пользователи не найдены.</td>
-              </tr>
-            ) : (
-              usersList.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.id}</td>
-                  <td>{item.login}</td>
-                  <td>{item.role}</td>
-                  <td>{item.email}</td>
-                  <td>{item.is_active ? "Да" : "Нет"}</td>
-                  <td>{item.is_email_verified ? "Да" : "Нет"}</td>
-                  <td>{item.is_moderator ? "Да" : "Нет"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
-      </div>
-
-      <div className="admin-section" style={{ marginTop: "24px" }}>
-        <h2>Временный пароль</h2>
-        <div className="admin-form-grid">
           <TextInput
-            label="Новый временный пароль"
-            name="tempPassword"
-            value={tempPassword}
-            onChange={(event) => setTempPassword(event.target.value)}
+            label="Фамилия"
+            name="surnameFilter"
+            value={filters.surname}
+            onChange={(event) => setFilters((prev) => ({ ...prev, surname: event.target.value }))}
           />
+          <TextInput
+            label="Имя"
+            name="nameFilter"
+            value={filters.name}
+            onChange={(event) => setFilters((prev) => ({ ...prev, name: event.target.value }))}
+          />
+          <TextInput
+            label="Отчество"
+            name="fatherNameFilter"
+            value={filters.fatherName}
+            onChange={(event) => setFilters((prev) => ({ ...prev, fatherName: event.target.value }))}
+          />
+          <TextInput
+            label="Страна"
+            name="countryFilter"
+            value={filters.country}
+            onChange={(event) => setFilters((prev) => ({ ...prev, country: event.target.value }))}
+          />
+          <TextInput
+            label="Город"
+            name="cityFilter"
+            value={filters.city}
+            onChange={(event) => setFilters((prev) => ({ ...prev, city: event.target.value }))}
+          />
+          <TextInput
+            label="Школа"
+            name="schoolFilter"
+            value={filters.school}
+            onChange={(event) => setFilters((prev) => ({ ...prev, school: event.target.value }))}
+          />
+          <TextInput
+            label="Класс"
+            name="classGradeFilter"
+            value={filters.classGrade}
+            onChange={(event) => setFilters((prev) => ({ ...prev, classGrade: event.target.value }))}
+          />
+          <TextInput
+            label="Предмет"
+            name="subjectFilter"
+            value={filters.subject}
+            onChange={(event) => setFilters((prev) => ({ ...prev, subject: event.target.value }))}
+          />
+            </div>
+            <div className="admin-toolbar-actions">
+              <Button type="button" variant="outline" onClick={loadUsers}>
+                Применить фильтры
+              </Button>
+              <Button type="button" variant="outline" onClick={handleDownloadCsv}>
+                Скачать CSV
+              </Button>
+            </div>
+            {listStatus === "error" && listError ? <div className="admin-alert">{listError}</div> : null}
+            <div className="admin-table-scroll admin-table-wide">
+              <Table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Логин</th>
+                    <th>Email</th>
+                    <th>Роль</th>
+                    <th>Активен</th>
+                    <th>Email OK</th>
+                    <th>Смена пароля</th>
+                    <th>Модератор</th>
+                    <th>Запрос модератора</th>
+                    <th>Фамилия</th>
+                    <th>Имя</th>
+                    <th>Отчество</th>
+                    <th>Страна</th>
+                    <th>Город</th>
+                    <th>Школа</th>
+                    <th>Класс</th>
+                    <th>Предмет</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listStatus === "loading" ? (
+                    <tr>
+                      <td colSpan={17}>Загрузка...</td>
+                    </tr>
+                  ) : usersList.length === 0 ? (
+                    <tr>
+                      <td colSpan={17}>Пользователи не найдены.</td>
+                    </tr>
+                  ) : (
+                    usersList.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.id}</td>
+                        <td>{item.login}</td>
+                        <td>{item.email}</td>
+                        <td>{item.role}</td>
+                        <td>{item.is_active ? "Да" : "Нет"}</td>
+                        <td>{item.is_email_verified ? "Да" : "Нет"}</td>
+                        <td>{item.must_change_password ? "Да" : "Нет"}</td>
+                        <td>{item.is_moderator ? "Да" : "Нет"}</td>
+                        <td>{item.moderator_requested ? "Да" : "Нет"}</td>
+                        <td>{item.surname}</td>
+                        <td>{item.name}</td>
+                        <td>{item.father_name ?? "—"}</td>
+                        <td>{item.country}</td>
+                        <td>{item.city}</td>
+                        <td>{item.school}</td>
+                        <td>{item.class_grade ?? "—"}</td>
+                        <td>{item.subject ?? "—"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </Table>
+            </div>
         </div>
-        <div className="admin-toolbar-actions">
-          <Button type="button" variant="outline" onClick={handleGenerateTemp} disabled={tempStatus === "saving"}>
-            Сгенерировать
-          </Button>
-          <Button type="button" onClick={handleSetTemp} disabled={tempStatus === "saving"}>
-            Установить
-          </Button>
-        </div>
-        {tempResult ? <p className={tempStatus === "error" ? "admin-error" : "admin-hint"}>{tempResult}</p> : null}
-      </div>
 
-      <div className="admin-section" style={{ marginTop: "24px" }}>
-        <h2>Последние изменения</h2>
-        <p className="admin-hint">Здесь отображаются пользователи, которых вы изменяли в текущей сессии.</p>
-        <Table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Логин</th>
-              <th>Роль</th>
-              <th>Email</th>
-              <th>Активен</th>
-              <th>Модератор</th>
-            </tr>
-          </thead>
-          <tbody>
-            {managedUsers.length === 0 ? (
-              <tr>
-                <td colSpan={6}>Пока нет обновленных пользователей.</td>
-              </tr>
-            ) : (
-              managedUsers.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.id}</td>
-                  <td>{item.login}</td>
-                  <td>{item.role}</td>
-                  <td>{item.email}</td>
-                  <td>{item.is_active ? "Да" : "Нет"}</td>
-                  <td>{item.is_moderator ? "Да" : "Нет"}</td>
+        <div className="admin-section" style={{ marginTop: "24px" }}>
+            <h2>Временный пароль</h2>
+            <div className="admin-form-grid">
+              <TextInput
+                label="Новый временный пароль"
+                name="tempPassword"
+                value={tempPassword}
+                onChange={(event) => setTempPassword(event.target.value)}
+              />
+            </div>
+            <div className="admin-toolbar-actions">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGenerateTemp}
+                disabled={tempStatus === "saving"}
+              >
+                Сгенерировать
+              </Button>
+              <Button type="button" onClick={handleSetTemp} disabled={tempStatus === "saving"}>
+                Установить
+              </Button>
+            </div>
+            {tempResult ? (
+              <p className={tempStatus === "error" ? "admin-error" : "admin-hint"}>{tempResult}</p>
+            ) : null}
+        </div>
+
+        <div className="admin-section" style={{ marginTop: "24px" }}>
+            <h2>Последние изменения</h2>
+            <p className="admin-hint">Здесь отображаются пользователи, которых вы изменяли в текущей сессии.</p>
+            <Table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Логин</th>
+                  <th>Роль</th>
+                  <th>Email</th>
+                  <th>Активен</th>
+                  <th>Модератор</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+              </thead>
+              <tbody>
+                {managedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>Пока нет обновленных пользователей.</td>
+                  </tr>
+                ) : (
+                  managedUsers.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.id}</td>
+                      <td>{item.login}</td>
+                      <td>{item.role}</td>
+                      <td>{item.email}</td>
+                      <td>{item.is_active ? "Да" : "Нет"}</td>
+                      <td>{item.is_moderator ? "Да" : "Нет"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </Table>
+        </div>
       </div>
     </section>
   );
