@@ -817,3 +817,43 @@ Student experience: olympiad list/detail, start attempt flow, attempt UI with ti
   - Добавлен стиль для кнопки подтверждения удаления в frontend/apps/main/src/styles/cabinet.css.
   - Тест на открытие окна удаления добавлен в frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx.
 
+fullstack 0.1.0
+
+Готово: собрал админ‑приложение с логином по центру, роутингом на /admin, шапкой и страницами управления задачами/олимпиадами/контентом/пользователями/отчетами;
+  на страницах — таблицы и модальные формы для CRUD там, где есть эндпоинты.
+
+  Что сделано
+
+  - Роутинг и каркас админки с /admin/login, защищенными страницами и меню: frontend/apps/admin/src/App.tsx, frontend/apps/admin/src/pages/AdminLayout.tsx.
+  - Центрированная форма входа: frontend/apps/admin/src/pages/LoginPage.tsx.
+  - CRUD для задач, олимпиад и контента + таблицы: frontend/apps/admin/src/pages/TasksPage.tsx, frontend/apps/admin/src/pages/OlympiadsPage.tsx, frontend/apps/
+    admin/src/pages/ContentPage.tsx.
+  - Пользователи: форма апдейта + OTP, временный пароль, таблица “последние изменения”: frontend/apps/admin/src/pages/UsersPage.tsx.
+  - Отчеты: аудит‑лог + фильтры + экспорт CSV: frontend/apps/admin/src/pages/ReportsPage.tsx.
+  - Общие утилиты и стили: frontend/apps/admin/src/lib/adminClient.ts, frontend/apps/admin/src/lib/formatters.ts, frontend/apps/admin/src/styles/admin.css.
+
+Добавил backend‑эндпоинты для админского списка и карточки пользователя, плюс пример в OpenAPI.
+
+  Изменения:
+
+  - Список пользователей с фильтрами/пагинацией: backend/app/api/v1/admin_users.py
+  - Получение пользователя по ID: backend/app/api/v1/admin_users.py
+  - Репозиторий со списком и фильтрами: backend/app/repos/users.py
+  - Пример списка пользователей в OpenAPI: backend/app/api/v1/openapi_examples.py
+
+  Новые эндпоинты:
+
+  - GET /api/v1/admin/users?role=&is_active=&is_email_verified=&is_moderator=&moderator_requested=&login=&email=&limit=&offset=
+  - GET /api/v1/admin/users/{user_id}
+
+Обновил UI_ENDPOINTS.md и подключил список пользователей в админке.
+
+  Что изменилось
+
+  - Добавлены описания GET /admin/users и GET /admin/users/{user_id} в UI_ENDPOINTS.md.
+  - В админке на странице пользователей добавлен блок “Список пользователей” с фильтрами и таблицей, загрузка через новый endpoint: frontend/apps/admin/src/pages/
+    UsersPage.tsx.
+
+  
+
+

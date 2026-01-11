@@ -21,6 +21,37 @@ class UsersRepo:
         res = await self.db.execute(select(User).where(User.id == user_id))
         return res.scalar_one_or_none()
 
+    async def list(
+        self,
+        *,
+        role=None,
+        is_active: bool | None = None,
+        is_email_verified: bool | None = None,
+        is_moderator: bool | None = None,
+        moderator_requested: bool | None = None,
+        login: str | None = None,
+        email: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[User]:
+        stmt = select(User).order_by(User.id).limit(limit).offset(offset)
+        if role is not None:
+            stmt = stmt.where(User.role == role)
+        if is_active is not None:
+            stmt = stmt.where(User.is_active == is_active)
+        if is_email_verified is not None:
+            stmt = stmt.where(User.is_email_verified == is_email_verified)
+        if is_moderator is not None:
+            stmt = stmt.where(User.is_moderator == is_moderator)
+        if moderator_requested is not None:
+            stmt = stmt.where(User.moderator_requested == moderator_requested)
+        if login:
+            stmt = stmt.where(User.login.ilike(f"%{login}%"))
+        if email:
+            stmt = stmt.where(User.email.ilike(f"%{email}%"))
+        res = await self.db.execute(stmt)
+        return list(res.scalars().all())
+
     async def create(
         self,
         *,

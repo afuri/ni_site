@@ -1,38 +1,49 @@
 import "@ui/styles/global.css";
+import "./styles/admin.css";
 import { AuthProvider, useAuth } from "@ui";
-import { createApiClient } from "@api";
-import { createAuthStorage } from "@utils";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { adminApiClient, adminStorage } from "./lib/adminClient";
+import { RequireAdmin } from "./routes/RequireAdmin";
+import { AdminLayout } from "./pages/AdminLayout";
+import { LoginPage } from "./pages/LoginPage";
+import { TasksPage } from "./pages/TasksPage";
+import { OlympiadsPage } from "./pages/OlympiadsPage";
+import { ContentPage } from "./pages/ContentPage";
+import { UsersPage } from "./pages/UsersPage";
+import { ReportsPage } from "./pages/ReportsPage";
 
-const storage = createAuthStorage({
-  tokensKey: "ni_admin_tokens",
-  userKey: "ni_admin_user"
-});
-
-const apiClient = createApiClient({
-  baseUrl: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
-  storage
-});
-
-function AppContent() {
+function RedirectIfAuthenticated() {
   const { status, user } = useAuth();
-
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <h1>Admin app scaffold</h1>
-      </header>
-      <main className="app-content">
-        <p>Auth status: {status}</p>
-        <p>Current role: {user?.role ?? "guest"}</p>
-      </main>
-    </div>
-  );
+  if (status === "authenticated" && user?.role === "admin") {
+    return <Navigate to="/tasks" replace />;
+  }
+  return <LoginPage />;
 }
 
 export function App() {
   return (
-    <AuthProvider client={apiClient} storage={storage}>
-      <AppContent />
+    <AuthProvider client={adminApiClient} storage={adminStorage}>
+      <BrowserRouter basename="/admin">
+        <Routes>
+          <Route path="/login" element={<RedirectIfAuthenticated />} />
+          <Route
+            path="/"
+            element={
+              <RequireAdmin>
+                <AdminLayout />
+              </RequireAdmin>
+            }
+          >
+            <Route index element={<Navigate to="tasks" replace />} />
+            <Route path="tasks" element={<TasksPage />} />
+            <Route path="olympiads" element={<OlympiadsPage />} />
+            <Route path="content" element={<ContentPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
   );
 }

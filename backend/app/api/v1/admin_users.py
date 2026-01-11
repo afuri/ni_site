@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 import secrets
 import string
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -32,7 +32,9 @@ from app.api.v1.openapi_examples import (
     EXAMPLE_ADMIN_OTP_RESPONSE,
     EXAMPLE_ADMIN_TEMP_PASSWORD,
     EXAMPLE_USER_READ,
+    EXAMPLE_LISTS,
     response_model_example,
+    response_model_list_example,
 )
 from app.core import error_codes as codes
 
@@ -162,6 +164,68 @@ async def request_admin_otp(
     if settings.ENV != "prod":
         return {"sent": True, "otp": otp}
     return {"sent": True}
+
+
+@router.get(
+    "",
+    response_model=list[UserRead],
+    tags=["admin"],
+    description="Список пользователей",
+    responses={
+        200: response_model_list_example(EXAMPLE_LISTS["users"]),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+    },
+)
+async def list_users(
+    role: UserRole | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    is_email_verified: bool | None = Query(default=None),
+    is_moderator: bool | None = Query(default=None),
+    moderator_requested: bool | None = Query(default=None),
+    login: str | None = Query(default=None),
+    email: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    repo = UsersRepo(db)
+    return await repo.list(
+        role=role,
+        is_active=is_active,
+        is_email_verified=is_email_verified,
+        is_moderator=is_moderator,
+        moderator_requested=moderator_requested,
+        login=login,
+        email=email,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/{user_id}",
+    response_model=UserRead,
+    tags=["admin"],
+    description="Получить пользователя по ID",
+    responses={
+        200: response_model_example(UserRead, EXAMPLE_USER_READ),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.USER_NOT_FOUND),
+    },
+)
+async def get_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    repo = UsersRepo(db)
+    user = await repo.get_by_id(user_id)
+    if not user:
+        raise http_error(404, codes.USER_NOT_FOUND)
+    return user
 
 
 @router.put(

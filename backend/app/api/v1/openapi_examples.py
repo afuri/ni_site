@@ -243,4 +243,5 @@ EXAMPLE_LISTS: dict = {
     "attempt_results": [EXAMPLE_ATTEMPT_RESULT],
     "audit_logs": [EXAMPLE_AUDIT_LOG_READ],
     "teacher_students": [EXAMPLE_TEACHER_STUDENT_READ],
+    "users": [EXAMPLE_USER_READ],
 }

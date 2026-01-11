@@ -469,6 +469,55 @@ Uploads limits/types: `API_CONVENTIONS.md`
 
 ## Admin: Users & Audit
 
+- `GET /admin/users` — список пользователей
+  - Query: `role`, `is_active`, `is_email_verified`, `is_moderator`, `moderator_requested`, `login`, `email`, `limit`, `offset`
+  Пример ответа (`UserRead[]`):
+  ```json
+  [
+    {
+      "id": 1,
+      "login": "student01",
+      "email": "student01@example.com",
+      "role": "student",
+      "is_active": true,
+      "is_email_verified": true,
+      "must_change_password": false,
+      "is_moderator": false,
+      "moderator_requested": false,
+      "surname": "Ivanov",
+      "name": "Ivan",
+      "father_name": null,
+      "country": "Russia",
+      "city": "Moscow",
+      "school": "School 1",
+      "class_grade": 7,
+      "subject": null
+    }
+  ]
+  ```
+- `GET /admin/users/{user_id}` — получить пользователя по ID
+  Пример ответа (`UserRead`):
+  ```json
+  {
+    "id": 3,
+    "login": "student01",
+    "email": "student01@example.com",
+    "role": "student",
+    "is_active": true,
+    "is_email_verified": true,
+    "must_change_password": false,
+    "is_moderator": false,
+    "moderator_requested": false,
+    "surname": "Ivanov",
+    "name": "Ivan",
+    "father_name": null,
+    "country": "Russia",
+    "city": "Moscow",
+    "school": "School 1",
+    "class_grade": 7,
+    "subject": null
+  }
+  ```
 - `POST /admin/users/otp` — получить OTP для критичных действий
   Пример ответа:
   ```json
