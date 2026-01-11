@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient } from "@api";
+import { createAuthStorage } from "@utils";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -17,6 +18,7 @@ import "../styles/home.css";
 const TARGET_DATE = "2026-02-02T00:00:00+03:00";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
+const publicClient = createApiClient({ baseUrl: API_BASE_URL });
 
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]{4,}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -171,9 +173,32 @@ type RegisterFormState = {
 
 type RegisterErrors = Partial<Record<keyof RegisterFormState, string>>;
 
+type PublicOlympiad = {
+  id: number;
+  title: string;
+  age_group: string;
+  available_from: string;
+  available_to: string;
+  duration_sec: number;
+  is_published: boolean;
+};
+
 export function HomePage() {
   const { signIn, signOut, user, status } = useAuth();
   const navigate = useNavigate();
+  const authStorage = useMemo(
+    () => createAuthStorage({ tokensKey: "ni_main_tokens", userKey: "ni_main_user" }),
+    []
+  );
+  const authedClient = useMemo(
+    () =>
+      createApiClient({
+        baseUrl: API_BASE_URL,
+        storage: authStorage,
+        onAuthError: signOut
+      }),
+    [authStorage, signOut]
+  );
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -214,6 +239,14 @@ export function HomePage() {
   const [loginStatus, setLoginStatus] = useState<"idle" | "loading" | "error">("idle");
   const [loginErrorMessage, setLoginErrorMessage] = useState<string | null>(null);
   const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [publicOlympiads, setPublicOlympiads] = useState<PublicOlympiad[]>([]);
+  const [publicOlympiadsStatus, setPublicOlympiadsStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [publicOlympiadsError, setPublicOlympiadsError] = useState<string | null>(null);
+  const [selectedPublicOlympiadId, setSelectedPublicOlympiadId] = useState("");
+  const [startError, setStartError] = useState<string | null>(null);
+  const [isInstructionOpen, setIsInstructionOpen] = useState(false);
+  const [pendingOlympiad, setPendingOlympiad] = useState<PublicOlympiad | null>(null);
+  const [startStatus, setStartStatus] = useState<"idle" | "loading" | "error">("idle");
 
   const activeResultsSection = RESULTS_SECTIONS.find((section) => section.id === activeResultsId);
   const activeOlympiad = activeResultsSection
@@ -231,6 +264,56 @@ export function HomePage() {
       [sectionId]: value
     }));
   };
+
+  const selectedPublicOlympiad = useMemo(
+    () => publicOlympiads.find((item) => String(item.id) === selectedPublicOlympiadId) ?? null,
+    [publicOlympiads, selectedPublicOlympiadId]
+  );
+
+  const parseAgeGroup = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+    if (trimmed.includes(",")) {
+      return trimmed
+        .split(",")
+        .map((part) => Number(part.trim()))
+        .filter((grade) => Number.isFinite(grade));
+    }
+    if (trimmed.includes("-")) {
+      const [startRaw, endRaw] = trimmed.split("-", 2);
+      const start = Number(startRaw);
+      const end = Number(endRaw);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+        return [];
+      }
+      return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+    }
+    const single = Number(trimmed);
+    return Number.isFinite(single) ? [single] : [];
+  };
+
+  const isWithinAvailability = (olympiad: PublicOlympiad) => {
+    const start = new Date(olympiad.available_from).getTime();
+    const end = new Date(olympiad.available_to).getTime();
+    const now = Date.now();
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      return false;
+    }
+    return now >= start && now <= end;
+  };
+
+  const isClassAllowed = (olympiad: PublicOlympiad, classGrade: number | null) => {
+    if (!classGrade) {
+      return false;
+    }
+    const grades = parseAgeGroup(olympiad.age_group);
+    return grades.includes(classGrade);
+  };
+
+  const formatDateShort = (value: string) =>
+    new Date(value).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   const agreementText = useMemo(
     () => (agreementRole === "student" ? studentAgreement : teacherAgreement),
@@ -252,6 +335,39 @@ export function HomePage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadOlympiads = async () => {
+      setPublicOlympiadsStatus("loading");
+      setPublicOlympiadsError(null);
+      try {
+        const data = await publicClient.request<PublicOlympiad[]>({
+          path: "/olympiads",
+          method: "GET",
+          auth: false
+        });
+        if (!isMounted) {
+          return;
+        }
+        setPublicOlympiads(data ?? []);
+        if (data?.length) {
+          setSelectedPublicOlympiadId(String(data[0].id));
+        }
+        setPublicOlympiadsStatus("idle");
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+        setPublicOlympiadsStatus("error");
+        setPublicOlympiadsError("Не удалось загрузить список олимпиад.");
+      }
+    };
+    void loadOlympiads();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const updateRegisterField = <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => {
     setRegisterForm((prev) => ({
@@ -451,6 +567,59 @@ export function HomePage() {
     }
   };
 
+  const handleStartOlympiad = () => {
+    setStartError(null);
+    if (!selectedPublicOlympiad) {
+      setStartError("Выберите олимпиаду.");
+      return;
+    }
+    if (status !== "authenticated" || !user) {
+      openLogin();
+      return;
+    }
+    if (user.role !== "student") {
+      setStartError("Начать олимпиаду могут только ученики.");
+      return;
+    }
+    if (!user.is_email_verified) {
+      setStartError("Подтвердите email, чтобы участвовать в олимпиаде.");
+      return;
+    }
+    if (!isClassAllowed(selectedPublicOlympiad, user.class_grade)) {
+      setStartError("Олимпиада недоступна для вашего класса.");
+      return;
+    }
+    if (!isWithinAvailability(selectedPublicOlympiad)) {
+      setStartError("Сейчас олимпиада недоступна по времени.");
+      return;
+    }
+    setPendingOlympiad(selectedPublicOlympiad);
+    setIsInstructionOpen(true);
+  };
+
+  const handleConfirmStart = async () => {
+    if (!pendingOlympiad) {
+      return;
+    }
+    setStartStatus("loading");
+    try {
+      const attempt = await authedClient.request<{ id: number }>({
+        path: "/attempts/start",
+        method: "POST",
+        body: { olympiad_id: pendingOlympiad.id }
+      });
+      setIsInstructionOpen(false);
+      setPendingOlympiad(null);
+      setStartStatus("idle");
+      navigate(`/olympiad?attemptId=${attempt.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось начать олимпиаду.";
+      setStartError(message);
+      setStartStatus("error");
+      setIsInstructionOpen(false);
+    }
+  };
+
   const navItems = [
     { label: "Об олимпиаде", href: "#about" },
     { label: "Новости", href: "#news" },
@@ -600,6 +769,61 @@ export function HomePage() {
           </div>
         </section>
 
+        <section id="choose" className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h2>Выбрать олимпиаду</h2>
+            </div>
+            <div className="home-olympiad-select">
+              <label className="field">
+                <span className="field-label">Опубликованные олимпиады</span>
+                <select
+                  className="field-input"
+                  value={selectedPublicOlympiadId}
+                  onChange={(event) => {
+                    setSelectedPublicOlympiadId(event.target.value);
+                    setStartError(null);
+                  }}
+                >
+                  <option value="">Выберите олимпиаду</option>
+                  {publicOlympiads.map((item) => (
+                    <option key={item.id} value={String(item.id)}>
+                      {item.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {publicOlympiadsStatus === "loading" ? (
+                <p className="home-text">Загружаем список олимпиад...</p>
+              ) : null}
+              {publicOlympiadsStatus === "error" && publicOlympiadsError ? (
+                <p className="home-error">{publicOlympiadsError}</p>
+              ) : null}
+              {selectedPublicOlympiad ? (
+                <div className="home-olympiad-meta">
+                  <div>
+                    <strong>Классы:</strong> {selectedPublicOlympiad.age_group}
+                  </div>
+                  <div>
+                    <strong>Доступно:</strong>{" "}
+                    {formatDateShort(selectedPublicOlympiad.available_from)} —{" "}
+                    {formatDateShort(selectedPublicOlympiad.available_to)}
+                  </div>
+                </div>
+              ) : null}
+              {startError ? <p className="home-error">{startError}</p> : null}
+              <div className="home-olympiad-actions">
+                <Button
+                  onClick={handleStartOlympiad}
+                  disabled={!selectedPublicOlympiadId || publicOlympiadsStatus === "loading"}
+                >
+                  Начать олимпиаду
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section id="news" className="home-section-alt">
           <div className="container">
             <div className="home-section-heading">
@@ -719,6 +943,35 @@ export function HomePage() {
             <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
           </div>
         </section>
+
+        <Modal
+          isOpen={isInstructionOpen}
+          onClose={() => setIsInstructionOpen(false)}
+          title="Инструкция перед началом"
+          className="home-instruction-modal"
+        >
+          <div className="home-instruction">
+            <p>
+              Вы собираетесь начать олимпиаду{" "}
+              <strong>{pendingOlympiad?.title ?? "Невский интеграл"}</strong>.
+            </p>
+            <ul>
+              <li>Время прохождения: {pendingOlympiad ? Math.round(pendingOlympiad.duration_sec / 60) : 0} минут.</li>
+              <li>Таймер запускается сразу после нажатия кнопки «Начать».</li>
+              <li>Не обновляйте страницу и не закрывайте вкладку до завершения.</li>
+              <li>Ответы сохраняются автоматически при переходе между заданиями.</li>
+              <li>По завершении нажмите «Отправить», чтобы зафиксировать результат.</li>
+            </ul>
+            <div className="home-instruction-actions">
+              <Button type="button" variant="outline" onClick={() => setIsInstructionOpen(false)}>
+                Отмена
+              </Button>
+              <Button type="button" onClick={handleConfirmStart} isLoading={startStatus === "loading"}>
+                Начать
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         <Modal
           isOpen={isRegisterOpen}

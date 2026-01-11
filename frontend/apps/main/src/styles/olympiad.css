@@ -1,0 +1,253 @@
+.olympiad-page {
+  background: #f4f6fb;
+  min-height: 100vh;
+}
+
+.olympiad-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.olympiad-title {
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+.olympiad-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #ffffff;
+}
+
+.olympiad-timer {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 12px;
+  border-radius: 999px;
+  min-width: 72px;
+  text-align: center;
+}
+
+.olympiad-user {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.olympiad-finish-button {
+  background: #d1d5db;
+  color: #111827;
+  border-color: #9ca3af;
+  box-shadow: none;
+}
+
+.olympiad-finish-button:hover:not(:disabled) {
+  background: #cbd5f0;
+  color: #0f172a;
+}
+
+.olympiad-content {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-3) 0 var(--space-8);
+}
+
+.olympiad-task-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: -16px;
+}
+
+.olympiad-task-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: #e5e7eb;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.olympiad-task-number.is-answered {
+  background: rgba(34, 197, 94, 0.35);
+  color: #0f3c7a;
+}
+
+.olympiad-task-number.is-active {
+  transform: scale(1.05);
+  background: rgba(0, 86, 210, 0.2);
+}
+
+.olympiad-task-card {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: var(--space-4);
+  width: min(70vw, 100%);
+  margin: 0 auto;
+}
+
+.olympiad-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.olympiad-task-points {
+  font-weight: 600;
+  color: rgba(15, 60, 122, 0.8);
+}
+
+.olympiad-task-content {
+  white-space: pre-line;
+  color: rgba(15, 23, 42, 0.88);
+  line-height: 1.6;
+  font-size: 1.125rem;
+}
+
+.olympiad-task-image {
+  width: min(600px, 100%);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  margin: var(--space-2) 0;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.olympiad-answer-bar {
+  display: grid;
+  gap: var(--space-4);
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  width: min(70vw, 100%);
+  margin: 0 auto;
+}
+
+.olympiad-answer-input {
+  background: #ffffff;
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.olympiad-answer-input .field-input,
+.olympiad-option span {
+  font-size: 1.125rem;
+}
+
+.olympiad-options {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.olympiad-short-answer {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.olympiad-save-button {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.olympiad-save-button:active,
+.olympiad-save-button.is-saved {
+  background-color: rgba(187, 247, 208, 0.9);
+  border-color: rgba(34, 197, 94, 0.9);
+  color: #0f172a;
+}
+
+.olympiad-finish-inline {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+.olympiad-option {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 500;
+  color: rgba(15, 23, 42, 0.9);
+}
+
+.olympiad-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  align-items: center;
+}
+
+.olympiad-nav .btn {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.olympiad-nav-left {
+  justify-content: flex-start;
+}
+
+.olympiad-nav-right {
+  justify-content: flex-end;
+}
+
+.olympiad-error {
+  color: #b91c1c;
+  margin: var(--space-2) 0 0;
+}
+
+.olympiad-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.olympiad-modal-body {
+  text-align: center;
+}
+
+.olympiad-result {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.olympiad-empty {
+  padding: var(--space-8);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .olympiad-header-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .olympiad-answer-bar {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .olympiad-nav-left,
+  .olympiad-nav-right {
+    justify-content: center;
+  }
+
+  .olympiad-task-card {
+    width: 100%;
+  }
+}

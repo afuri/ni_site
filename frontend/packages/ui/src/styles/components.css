@@ -222,6 +222,8 @@
 
 .modal-title {
   font-size: 1.6rem;
+  text-align: center;
+  width: 100%;
 }
 
 .modal-description {

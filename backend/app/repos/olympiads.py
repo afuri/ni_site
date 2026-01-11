@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +25,17 @@ class OlympiadsRepo:
         if created_by_user_id is not None:
             stmt = stmt.where(Olympiad.created_by_user_id == created_by_user_id)
         stmt = stmt.order_by(Olympiad.id.desc()).limit(limit).offset(offset)
+        res = await self.db.execute(stmt)
+        return list(res.scalars().all())
+
+    async def list_published(self, limit: int, offset: int) -> list[Olympiad]:
+        stmt = (
+            select(Olympiad)
+            .where(Olympiad.is_published.is_(True))
+            .order_by(Olympiad.available_from.desc(), Olympiad.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
 

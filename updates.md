@@ -988,3 +988,104 @@ fullstack 0.3.0
     проверка набора классов.
   - backend/alembic/versions/d9f3c2a1b4e6_olympiad_age_group_text.py, backend/alembic/versions/e1f4a2b7c9d0_merge_age_group_text.py.
 
+0.4.0
+
+Собрал новую страницу прохождения и подключил маршрут /olympiad?attemptId=...:
+
+  - Реализовал страницу frontend/apps/main/src/pages/OlympiadPage.tsx с верхним меню (название, таймер, логин, “Завершить”), блоком номеров заданий, условием по
+    центру, блоком ответа и навигацией (включая “Начало/Окончание”).
+  - Добавил подтверждение завершения, предупреждение за 5 минут, авто‑завершение по таймеру и показ процента результата после отправки.
+  - Обновил роут в frontend/apps/main/src/App.tsx.
+  - Добавил стили в frontend/apps/main/src/styles/olympiad.css.
+
+  Что нужно сделать, чтобы это заработало:
+
+  1. Пересобрать backend контейнер (новый GET /olympiads уже есть):
+     docker compose up -d --build
+  2. Запустить фронт:
+     npm --workspace @ni/app-main run dev
+
+  После этого:
+
+  - На главной выбираешь олимпиаду → “Начать олимпиаду”.
+  - Попадаешь на /olympiad?attemptId=....
+
+Добавил на страницу прохождения:
+
+  - Кнопку «Сохранить ответ» для текстовых заданий (с сохранением также при переходе/blur).
+  - Отображение изображения до/после условия по image_position из payload и image_key, с загрузкой через /uploads/{key}.
+
+  Обновления:
+
+  - backend/app/services/attempts.py — теперь в payload передается image_position.
+  - frontend/apps/main/src/pages/OlympiadPage.tsx — кнопка сохранения, загрузка и рендер изображений.
+  - frontend/apps/main/src/styles/olympiad.css — стили для изображения и блока короткого ответа.
+
+- Картинка теперь грузится корректно: для /uploads/{key} исправил формирование пути с сохранением / (раньше encodeURIComponent ломал ключи с /).
+  - Навигация вынесена слева и справа от блока ответов, блок ответов по центру.
+  - Таймер и логин в верхнем меню теперь белые.
+  - Навигация по номерам заданий поднята выше (ближе к меню).
+  - Условие и блок ответов центрированы (max‑width + auto margins).
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/OlympiadPage.tsx — исправлен загрузчик изображений, переразметка навигации.
+  - frontend/apps/main/src/styles/olympiad.css — новые стили для меню, сетки, центрирования, навигации.
+
+Сделал правки:
+
+  - Ширина блока условия и ответов: 70vw (центрировано), на мобильных — 100%.
+  - Кнопка “Завершить” теперь серая, текст чёрный.
+  - Название олимпиады и элементы верхнего меню — белые.
+  - Навигация по номерам поднята ближе к меню.
+  - Картинки теперь грузятся через fallback в localStorage (mock S3) если /uploads не возвращает файл.
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/OlympiadPage.tsx
+  - frontend/apps/main/src/styles/olympiad.css
+
+ Сделал:
+
+  - В админке загрузка изображений теперь пытается залить файл в MinIO через /uploads/presign (с ресайзом до 600px). Если загрузка не удалась — fallback на
+    локальное mock‑хранилище, как раньше.
+    Файл: frontend/apps/admin/src/pages/TasksPage.tsx
+  - Ширина блока условия и ответов — 70% ширины экрана, центрировано.
+  - Кнопка “Завершить” — серый фон, чёрный текст.
+  - Название олимпиады и элементы в верхнем меню — белые.
+    Файл: frontend/apps/main/src/styles/olympiad.css
+
+  Почему картинки не видны сейчас:
+
+  - Старые изображения были сохранены только в локальном mock‑хранилище админки (localStorage), оно не доступно главному сайту (другая “origin”).
+  - После этого изменения нужно перезагрузить картинки в заданиях: открыть задание в админке и заново выбрать файл → сохранить. Тогда изображение попадёт в MinIO
+    и будет доступно при прохождении.
+
+ - Убрал название задания и блок “Баллы” — остались только условие, картинка (если есть) и ответы.
+  - Картинка центрируется в блоке условия.
+  - “Окончание” заменено на “Последнее”.
+  - На последнем задании добавлена кнопка “Завершить” под ответами.
+  - Во всех модальных окнах текст по центру.
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/OlympiadPage.tsx
+  - frontend/apps/main/src/styles/olympiad.css
+
+ - Вернул заголовок “Задание 1/2…” и баллы в правом верхнем углу блока.
+  - Заголовки всех модальных окон центрированы.
+  - Навигационные стрелки стали жирнее, заменены на < и >.
+  - Шрифт условия и ответов увеличен на 2pt (до 1.125rem).
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/OlympiadPage.tsx
+  - frontend/packages/ui/src/styles/components.css
+  - frontend/apps/main/src/styles/olympiad.css
+
+Added a visual “saved” feedback for the short‑answer Save button: it flashes light‑green on click for ~1.2s (and also on active press), without affecting
+  auto‑save on blur. Implemented in frontend/apps/main/src/pages/OlympiadPage.tsx with a timed state flag and styled in frontend/apps/main/src/styles/
+  olympiad.css.
+
+  - frontend/apps/main/src/pages/OlympiadPage.tsx: track last saved task id and attach olympiad-save-button / is-saved classes to the Save button.
+  - frontend/apps/main/src/styles/olympiad.css: add light‑green activation styles.

@@ -108,6 +108,19 @@ const storeMockS3Object = (key: string, value: string) => {
   }
 };
 
+const dataUrlToBlob = (dataUrl: string) => {
+  const [header, base64] = dataUrl.split(",", 2);
+  const mimeMatch = header.match(/data:(.*?);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/png";
+  const binary = atob(base64);
+  const length = binary.length;
+  const bytes = new Uint8Array(length);
+  for (let i = 0; i < length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+};
+
 const getMockS3Object = (key: string) => {
   if (mockS3Memory.has(key)) {
     return mockS3Memory.get(key) ?? null;
@@ -574,6 +587,33 @@ export function TasksPage() {
     if (!file) {
       return;
     }
+    const originalType = file.type && file.type.startsWith("image/") ? file.type : "image/png";
+    const uploadToStorage = async (dataUrl: string) => {
+      try {
+        const presign = await adminApiClient.request<{
+          key: string;
+          upload_url: string;
+          headers: Record<string, string>;
+          public_url?: string | null;
+        }>({
+          path: "/uploads/presign",
+          method: "POST",
+          body: {
+            prefix: "tasks",
+            content_type: originalType
+          }
+        });
+        const blob = dataUrlToBlob(dataUrl);
+        await fetch(presign.upload_url, {
+          method: "PUT",
+          headers: presign.headers ?? {},
+          body: blob
+        });
+        return presign.key;
+      } catch {
+        return null;
+      }
+    };
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === "string" ? reader.result : null;
@@ -588,9 +628,16 @@ export function TasksPage() {
           const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(
             now.getDate()
           ).padStart(2, "0")}/${Date.now()}-${file.name}`;
-          storeMockS3Object(key, result);
-          setForm((prev) => ({ ...prev, imageKey: key }));
-          setImagePreviewUrl(result);
+          void (async () => {
+            const uploadedKey = await uploadToStorage(result);
+            if (uploadedKey) {
+              setForm((prev) => ({ ...prev, imageKey: uploadedKey }));
+            } else {
+              storeMockS3Object(key, result);
+              setForm((prev) => ({ ...prev, imageKey: key }));
+            }
+            setImagePreviewUrl(result);
+          })();
           return;
         }
 
@@ -605,7 +652,7 @@ export function TasksPage() {
           return;
         }
         ctx.drawImage(image, 0, 0, outputWidth, outputHeight);
-        const mime = file.type && file.type.startsWith("image/") ? file.type : "image/png";
+        const mime = originalType;
         let dataUrl =
           mime === "image/jpeg" || mime === "image/jpg"
             ? canvas.toDataURL(mime, 0.9)
@@ -617,9 +664,16 @@ export function TasksPage() {
         const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(
           now.getDate()
         ).padStart(2, "0")}/${Date.now()}-${file.name}`;
-        storeMockS3Object(key, dataUrl);
-        setForm((prev) => ({ ...prev, imageKey: key }));
-        setImagePreviewUrl(dataUrl);
+        void (async () => {
+          const uploadedKey = await uploadToStorage(dataUrl);
+          if (uploadedKey) {
+            setForm((prev) => ({ ...prev, imageKey: uploadedKey }));
+          } else {
+            storeMockS3Object(key, dataUrl);
+            setForm((prev) => ({ ...prev, imageKey: key }));
+          }
+          setImagePreviewUrl(dataUrl);
+        })();
       };
       image.src = result;
     };

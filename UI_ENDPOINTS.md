@@ -144,6 +144,11 @@ Uploads limits/types: `API_CONVENTIONS.md`
   { "surname": "Иванов", "name": "Иван", "city": "Казань" }
   ```
 
+## Olympiads (public)
+
+- `GET /olympiads` — список опубликованных олимпиад
+  - query: `limit`, `offset`
+
 ## Attempts (student)
 
 - `POST /attempts/start`

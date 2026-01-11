@@ -34,16 +34,20 @@ class AttemptsService:
 
     @staticmethod
     def _sanitize_task_payload(task_type: TaskType, payload: dict) -> dict:
+        image_position = None
+        if isinstance(payload, dict):
+            image_position = payload.get("image_position")
+        image_payload = (
+            {"image_position": image_position}
+            if image_position in ("before", "after")
+            else {}
+        )
         if task_type in (TaskType.single_choice, TaskType.multi_choice):
             options = payload.get("options") if isinstance(payload, dict) else None
-            return {"options": options or []}
+            return {**image_payload, "options": options or []}
         if task_type == TaskType.short_text:
-            return {
-                "subtype": payload.get("subtype"),
-                "epsilon": payload.get("epsilon"),
-                "case_insensitive": payload.get("case_insensitive", True),
-            }
-        return {}
+            return image_payload
+        return image_payload
 
     @staticmethod
     def _serialize_task_type(task_type: TaskType):

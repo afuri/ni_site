@@ -381,6 +381,57 @@
   color: var(--color-ink-700);
 }
 
+.home-olympiad-select {
+  max-width: 640px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.home-olympiad-meta {
+  display: grid;
+  gap: var(--space-2);
+  color: rgba(31, 59, 99, 0.8);
+  font-size: 0.95rem;
+}
+
+.home-olympiad-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.home-error {
+  color: #b91c1c;
+  margin: 0;
+}
+
+.home-instruction {
+  display: grid;
+  gap: var(--space-3);
+  color: var(--color-ink-900);
+}
+
+.home-instruction ul {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.home-instruction-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.home-instruction-modal {
+  width: min(640px, 100%);
+}
+
 .home-section-heading {
   margin-bottom: var(--space-6);
   text-align: center;

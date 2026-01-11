@@ -4,7 +4,7 @@ import { createApiClient } from "@api";
 import { createAuthStorage } from "@utils";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
-import { ParticipationPlaceholder } from "./pages/ParticipationPlaceholder";
+import { OlympiadPage } from "./pages/OlympiadPage";
 import { CabinetPage } from "./pages/CabinetPage";
 
 const storage = createAuthStorage({
@@ -23,7 +23,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/olympiad" element={<ParticipationPlaceholder />} />
+          <Route path="/olympiad" element={<OlympiadPage />} />
           <Route path="/cabinet" element={<CabinetPage />} />
         </Routes>
       </BrowserRouter>

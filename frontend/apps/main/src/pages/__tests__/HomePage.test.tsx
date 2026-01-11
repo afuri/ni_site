@@ -3,7 +3,13 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { HomePage } from "../HomePage";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const fetchMock = vi.fn(async () => ({
+  ok: true,
+  status: 200,
+  text: async () => "[]"
+}));
 
 vi.mock("@ui", async () => {
   const actual = await vi.importActual<typeof import("@ui")>("@ui");
@@ -32,6 +38,11 @@ vi.mock("../assets/cs_logo.svg", () => ({
 }));
 
 describe("HomePage", () => {
+  beforeEach(() => {
+    fetchMock.mockClear();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
   it("renders hero content and CTA", () => {
     render(
       <MemoryRouter>
