@@ -724,3 +724,96 @@ Student experience: olympiad list/detail, start attempt flow, attempt UI with ti
   - frontend/apps/main/src/pages/HomePage.tsx: заменил пункты поп‑апа на “Личный кабинет” и “Выйти”.
   - frontend/apps/main/src/pages/CabinetPage.tsx: добавил такой же поп‑ап в шапке кабинета.
   - frontend/apps/main/src/styles/home.css и frontend/apps/main/src/styles/cabinet.css: стили для пунктов меню (и для <a>, и для <button>).
+
+  0.9.2
+
+  Сделал поп‑ап с “Личный кабинет/Выйти” и добавил модалку подтверждения связей с таблицей запросов и кнопками +/–, плюс серверный delete для отказа.
+
+  Что изменилось
+
+  - frontend/apps/main/src/pages/HomePage.tsx: поп‑ап логина теперь содержит “Личный кабинет” и “Выйти”.
+  - frontend/apps/main/src/pages/CabinetPage.tsx: такой же поп‑ап в кабинете; при входе учителя грузятся pending‑связи, показывается модалка с таблицей, +/–
+    окрашиваются, “ОК” активируется после выбора и сохраняет решения (confirm/delete).
+  - frontend/apps/main/src/styles/home.css, frontend/apps/main/src/styles/cabinet.css: стили для пунктов поп‑апа и таблицы запросов.
+  - frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx: добавлен мок для запроса pending‑связей.
+  - backend/app/api/v1/teacher_students.py, backend/app/services/teacher_students.py, backend/app/repos/teacher_students.py: добавлен DELETE /teacher/students/
+    {student_id} для отказа.
+
+  Важно
+
+  - В таблице “ФИО” сейчас берётся из полей student_*/teacher_*, если сервер начнёт их отдавать; иначе показывается Ученик #ID (фоллбек).
+
+Готово. Добавил двусторонние запросы и отображение ФИО во всех местах, плюс доступ учителя к кабинету ученика с редактированием.
+
+  Что изменилось
+
+  - Backend: добавлено поле requested_by в teacher_students (миграция backend/alembic/versions/c1b2d3e4f5a6_add_requested_by_to_teacher_students.py), обогащённые
+    ответы с ФИО для списков, двусторонние запросы и отклонение.
+  - Backend новые маршруты:
+      - POST /student/teachers (запрос от ученика по логину/email)
+      - GET /student/teachers?status=pending|confirmed
+      - POST /student/teachers/{teacher_id}/confirm
+      - DELETE /student/teachers/{teacher_id}
+      - GET /teacher/students/{student_id}/profile
+      - PUT /teacher/students/{student_id}/profile
+      - GET /teacher/students/{student_id}/results
+  - Frontend (frontend/apps/main/src/pages/CabinetPage.tsx):
+      - модалка подтверждения запросов теперь работает и для ученика;
+      - в колонке “ФИО запросившего” показывается ФИО (или fallback Ученик #id/Учитель #id);
+      - “Мои учителя / Мои ученики” отображают ФИО из backend;
+      - учитель по ФИО ученика открывает /cabinet?student=<id> и получает полный просмотр/редактирование;
+      - ученик не может открыть кабинет учителя (параметр игнорируется).
+  - Обновлены стили (frontend/apps/main/src/styles/cabinet.css) и тесты (frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx).
+
+  Важно
+
+  - Нужна миграция БД из‑за requested_by:
+      - alembic upgrade head (или ваш обычный процесс миграций).
+
+Что изменилось
+
+  - В кабинете учителя раздел “Результаты прохождения олимпиад” скрыт. Он показывается только когда активный профиль — ученик (в том числе когда учитель открыл
+    кабинет ученика).
+  - В “Мои учителя” у ученика теперь отображается ФИО (с отчеством при наличии) и предмет. Для связанных учителей предмет берётся из backend.
+
+  Изменённые файлы
+
+  - backend/app/schemas/teacher_students.py: добавлено поле teacher_subject.
+  - backend/app/services/teacher_students.py: в ответы добавлен teacher_subject.
+  - frontend/apps/main/src/pages/CabinetPage.tsx: условный показ результатов и вывод предмета в “Мои учителя”.
+  - frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx: обновлён мок.
+
+Готово. В список “Привязанные ученики” у учителя добавлен класс.
+
+  Изменения:
+
+  - Backend: в TeacherStudentRead добавлено поле student_class_grade, оно заполняется из users.class_grade.
+      - backend/app/schemas/teacher_students.py
+      - backend/app/services/teacher_students.py
+  - Frontend: в списке учеников показывается ФИО · N класс.
+      - frontend/apps/main/src/pages/CabinetPage.tsx
+  - Тест обновлён:
+      - frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx
+
+Сделал таблицы для обоих списков и оставил кликабельным только ФИО ученика у учителя.
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/CabinetPage.tsx
+      - “Мои учителя”: таблица (№ / ФИО учителя / предмет), ФИО не ссылка.
+      - “Привязанные ученики”: таблица (№ / ФИО / класс), ссылка только на ФИО.
+  - frontend/apps/main/src/styles/cabinet.css
+      - удалён стиль для старого cabinet-student-class, больше не используется.
+
+Сделал. Клик по ФИО ученика теперь прокручивает страницу наверх.
+
+  Изменение: frontend/apps/main/src/pages/CabinetPage.tsx — добавлен handleStudentLinkClick с window.scrollTo и привязан к ссылке ФИО.
+
+
+Добавил модальное подтверждение удаления для связей «ученик‑учитель» и тест на открытие этого окна; кнопки «Да/Нет» теперь работают через существующую логику
+  удаления.
+
+  - Модалка удаления с текстом подтверждения и обработкой ошибок добавлена в frontend/apps/main/src/pages/CabinetPage.tsx.
+  - Добавлен стиль для кнопки подтверждения удаления в frontend/apps/main/src/styles/cabinet.css.
+  - Тест на открытие окна удаления добавлен в frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx.
+

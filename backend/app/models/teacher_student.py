@@ -12,6 +12,11 @@ class TeacherStudentStatus(str, enum.Enum):
     confirmed = "confirmed"
 
 
+class TeacherStudentRequestedBy(str, enum.Enum):
+    teacher = "teacher"
+    student = "student"
+
+
 class TeacherStudent(Base):
     __tablename__ = "teacher_students"
 
@@ -21,6 +26,11 @@ class TeacherStudent(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     status: Mapped[TeacherStudentStatus] = mapped_column(String(20), index=True, default=TeacherStudentStatus.pending)
+    requested_by: Mapped[TeacherStudentRequestedBy] = mapped_column(
+        String(20),
+        index=True,
+        default=TeacherStudentRequestedBy.teacher,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

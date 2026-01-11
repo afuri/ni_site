@@ -521,7 +521,7 @@ export function HomePage() {
                 {isUserMenuOpen ? (
                   <div className="home-user-popup" role="menu">
                     <Link to="/cabinet" role="menuitem" onClick={handleUserMenuClose}>
-                      Личный кабинет
+                      Войти
                     </Link>
                     <button type="button" onClick={handleLogout} role="menuitem">
                       Выйти

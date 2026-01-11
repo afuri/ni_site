@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
 import { createApiClient, type UserRead } from "@api";
 import { createAuthStorage } from "@utils";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import "../styles/cabinet.css";
 
@@ -10,8 +10,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RU_NAME_REGEX = /^[А-ЯЁ][а-яё]+$/;
+const RU_NAME_REGEX = /^[А-ЯЁ][а-яё-]+$/;
 const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
+
+const TrashIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      fill="currentColor"
+      d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"
+    />
+  </svg>
+);
 
 type AttemptResult = {
   attempt_id: number;
@@ -56,11 +65,40 @@ type TeacherEntry = {
   subject: string;
 };
 
-type StudentLink = {
+type TeacherStudentLink = {
   id: number;
+  teacher_id: number;
   student_id: number;
   status: string;
+  requested_by?: "teacher" | "student";
+  teacher_surname?: string;
+  teacher_name?: string;
+  teacher_father_name?: string | null;
+  teacher_subject?: string | null;
+  student_surname?: string;
+  student_name?: string;
+  student_father_name?: string | null;
+  student_class_grade?: number | null;
 };
+
+type LinkDecision = "approve" | "reject" | null;
+
+type DeleteTarget =
+  | {
+      kind: "linked-teacher";
+      teacherId: number;
+      name: string;
+    }
+  | {
+      kind: "manual-teacher";
+      manualId: number;
+      name: string;
+    }
+  | {
+      kind: "student";
+      studentId: number;
+      name: string;
+    };
 
 const buildProfileFromUser = (currentUser: UserRead): ProfileForm => ({
   login: currentUser.login ?? "",
@@ -80,6 +118,7 @@ const buildProfileFromUser = (currentUser: UserRead): ProfileForm => ({
 
 export function CabinetPage() {
   const { status, user, tokens, setSession, signOut } = useAuth();
+  const [searchParams] = useSearchParams();
   const storage = useMemo(
     () =>
       createAuthStorage({
@@ -108,6 +147,7 @@ export function CabinetPage() {
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const [viewedStudent, setViewedStudent] = useState<UserRead | null>(null);
 
   const [attemptResults, setAttemptResults] = useState<AttemptResult[]>([]);
   const [attemptsStatus, setAttemptsStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -127,8 +167,15 @@ export function CabinetPage() {
   const [linkRequestValue, setLinkRequestValue] = useState("");
   const [linkStatusMessage, setLinkStatusMessage] = useState<string | null>(null);
 
-  const [students, setStudents] = useState<StudentLink[]>([]);
+  const [students, setStudents] = useState<TeacherStudentLink[]>([]);
+  const [teachers, setTeachers] = useState<TeacherStudentLink[]>([]);
   const [isLogoutPromptOpen, setIsLogoutPromptOpen] = useState(false);
+  const [pendingLinks, setPendingLinks] = useState<TeacherStudentLink[]>([]);
+  const [linkDecisions, setLinkDecisions] = useState<Record<number, LinkDecision>>({});
+  const [isLinkPromptOpen, setIsLinkPromptOpen] = useState(false);
+  const [linkPromptStatus, setLinkPromptStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
 
   useEffect(() => {
     if (!isUserMenuOpen) {
@@ -146,29 +193,54 @@ export function CabinetPage() {
     };
   }, [isUserMenuOpen]);
 
+  const studentParam = searchParams.get("student");
+  const studentIdValue = studentParam ? Number(studentParam) : null;
+  const viewingStudentId =
+    user?.role === "teacher" && studentIdValue && !Number.isNaN(studentIdValue)
+      ? studentIdValue
+      : null;
+
+  const activeUser = viewingStudentId ? viewedStudent : user;
+
   useEffect(() => {
     if (!user) {
       return;
     }
+    if (viewingStudentId) {
+      client
+        .request<UserRead>({ path: `/teacher/students/${viewingStudentId}/profile`, method: "GET" })
+        .then((data) => setViewedStudent(data))
+        .catch(() => setViewedStudent(null));
+      return;
+    }
+    setViewedStudent(null);
     const nextProfile = buildProfileFromUser(user);
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
-  }, [user]);
+  }, [client, user, viewingStudentId]);
 
   useEffect(() => {
-    if (user && !user.is_email_verified) {
+    if (activeUser && !activeUser.is_email_verified) {
       setIsEmailWarningOpen(true);
     }
-  }, [user]);
+  }, [activeUser]);
 
   useEffect(() => {
-    if (!user || user.role !== "student") {
+    if (!user) {
+      return;
+    }
+    const resultsPath = viewingStudentId
+      ? `/teacher/students/${viewingStudentId}/results`
+      : "/attempts/results/my";
+    if (!viewingStudentId && user.role !== "student") {
+      setAttemptResults([]);
+      setAttemptsStatus("idle");
       return;
     }
     setAttemptsStatus("loading");
     setAttemptsError(null);
     client
-      .request<AttemptResult[]>({ path: "/attempts/results/my", method: "GET" })
+      .request<AttemptResult[]>({ path: resultsPath, method: "GET" })
       .then((data) => {
         setAttemptResults(data ?? []);
         setAttemptsStatus("idle");
@@ -177,16 +249,61 @@ export function CabinetPage() {
         setAttemptsError("Не удалось загрузить результаты.");
         setAttemptsStatus("error");
       });
+  }, [client, user, viewingStudentId]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    if (user.role === "teacher") {
+      client
+        .request<TeacherStudentLink[]>({ path: "/teacher/students?status=confirmed", method: "GET" })
+        .then((data) => setStudents(data ?? []))
+        .catch(() => setStudents([]));
+      return;
+    }
+    if (user.role === "student") {
+      client
+        .request<TeacherStudentLink[]>({ path: "/student/teachers?status=confirmed", method: "GET" })
+        .then((data) => setTeachers(data ?? []))
+        .catch(() => setTeachers([]));
+    }
   }, [client, user]);
 
   useEffect(() => {
-    if (!user || user.role !== "teacher") {
+    if (!viewedStudent) {
       return;
     }
+    const nextProfile = buildProfileFromUser(viewedStudent);
+    setProfileForm(nextProfile);
+    setSavedProfile(nextProfile);
+  }, [viewedStudent]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const pendingPath =
+      user.role === "teacher" ? "/teacher/students?status=pending" : "/student/teachers?status=pending";
     client
-      .request<StudentLink[]>({ path: "/teacher/students?status=confirmed", method: "GET" })
-      .then((data) => setStudents(data ?? []))
-      .catch(() => setStudents([]));
+      .request<TeacherStudentLink[]>({ path: pendingPath, method: "GET" })
+      .then((data) => {
+        const pending = data ?? [];
+        const incoming = pending.filter((link) => {
+          if (!link.requested_by) {
+            return false;
+          }
+          return link.requested_by !== user.role;
+        });
+        setPendingLinks(incoming);
+        setLinkDecisions({});
+        if (incoming.length > 0) {
+          setIsLinkPromptOpen(true);
+        }
+      })
+      .catch(() => {
+        setPendingLinks([]);
+      });
   }, [client, user]);
 
   const hasProfileChanges = useMemo(() => {
@@ -206,8 +323,13 @@ export function CabinetPage() {
     return <Navigate to="/" replace />;
   }
 
+  if (viewingStudentId && !activeUser) {
+    return <div className="cabinet-page">Загрузка...</div>;
+  }
+
   const validateProfile = (form: ProfileForm) => {
     const errors: ProfileErrors = {};
+    const profileRole = activeUser?.role ?? user.role;
 
     if (!form.login || !LOGIN_REGEX.test(form.login)) {
       errors.login = "Логин: латинские буквы/цифры, начинается с буквы.";
@@ -230,10 +352,10 @@ export function CabinetPage() {
     if (!form.school) {
       errors.school = "Введите школу.";
     }
-    if (user.role === "student" && !form.classGrade) {
+    if (profileRole === "student" && !form.classGrade) {
       errors.classGrade = "Выберите класс.";
     }
-    if (user.role === "teacher") {
+    if (profileRole === "teacher") {
       if (!form.subject) {
         errors.subject = "Введите предмет.";
       } else if (!RU_TEXT_REGEX.test(form.subject)) {
@@ -267,8 +389,9 @@ export function CabinetPage() {
     }
     setProfileStatus("saving");
     try {
+      const path = viewingStudentId ? `/teacher/students/${viewingStudentId}/profile` : "/users/me";
       const updated = await client.request<UserRead>({
-        path: "/users/me",
+        path,
         method: "PUT",
         body: {
           surname: profileForm.surname.trim(),
@@ -281,8 +404,10 @@ export function CabinetPage() {
           subject: profileForm.subject ? profileForm.subject.trim() : null
         }
       });
-      if (tokens) {
+      if (tokens && !viewingStudentId) {
         setSession(tokens, updated);
+      } else if (viewingStudentId) {
+        setViewedStudent(updated);
       }
       const nextProfile = buildProfileFromUser(updated);
       setProfileForm(nextProfile);
@@ -312,6 +437,79 @@ export function CabinetPage() {
     setIsUserMenuOpen(false);
   };
 
+  const handleLinkDecision = (linkId: number, decision: LinkDecision) => {
+    setLinkDecisions((prev) => ({
+      ...prev,
+      [linkId]: prev[linkId] === decision ? null : decision
+    }));
+  };
+
+  const handleLinkPromptSave = async () => {
+    const decisions = Object.entries(linkDecisions).filter(([, decision]) => decision);
+    if (decisions.length === 0) {
+      return;
+    }
+    setLinkPromptStatus("saving");
+    const approvedIds = decisions
+      .filter(([, decision]) => decision === "approve")
+      .map(([id]) => Number(id));
+    const rejectedIds = decisions
+      .filter(([, decision]) => decision === "reject")
+      .map(([id]) => Number(id));
+    const remaining = pendingLinks.filter((link) => !decisions.some(([id]) => Number(id) === link.id));
+    try {
+      await Promise.all([
+        ...approvedIds.map((linkId) => {
+          const link = pendingLinks.find((item) => item.id === linkId);
+          if (!link) {
+            return Promise.resolve();
+          }
+          const confirmPath =
+            user.role === "teacher"
+              ? `/teacher/students/${link.student_id}/confirm`
+              : `/student/teachers/${link.teacher_id}/confirm`;
+          return client.request({
+            path: confirmPath,
+            method: "POST"
+          });
+        }),
+        ...rejectedIds.map((linkId) => {
+          const link = pendingLinks.find((item) => item.id === linkId);
+          if (!link) {
+            return Promise.resolve();
+          }
+          const deletePath =
+            user.role === "teacher"
+              ? `/teacher/students/${link.student_id}`
+              : `/student/teachers/${link.teacher_id}`;
+          return client.request({
+            path: deletePath,
+            method: "DELETE"
+          });
+        })
+      ]);
+      if (user?.role === "teacher") {
+        const updated = await client.request<TeacherStudentLink[]>({
+          path: "/teacher/students?status=confirmed",
+          method: "GET"
+        });
+        setStudents(updated ?? []);
+      } else {
+        const updated = await client.request<TeacherStudentLink[]>({
+          path: "/student/teachers?status=confirmed",
+          method: "GET"
+        });
+        setTeachers(updated ?? []);
+      }
+      setPendingLinks(remaining);
+      setLinkDecisions({});
+      setIsLinkPromptOpen(false);
+      setLinkPromptStatus("idle");
+    } catch {
+      setLinkPromptStatus("error");
+    }
+  };
+
   const handleLogoutClick = () => {
     setIsUserMenuOpen(false);
     if (hasProfileChanges) {
@@ -324,6 +522,47 @@ export function CabinetPage() {
   const handleLogoutConfirm = async () => {
     await signOut();
     setIsLogoutPromptOpen(false);
+  };
+
+  const openDeletePrompt = (target: DeleteTarget) => {
+    setDeleteTarget(target);
+    setDeleteStatus("idle");
+  };
+
+  const closeDeletePrompt = () => {
+    setDeleteTarget(null);
+    setDeleteStatus("idle");
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    setDeleteStatus("deleting");
+    try {
+      if (deleteTarget.kind === "manual-teacher") {
+        setTeacherList((prev) => prev.filter((entry) => entry.id !== deleteTarget.manualId));
+      } else if (deleteTarget.kind === "linked-teacher") {
+        await client.request({
+          path: `/student/teachers/${deleteTarget.teacherId}`,
+          method: "DELETE"
+        });
+        setTeachers((prev) => prev.filter((entry) => entry.teacher_id !== deleteTarget.teacherId));
+      } else if (deleteTarget.kind === "student") {
+        await client.request({
+          path: `/teacher/students/${deleteTarget.studentId}`,
+          method: "DELETE"
+        });
+        setStudents((prev) => prev.filter((entry) => entry.student_id !== deleteTarget.studentId));
+      }
+      closeDeletePrompt();
+    } catch {
+      setDeleteStatus("error");
+    }
+  };
+
+  const handleStudentLinkClick = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleEmailVerifyRequest = async () => {
@@ -349,8 +588,9 @@ export function CabinetPage() {
     setAttemptViewError(null);
     setAttemptView(null);
     try {
+      const attemptPath = viewingStudentId ? `/teacher/attempts/${attemptId}` : `/attempts/${attemptId}`;
       const data = await client.request<AttemptView>({
-        path: `/attempts/${attemptId}`,
+        path: attemptPath,
         method: "GET"
       });
       setAttemptView(data);
@@ -378,6 +618,10 @@ export function CabinetPage() {
     } catch {
       return String(answer);
     }
+  };
+
+  const formatFullName = (parts: Array<string | null | undefined>) => {
+    return parts.filter(Boolean).join(" ");
   };
 
   const addTeacher = () => {
@@ -412,10 +656,46 @@ export function CabinetPage() {
       } catch {
         setLinkStatusMessage("Не удалось отправить запрос.");
       }
+      return;
     } else {
-      setLinkStatusMessage("Запрос отправлен.");
+      try {
+        await client.request({
+          path: "/student/teachers",
+          method: "POST",
+          body: { attach: { teacher_login: linkRequestValue.trim() } }
+        });
+        setLinkStatusMessage("Запрос отправлен.");
+      } catch {
+        setLinkStatusMessage("Не удалось отправить запрос.");
+      }
     }
   };
+
+  const teacherEntries = teachers.map((link) => ({
+    id: `linked-${link.id}`,
+    label:
+      formatFullName([link.teacher_surname, link.teacher_name, link.teacher_father_name]) ||
+      `Учитель #${link.teacher_id}`,
+    sublabel: link.teacher_subject ?? null,
+    kind: "linked" as const,
+    teacherId: link.teacher_id
+  }));
+  const manualTeacherEntries = teacherList.map((teacher) => ({
+    id: `manual-${teacher.id}`,
+    label: teacher.fullName,
+    sublabel: teacher.subject,
+    kind: "manual" as const,
+    manualId: teacher.id
+  }));
+  const allTeacherEntries = [...teacherEntries, ...manualTeacherEntries];
+  const studentEntries = students.map((link) => ({
+    id: link.id,
+    label: formatFullName([link.student_surname, link.student_name, link.student_father_name]) ||
+      `Ученик #${link.student_id}`,
+    classGrade: link.student_class_grade,
+    href: `/cabinet?student=${link.student_id}`,
+    studentId: link.student_id
+  }));
 
   return (
     <div className="cabinet-page">
@@ -462,70 +742,74 @@ export function CabinetPage() {
         <main className="cabinet-content">
           <section className="cabinet-section">
             <h1>Личный кабинет</h1>
-            <p className="cabinet-subtitle">Добро пожаловать, {user.surname} {user.name}.</p>
+            <p className="cabinet-subtitle">
+              Добро пожаловать, {activeUser?.surname ?? ""} {activeUser?.name ?? ""}.
+            </p>
           </section>
 
-          <section className="cabinet-section" id="results">
-            <div className="cabinet-section-heading">
-              <h2>Результаты прохождения олимпиад</h2>
-            </div>
-            {attemptsStatus === "error" ? <div className="cabinet-alert">{attemptsError}</div> : null}
-            <Table>
-              <thead>
-                <tr>
-                  <th>№</th>
-                  <th>Дата прохождения</th>
-                  <th>Название олимпиады</th>
-                  <th>Результат</th>
-                  <th>Просмотр попытки</th>
-                  <th>Диплом</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attemptsStatus === "loading" ? (
+          {activeUser?.role === "student" ? (
+            <section className="cabinet-section" id="results">
+              <div className="cabinet-section-heading">
+                <h2>Результаты прохождения олимпиад</h2>
+              </div>
+              {attemptsStatus === "error" ? <div className="cabinet-alert">{attemptsError}</div> : null}
+              <Table>
+                <thead>
                   <tr>
-                    <td colSpan={6}>Загрузка...</td>
+                    <th>№</th>
+                    <th>Дата прохождения</th>
+                    <th>Название олимпиады</th>
+                    <th>Результат</th>
+                    <th>Просмотр попытки</th>
+                    <th>Диплом</th>
                   </tr>
-                ) : attemptResults.length > 0 ? (
-                  attemptResults.map((item, index) => (
-                    <tr key={item.attempt_id}>
-                      <td>{index + 1}</td>
-                      <td>{formatDate(item.graded_at)}</td>
-                      <td>Олимпиада #{item.olympiad_id}</td>
-                      <td>
-                        {item.score_total}/{item.score_max}
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="cabinet-link"
-                          onClick={() => {
-                            openAttempt(item.attempt_id);
-                          }}
-                        >
-                          Просмотр попытки
-                        </button>
-                      </td>
-                      <td>
-                        <a
-                          className="cabinet-link"
-                          href={`${API_BASE_URL}/attempts/${item.attempt_id}/diploma`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Диплом
-                        </a>
-                      </td>
+                </thead>
+                <tbody>
+                  {attemptsStatus === "loading" ? (
+                    <tr>
+                      <td colSpan={6}>Загрузка...</td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6}>Результаты пока отсутствуют.</td>
-                  </tr>
-                )}
-              </tbody>
-            </Table>
-          </section>
+                  ) : attemptResults.length > 0 ? (
+                    attemptResults.map((item, index) => (
+                      <tr key={item.attempt_id}>
+                        <td>{index + 1}</td>
+                        <td>{formatDate(item.graded_at)}</td>
+                        <td>Олимпиада #{item.olympiad_id}</td>
+                        <td>
+                          {item.score_total}/{item.score_max}
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="cabinet-link"
+                            onClick={() => {
+                              openAttempt(item.attempt_id);
+                            }}
+                          >
+                            Просмотр попытки
+                          </button>
+                        </td>
+                        <td>
+                          <a
+                            className="cabinet-link"
+                            href={`${API_BASE_URL}/attempts/${item.attempt_id}/diploma`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Диплом
+                          </a>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6}>Результаты пока отсутствуют.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </section>
+          ) : null}
 
           <section className="cabinet-section" id="profile">
             <div className="cabinet-section-heading">
@@ -551,12 +835,14 @@ export function CabinetPage() {
                 <div className="cabinet-email-status">
                   <span
                     className={
-                      user.is_email_verified ? "cabinet-status cabinet-status-verified" : "cabinet-status cabinet-status-unverified"
+                      activeUser?.is_email_verified
+                        ? "cabinet-status cabinet-status-verified"
+                        : "cabinet-status cabinet-status-unverified"
                     }
                   >
-                    {user.is_email_verified ? "Верифицирован" : "Не верифицирован"}
+                    {activeUser?.is_email_verified ? "Верифицирован" : "Не верифицирован"}
                   </span>
-                  {!user.is_email_verified ? (
+                  {!activeUser?.is_email_verified ? (
                     <Button
                       type="button"
                       size="sm"
@@ -610,7 +896,7 @@ export function CabinetPage() {
                 onChange={(event) => handleProfileChange("school", event.target.value)}
                 error={profileErrors.school}
               />
-              {user.role === "student" ? (
+              {activeUser?.role === "student" ? (
                 <label className="field">
                   <span className="field-label">Класс</span>
                   <select
@@ -630,7 +916,7 @@ export function CabinetPage() {
                   ) : null}
                 </label>
               ) : null}
-              {user.role === "teacher" ? (
+              {activeUser?.role === "teacher" ? (
                 <TextInput
                   label="Предмет"
                   name="subject"
@@ -662,7 +948,7 @@ export function CabinetPage() {
 
           <section className="cabinet-section" id="links">
             <div className="cabinet-section-heading">
-              <h2>Связь учитель — ученик</h2>
+              <h2>Сопровождение</h2>
             </div>
             {user.role === "student" ? (
               <div className="cabinet-grid">
@@ -680,36 +966,74 @@ export function CabinetPage() {
                     value={teacherSubject}
                     onChange={(event) => setTeacherSubject(event.target.value)}
                   />
-                  <Button type="button" className="cabinet-save-button" onClick={addTeacher}>
+                  <Button type="button" className="cabinet-save-button-student" onClick={addTeacher}>
                     Добавить
                   </Button>
                 </div>
                 <div className="cabinet-card">
-                  <h3>Запросить связь с учителем</h3>
+                  <h3>Запросить сопровождение учителя</h3>
                   <TextInput
                     label="Логин или email учителя"
                     name="teacherLink"
                     value={linkRequestValue}
                     onChange={(event) => setLinkRequestValue(event.target.value)}
                   />
-                  <Button type="button" className="cabinet-save-button" onClick={sendLinkRequest}>
-                    Отправить запрос
+                  <Button type="button" className="cabinet-save-button-student" onClick={sendLinkRequest}>
+                    Отправить
                   </Button>
                   {linkStatusMessage ? <p className="cabinet-hint">{linkStatusMessage}</p> : null}
                 </div>
                 <div className="cabinet-card">
                   <h3>Мои учителя</h3>
-                  {teacherList.length === 0 ? (
-                    <p className="cabinet-hint">Список пуст.</p>
-                  ) : (
-                    <ul className="cabinet-list">
-                      {teacherList.map((teacher) => (
-                        <li key={teacher.id}>
-                          {teacher.fullName} · {teacher.subject}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <Table>
+                    <thead>
+                      <tr>
+                        <th>№</th>
+                        <th>ФИО учителя</th>
+                        <th>Предмет</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allTeacherEntries.length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>Список пуст.</td>
+                        </tr>
+                      ) : (
+                        allTeacherEntries.map((teacher, index) => (
+                          <tr key={teacher.id}>
+                            <td>{index + 1}</td>
+                            <td>{teacher.label}</td>
+                            <td>{teacher.sublabel ?? "—"}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="cabinet-delete-button"
+                                aria-label={`Удалить ${teacher.label}`}
+                                onClick={() =>
+                                  openDeletePrompt(
+                                    teacher.kind === "manual"
+                                      ? {
+                                          kind: "manual-teacher",
+                                          manualId: teacher.manualId,
+                                          name: teacher.label
+                                        }
+                                      : {
+                                          kind: "linked-teacher",
+                                          teacherId: teacher.teacherId,
+                                          name: teacher.label
+                                        }
+                                  )
+                                }
+                              >
+                                <TrashIcon />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </Table>
                 </div>
               </div>
             ) : (
@@ -723,25 +1047,61 @@ export function CabinetPage() {
                     onChange={(event) => setLinkRequestValue(event.target.value)}
                   />
                   <Button type="button" className="cabinet-save-button" onClick={sendLinkRequest}>
-                    Отправить запрос
+                    Отправить
                   </Button>
                   {linkStatusMessage ? <p className="cabinet-hint">{linkStatusMessage}</p> : null}
                 </div>
                 <div className="cabinet-card">
                   <h3>Привязанные ученики</h3>
-                  {students.length === 0 ? (
-                    <p className="cabinet-hint">Нет подтвержденных учеников.</p>
-                  ) : (
-                    <ul className="cabinet-list">
-                      {students.map((student) => (
-                        <li key={student.id}>
-                          <Link to={`/cabinet?student=${student.student_id}`} className="cabinet-link">
-                            Ученик #{student.student_id}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <Table>
+                    <thead>
+                      <tr>
+                        <th>№</th>
+                        <th>ФИО</th>
+                        <th>Класс</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentEntries.length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>Нет подтвержденных учеников.</td>
+                        </tr>
+                      ) : (
+                        studentEntries.map((student, index) => (
+                          <tr key={student.id}>
+                            <td>{index + 1}</td>
+                            <td>
+                              <Link to={student.href} className="cabinet-link" onClick={handleStudentLinkClick}>
+                                {student.label}
+                              </Link>
+                            </td>
+                            <td>
+                              {student.classGrade !== null && student.classGrade !== undefined
+                                ? `${student.classGrade}`
+                                : "—"}
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="cabinet-delete-button"
+                                aria-label={`Удалить ${student.label}`}
+                                onClick={() =>
+                                  openDeletePrompt({
+                                    kind: "student",
+                                    studentId: student.studentId,
+                                    name: student.label
+                                  })
+                                }
+                              >
+                                <TrashIcon />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </Table>
                 </div>
               </div>
             )}
@@ -766,6 +1126,70 @@ export function CabinetPage() {
       </Modal>
 
       <Modal
+        isOpen={isLinkPromptOpen}
+        onClose={() => setIsLinkPromptOpen(false)}
+        title="Запрос на связь учитель — ученик"
+      >
+        <div className="cabinet-link-modal">
+          <p className="cabinet-hint">Выберите действие для каждого запроса.</p>
+          <div className="cabinet-link-table">
+            <div className="cabinet-link-row cabinet-link-header">
+              <span>№</span>
+              <span>ФИО запросившего</span>
+              <span>+</span>
+              <span>-</span>
+            </div>
+            {pendingLinks.map((link, index) => {
+              const requesterParts =
+                user.role === "teacher"
+                  ? [link.student_surname, link.student_name, link.student_father_name]
+                  : [link.teacher_surname, link.teacher_name, link.teacher_father_name];
+              const requesterLabel = requesterParts.filter(Boolean).join(" ");
+              const label =
+                requesterLabel ||
+                (user.role === "teacher"
+                  ? `Ученик #${link.student_id}`
+                  : `Учитель #${link.teacher_id}`);
+              const decision = linkDecisions[link.id] ?? null;
+              return (
+                <div className="cabinet-link-row" key={link.id}>
+                  <span>{index + 1}</span>
+                  <span>{label}</span>
+                  <button
+                    type="button"
+                    className={`cabinet-decision-button cabinet-decision-approve ${decision === "approve" ? "is-active" : ""}`.trim()}
+                    onClick={() => handleLinkDecision(link.id, "approve")}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    className={`cabinet-decision-button cabinet-decision-reject ${decision === "reject" ? "is-active" : ""}`.trim()}
+                    onClick={() => handleLinkDecision(link.id, "reject")}
+                  >
+                    -
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          {linkPromptStatus === "error" ? (
+            <p className="cabinet-hint cabinet-hint-error">Не удалось сохранить выбор.</p>
+          ) : null}
+          <div className="cabinet-modal-actions">
+            <Button
+              type="button"
+              className="cabinet-save-button"
+              onClick={handleLinkPromptSave}
+              disabled={!Object.values(linkDecisions).some(Boolean) || linkPromptStatus === "saving"}
+            >
+              ОК
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={isLogoutPromptOpen}
         onClose={() => setIsLogoutPromptOpen(false)}
         title="Несохраненные изменения"
@@ -777,6 +1201,30 @@ export function CabinetPage() {
           </Button>
           <Button type="button" className="cabinet-cancel-button" onClick={() => setIsLogoutPromptOpen(false)}>
             Отмена
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={Boolean(deleteTarget)} onClose={closeDeletePrompt} title="Удаление">
+        <p>
+          {deleteTarget
+            ? `Вы действительно хотите удалить ${deleteTarget.name} из списка сопровождения`
+            : ""}
+        </p>
+        {deleteStatus === "error" ? (
+          <p className="cabinet-hint cabinet-hint-error">Не удалось удалить запись.</p>
+        ) : null}
+        <div className="cabinet-modal-actions">
+          <Button
+            type="button"
+            className="cabinet-delete-confirm"
+            onClick={handleDeleteConfirm}
+            isLoading={deleteStatus === "deleting"}
+          >
+            Да
+          </Button>
+          <Button type="button" variant="outline" onClick={closeDeletePrompt}>
+            Нет
           </Button>
         </div>
       </Modal>
