@@ -15,6 +15,7 @@ from app.core.metrics import (
 )
 from app.core.redis import get_redis, safe_redis
 from app.core.cache import olympiad_tasks_key, olympiad_meta_key
+from app.core.age_groups import class_grades_allow, normalize_age_group
 from app.core.security import generate_token
 from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
@@ -52,24 +53,17 @@ class AttemptsService:
     def _normalize_age_group(age_group) -> str | None:
         if age_group is None:
             return None
-        return str(getattr(age_group, "value", age_group))
+        try:
+            return normalize_age_group(age_group)
+        except ValueError:
+            return str(getattr(age_group, "value", age_group))
 
     @classmethod
     def _age_group_allows(cls, *, class_grade: int | None, age_group) -> bool:
-        if class_grade is None:
+        try:
+            return class_grades_allow(age_group, class_grade)
+        except ValueError:
             return False
-        group = cls._normalize_age_group(age_group)
-        if group == "1":
-            return class_grade == 1
-        if group == "2":
-            return class_grade == 2
-        if group == "3-4":
-            return 3 <= class_grade <= 4
-        if group == "5-6":
-            return 5 <= class_grade <= 6
-        if group == "7-8":
-            return 7 <= class_grade <= 8
-        return False
 
     async def _get_tasks_cached(self, olympiad_id: int) -> list[dict]:
         redis = await safe_redis()

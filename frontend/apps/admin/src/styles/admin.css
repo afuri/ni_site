@@ -157,6 +157,34 @@
   color: var(--color-ink-700);
 }
 
+.admin-class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: var(--space-2);
+}
+
+.admin-class-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--color-ink-700);
+  background: rgba(0, 86, 210, 0.08);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.admin-class-option input {
+  margin: 0;
+}
+
+.admin-olympiad-tasks-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
 .admin-short-answer {
   display: grid;
   gap: var(--space-3);
@@ -386,6 +414,35 @@
   width: min(1100px, 100%);
   max-height: 85vh;
   overflow-y: auto;
+}
+
+.admin-olympiad-modal {
+  width: min(1200px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.admin-olympiad-tasks {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.admin-olympiad-tasks-list {
+  max-height: 320px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  padding: var(--space-2);
+}
+
+.admin-task-input {
+  min-width: 80px;
+  text-align: center;
 }
 
 .admin-login-card h1 {

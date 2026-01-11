@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.auth_token import RefreshToken
-from app.models.olympiad import Olympiad, AgeGroup, OlympiadScope
+from app.models.olympiad import Olympiad, OlympiadScope
 from app.models.audit_log import AuditLog
 from app.models.task import Task, Subject, TaskType
 from app.models.olympiad_task import OlympiadTask
@@ -139,7 +139,7 @@ async def test_warmup_olympiad_cache(db_engine):
             title="Olympiad",
             description="Desc",
             scope=OlympiadScope.global_,
-            age_group=AgeGroup.g78,
+            age_group="7-8",
             attempts_limit=1,
             duration_sec=600,
             available_from=now - timedelta(minutes=1),

@@ -947,3 +947,44 @@ fullstack 0.2.0
   - Предпросмотр ограничен до 600px ширины.
       - frontend/apps/admin/src/styles/admin.css
 
+fullstack 0.3.0
+
+Расширил окно создания олимпиады и добавил список заданий внизу с выбором, порядком и баллами; длительность теперь вводится в минутах и конвертируется в секунды
+  при сохранении. Стили для ширины окна и блока выбора заданий добавлены в frontend/apps/admin/src/styles/admin.css, логика — в frontend/apps/admin/src/pages/
+  OlympiadsPage.tsx.
+
+Добавил строку фильтра по названию в блоке добавления заданий и применил фильтрацию списка. Обновления в frontend/apps/admin/src/pages/OlympiadsPage.tsx.
+
+ - Валидация порядка заданий: для выбранных к добавлению заданий порядок должен быть 1..N, порядок уникален; ошибки показываются в блоке заданий.
+  - Режим “Случайный порядок”: добавлен чекбокс, при включении порядок назначается автоматически при сохранении, поля порядка блокируются.
+  - Выбор классов: заменил селект на чекбоксы 1–8; добавлена проверка допустимых комбинаций (1, 2, 3‑4, 5‑6, 7‑8). Ошибка показывается при сохранении.
+
+  Изменения в:
+
+  - frontend/apps/admin/src/pages/OlympiadsPage.tsx
+  - frontend/apps/admin/src/styles/admin.css
+
+Вернул множественный выбор классов 1–8 в форме олимпиады и убрал проверку на “жесткие” комбинации: теперь backend принимает любой набор классов из допустимого
+  списка, нормализует и сохраняет как строку. Логику проверки доступа по классу перевел на разбор набора классов, добавил миграцию, чтобы age_group стал текстовым
+  полем и принимал произвольные комбинации.
+
+  Изменения:
+
+  - frontend/apps/admin/src/pages/OlympiadsPage.tsx: мультивыбор 1–8, парсинг/отправка набора классов, базовая проверка “хотя бы один класс”.
+  - backend/app/core/age_groups.py: разбор/нормализация набора классов.
+  - backend/app/models/olympiad.py: age_group теперь строка.
+  - backend/app/schemas/olympiads_admin.py: валидация набора классов через нормализацию.
+  - backend/app/services/attempts.py: проверка допуска по набору классов.
+  - backend/alembic/versions/d9f3c2a1b4e6_olympiad_age_group_text.py: миграция типа age_group → VARCHAR.
+
+Обновил тест, который падал из‑за удалённого AgeGroup, и вернул множественный выбор классов 1–8 в форме олимпиады; backend теперь принимает набор классов
+  (список/строку), нормализует и валидирует его по допустимому диапазону. Миграция и merge‑head уже готовы.
+
+  Что изменено:
+
+  - backend/tests/test_maintenance_tasks.py: убран импорт AgeGroup, age_group="7-8".
+  - frontend/apps/admin/src/pages/OlympiadsPage.tsx: снова мультивыбор 1–8, отправка списка классов.
+  - backend/app/core/age_groups.py, backend/app/models/olympiad.py, backend/app/schemas/olympiads_admin.py, backend/app/services/attempts.py: нормализация и
+    проверка набора классов.
+  - backend/alembic/versions/d9f3c2a1b4e6_olympiad_age_group_text.py, backend/alembic/versions/e1f4a2b7c9d0_merge_age_group_text.py.
+

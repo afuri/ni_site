@@ -1,18 +1,13 @@
-import enum
 from datetime import datetime, timezone
 from sqlalchemy import String, Boolean, Integer, DateTime, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
+import enum
+
+
 class OlympiadScope(str, enum.Enum):
     global_ = "global"  # global — зарезервировано словом в python, поэтому global_
-
-class AgeGroup(str, enum.Enum):
-    g1 = "1"
-    g2 = "2"
-    g34 = "3-4"
-    g56 = "5-6"
-    g78 = "7-8"
 
 enum_values = lambda obj: [e.value for e in obj]
 
@@ -30,10 +25,7 @@ class Olympiad(Base):
         index=True,
         default=OlympiadScope.global_,
     )
-    age_group: Mapped[AgeGroup] = mapped_column(
-        SAEnum(AgeGroup, values_callable=enum_values, name="agegroup"),
-        index=True,
-    )
+    age_group: Mapped[str] = mapped_column(String(32), index=True)
 
     attempts_limit: Mapped[int] = mapped_column(Integer, default=1)
     duration_sec: Mapped[int] = mapped_column(Integer)
