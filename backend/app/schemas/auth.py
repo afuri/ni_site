@@ -11,6 +11,8 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     role: Literal["student", "teacher"]
     email: EmailStr
+    gender: Literal["male", "female"]
+    subscription: int = Field(default=0, ge=0, le=5)
 
     surname: str = Field(max_length=120, pattern=CYRILLIC_RE)
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)

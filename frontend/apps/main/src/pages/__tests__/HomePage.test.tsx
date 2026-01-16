@@ -142,6 +142,7 @@ describe("HomePage", () => {
 
     await user.click(screen.getByRole("button", { name: "Регистрация" }));
     expect(screen.getByRole("dialog", { name: "Регистрация" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Пол")).toBeInTheDocument();
     expect(screen.getByLabelText("Класс")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("Роль"), "teacher");

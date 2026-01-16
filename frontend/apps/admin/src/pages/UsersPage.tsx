@@ -20,6 +20,8 @@ type UserUpdateForm = {
   school: string;
   classGrade: string;
   subject: string;
+  gender: string;
+  subscription: string;
   adminOtp: string;
 };
 
@@ -40,6 +42,8 @@ const emptyForm: UserUpdateForm = {
   school: "",
   classGrade: "",
   subject: "",
+  gender: "",
+  subscription: "",
   adminOtp: ""
 };
 
@@ -81,6 +85,8 @@ const buildUsersCsv = (users: UserRead[]) => {
     "Город",
     "Школа",
     "Класс",
+    "Пол",
+    "Подписка",
     "Предмет"
   ];
 
@@ -101,6 +107,8 @@ const buildUsersCsv = (users: UserRead[]) => {
     user.city,
     user.school,
     user.class_grade !== null && user.class_grade !== undefined ? String(user.class_grade) : "",
+    user.gender ?? "",
+    user.subscription ?? 0,
     user.subject ?? ""
   ]);
 
@@ -138,7 +146,9 @@ export function UsersPage() {
     city: "",
     school: "",
     classGrade: "",
-    subject: ""
+    subject: "",
+    gender: "",
+    subscription: ""
   });
 
   const handleOtpRequest = async () => {
@@ -180,6 +190,8 @@ export function UsersPage() {
     if (filters.city) params.set("city", filters.city);
     if (filters.school) params.set("school", filters.school);
     if (filters.classGrade) params.set("class_grade", filters.classGrade);
+    if (filters.gender) params.set("gender", filters.gender);
+    if (filters.subscription) params.set("subscription", filters.subscription);
     if (filters.subject) params.set("subject", filters.subject);
     try {
       const data = await adminApiClient.request<UserRead[]>({
@@ -240,6 +252,13 @@ export function UsersPage() {
     if (form.city) payload.city = form.city;
     if (form.school) payload.school = form.school;
     if (form.classGrade) payload.class_grade = Number(form.classGrade);
+    if (form.gender) payload.gender = form.gender;
+    if (form.subscription) {
+      const parsedSub = Number(form.subscription);
+      if (!Number.isNaN(parsedSub)) {
+        payload.subscription = Math.min(5, Math.max(0, parsedSub));
+      }
+    }
     if (form.subject) payload.subject = form.subject;
     if (form.adminOtp) payload.admin_otp = form.adminOtp;
 
@@ -437,6 +456,27 @@ export function UsersPage() {
             value={form.classGrade}
             onChange={(event) => setForm((prev) => ({ ...prev, classGrade: event.target.value }))}
           />
+          <label className="field">
+            <span className="field-label">Пол</span>
+            <select
+              className="field-input"
+              value={form.gender}
+              onChange={(event) => setForm((prev) => ({ ...prev, gender: event.target.value }))}
+            >
+              <option value="">Не менять</option>
+              <option value="male">Муж</option>
+              <option value="female">Жен</option>
+            </select>
+          </label>
+          <TextInput
+            label="Подписка (0-5)"
+            name="subscription"
+            type="number"
+            min={0}
+            max={5}
+            value={form.subscription}
+            onChange={(event) => setForm((prev) => ({ ...prev, subscription: event.target.value }))}
+          />
           <TextInput
             label="Предмет"
             name="subject"
@@ -598,6 +638,27 @@ export function UsersPage() {
             value={filters.classGrade}
             onChange={(event) => setFilters((prev) => ({ ...prev, classGrade: event.target.value }))}
           />
+          <label className="field">
+            <span className="field-label">Пол</span>
+            <select
+              className="field-input"
+              value={filters.gender}
+              onChange={(event) => setFilters((prev) => ({ ...prev, gender: event.target.value }))}
+            >
+              <option value="">Все</option>
+              <option value="male">Муж</option>
+              <option value="female">Жен</option>
+            </select>
+          </label>
+          <TextInput
+            label="Подписка"
+            name="subscriptionFilter"
+            type="number"
+            min={0}
+            max={5}
+            value={filters.subscription}
+            onChange={(event) => setFilters((prev) => ({ ...prev, subscription: event.target.value }))}
+          />
           <TextInput
             label="Предмет"
             name="subjectFilter"
@@ -634,17 +695,19 @@ export function UsersPage() {
                     <th>Город</th>
                     <th>Школа</th>
                     <th>Класс</th>
+                    <th>Пол</th>
+                    <th>Подписка</th>
                     <th>Предмет</th>
                   </tr>
                 </thead>
                 <tbody>
                   {listStatus === "loading" ? (
                     <tr>
-                      <td colSpan={17}>Загрузка...</td>
+                      <td colSpan={19}>Загрузка...</td>
                     </tr>
                   ) : usersList.length === 0 ? (
                     <tr>
-                      <td colSpan={17}>Пользователи не найдены.</td>
+                      <td colSpan={19}>Пользователи не найдены.</td>
                     </tr>
                   ) : (
                     usersList.map((item) => (
@@ -665,6 +728,8 @@ export function UsersPage() {
                         <td>{item.city}</td>
                         <td>{item.school}</td>
                         <td>{item.class_grade ?? "—"}</td>
+                        <td>{item.gender ?? "—"}</td>
+                        <td>{item.subscription}</td>
                         <td>{item.subject ?? "—"}</td>
                       </tr>
                     ))

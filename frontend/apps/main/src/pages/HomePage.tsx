@@ -157,6 +157,8 @@ type RoleValue = "student" | "teacher";
 type RegisterFormState = {
   role: RoleValue;
   login: string;
+  gender: "" | "male" | "female";
+  subscription: number;
   email: string;
   password: string;
   passwordConfirm: string;
@@ -215,6 +217,8 @@ export function HomePage() {
   const [registerForm, setRegisterForm] = useState<RegisterFormState>({
     role: "student",
     login: "",
+    gender: "",
+    subscription: 0,
     email: "",
     password: "",
     passwordConfirm: "",
@@ -440,6 +444,9 @@ export function HomePage() {
     } else if (!RU_NAME_REGEX.test(form.country)) {
       errors.country = "Только русские буквы, первая заглавная.";
     }
+    if (!form.gender) {
+      errors.gender = "Выберите пол.";
+    }
     if (!form.city) {
       errors.city = "Введите город.";
     }
@@ -523,6 +530,8 @@ export function HomePage() {
         password: registerForm.password,
         role: registerForm.role,
         email: registerForm.email.trim(),
+        gender: registerForm.gender as "male" | "female",
+        subscription: registerForm.subscription,
         surname: registerForm.surname.trim(),
         name: registerForm.name.trim(),
         father_name: registerForm.fatherName ? registerForm.fatherName.trim() : null,
@@ -1055,6 +1064,34 @@ export function HomePage() {
                 onChange={(event) => updateRegisterField("fatherName", event.target.value)}
                 error={registerErrors.fatherName}
               />
+              <div className="field">
+                <span className="field-label">Пол</span>
+                <div className="auth-radio-group" role="radiogroup" aria-label="Пол">
+                  <label className="auth-radio">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="male"
+                      checked={registerForm.gender === "male"}
+                      onChange={(event) => updateRegisterField("gender", event.target.value as "male" | "female")}
+                    />
+                    <span>Муж</span>
+                  </label>
+                  <label className="auth-radio">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="female"
+                      checked={registerForm.gender === "female"}
+                      onChange={(event) => updateRegisterField("gender", event.target.value as "male" | "female")}
+                    />
+                    <span>Жен</span>
+                  </label>
+                </div>
+                {registerErrors.gender ? (
+                  <span className="field-helper field-helper-error">{registerErrors.gender}</span>
+                ) : null}
+              </div>
               <TextInput
                 label="Страна"
                 name="country"

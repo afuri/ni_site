@@ -57,6 +57,8 @@ class TeacherStudentsService:
             school=payload["school"],
             class_grade=payload["class_grade"],
             subject=None,
+            gender=payload["gender"],
+            subscription=payload.get("subscription", 0),
         )
 
         link = await self.links_repo.create_link(

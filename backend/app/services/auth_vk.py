@@ -49,6 +49,8 @@ class AuthVKService:
                 school="Неизвестно",
                 class_grade=0,
                 subject=None,
+                gender=None,
+                subscription=0,
             )
 
         await self.socials.create(provider="vk", provider_user_id=provider_user_id, user_id=user.id)

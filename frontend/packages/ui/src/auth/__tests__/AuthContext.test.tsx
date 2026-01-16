@@ -56,6 +56,8 @@ const user: UserRead = {
   city: "Москва",
   school: "Школа",
   class_grade: 7,
+  gender: "male",
+  subscription: 0,
   subject: null
 };
 

@@ -24,6 +24,8 @@ export type UserRead = {
   city: string;
   school: string;
   class_grade: number | null;
+  gender: "male" | "female" | null;
+  subscription: number;
   subject: string | null;
 };
 

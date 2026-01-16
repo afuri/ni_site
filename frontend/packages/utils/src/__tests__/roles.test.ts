@@ -19,6 +19,8 @@ const baseUser: UserRead = {
   city: "Казань",
   school: "Лицей",
   class_grade: null,
+  gender: "female",
+  subscription: 0,
   subject: "math"
 };
 

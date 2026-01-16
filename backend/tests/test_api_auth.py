@@ -11,6 +11,8 @@ async def test_register_and_login_flow(client, db_session):
         "password": "StrongPass1",
         "role": "student",
         "email": "student01@example.com",
+        "gender": "male",
+        "subscription": 0,
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
@@ -25,6 +27,8 @@ async def test_register_and_login_flow(client, db_session):
     data = resp.json()
     assert data["login"] == "student01"
     assert data["role"] == "student"
+    assert data["gender"] == "male"
+    assert data["subscription"] == 0
 
     resp = await client.post("/api/v1/auth/login", json={"login": "student01", "password": "StrongPass1"})
     assert resp.status_code == 200

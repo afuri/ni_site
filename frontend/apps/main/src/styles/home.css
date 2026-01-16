@@ -602,6 +602,26 @@
   margin-top: 4px;
 }
 
+.auth-radio-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.auth-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  color: rgba(31, 59, 99, 0.9);
+}
+
+.auth-radio input {
+  width: 18px;
+  height: 18px;
+}
+
 .auth-link {
   border: none;
   background: none;

@@ -6,12 +6,15 @@ from app.models.teacher_student import TeacherStudentStatus, TeacherStudentReque
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
 CYRILLIC_RE = r"^[А-ЯЁ][а-яё]+$"
+GENDER_RE = r"^(male|female)$"
 
 
 class CreateStudentRequest(BaseModel):
     login: str = Field(pattern=LOGIN_RE)
     password: str = Field(min_length=8, max_length=128)
     email: EmailStr
+    gender: str = Field(pattern=GENDER_RE)
+    subscription: int = Field(default=0, ge=0, le=5)
 
     surname: str = Field(max_length=120, pattern=CYRILLIC_RE)
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)

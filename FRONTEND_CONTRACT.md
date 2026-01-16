@@ -33,6 +33,8 @@ Error schema (все ошибки включают `request_id`):
     "password": "StrongPass1",
     "role": "student",
     "email": "student01@example.com",
+    "gender": "male",
+    "subscription": 0,
     "surname": "Иванов",
     "name": "Иван",
     "father_name": null,

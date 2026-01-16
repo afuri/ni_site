@@ -195,6 +195,8 @@ async def list_users(
     school: str | None = Query(default=None),
     class_grade: int | None = Query(default=None),
     subject: str | None = Query(default=None),
+    gender: str | None = Query(default=None, pattern="^(male|female)$"),
+    subscription: int | None = Query(default=None, ge=0, le=5),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -219,6 +221,8 @@ async def list_users(
         school=school,
         class_grade=class_grade,
         subject=subject,
+        gender=gender,
+        subscription=subscription,
         limit=limit,
         offset=offset,
     )

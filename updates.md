@@ -1089,3 +1089,30 @@ Added a visual “saved” feedback for the short‑answer Save button: it flash
 
   - frontend/apps/main/src/pages/OlympiadPage.tsx: track last saved task id and attach olympiad-save-button / is-saved classes to the Save button.
   - frontend/apps/main/src/styles/olympiad.css: add light‑green activation styles.
+
+0.10.0
+
+Добавил пол и подписку в профиль пользователя и обновил фронт/тесты:
+
+  - Модели/схемы/миграция: gender (муж/жен) и subscription (0–5, по умолчанию 0) в users, Alembic миграция f7d2c3a4b5e6_add_gender_and_subscription_to_users.py.
+  - Регистрация и скрипты: register требует gender, subscription=0; create_admin.py и create_demo_users.py заполняют новые поля (пол случайный в демо).
+  - Админ и профиль: UserRead расширен, фильтры/CSV/формы админки умеют gender/subscription.
+  - Фронт: в регистрации радиокнопки пола обязательны; API/types обновлены.
+  - Тесты: pytest и vitest обновлены под новые поля, добавлены проверки схем и колонок users.
+
+fullstack 0.11.0
+
+• Добавил поля пола и подписки для пользователей на backend и фронте, обновил миграции, скрипты и тесты.
+
+  - Бэкенд: ввёл enum Gender и столбцы gender/subscription в users + миграция backend/alembic/versions/f7d2c3a4b5e6_add_gender_and_subscription_to_users.py;
+    схемы/валидация обновлены (backend/app/schemas/auth.py, user.py, teacher_students.py), сервисы/репозитории и эндпойнты теперь принимают/возвращают новые поля
+    (backend/app/services/auth.py, repos/users.py, api/v1/auth.py, users.py, admin_users.py). Скрипты backend/scripts/create_admin.py и create_demo_users.py
+    заполняют новые поля (пол для демо — случайный, subscription=0). Примеры OpenAPI и docs синхронизированы (backend/app/api/v1/openapi_examples.py,
+    UI_ENDPOINTS.md, FRONTEND_CONTRACT.md, frontend/UI_elements.md, updates.md).
+  - Фронтенд: форма регистрации требует выбор пола через радиокнопки, subscription уходит как 0 по умолчанию (frontend/apps/main/src/pages/HomePage.tsx, home.css,
+    тест обновлён). Типы API/клиент и хранение auth расширены под новые поля (frontend/packages/api/src/types.ts, client.ts, auth storage/tests). Админка получила
+    фильтры/колонки/CSV для gender/subscription и поля в форме редактирования (frontend/apps/admin/src/pages/UsersPage.tsx). Все пользовательские моки в vitest
+    обновлены (frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx, frontend/packages/utils/src/__tests__/authStorage.test.ts, roles.test.ts, frontend/
+    packages/ui/src/auth/__tests__/AuthContext.test.tsx, frontend/apps/main/src/pages/__tests__/HomePage.test.tsx).
+  - Тесты backend расширены: новые проверки схем/валидаторов и наличие колонок в test_migrations_schema.py; регистрационные тесты ожидают gender/subscription
+    (backend/tests/test_api_auth.py, test_auth_validation.py, test_api_negative.py, test_api_e2e.py). Конфтест создаёт пользователей с gender/subscription.

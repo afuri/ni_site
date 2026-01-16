@@ -36,6 +36,12 @@ async def run() -> None:
     city = _get_env("ADMIN_CITY")
     school = _get_env("ADMIN_SCHOOL")
     father_name = os.environ.get("ADMIN_FATHER_NAME")
+    gender = os.environ.get("ADMIN_GENDER")
+    subscription_raw = os.environ.get("ADMIN_SUBSCRIPTION", "0")
+    try:
+        subscription = max(0, min(5, int(subscription_raw)))
+    except ValueError:
+        subscription = 0
 
     async with SessionLocal() as session:
         res = await session.execute(select(User).where(User.role == UserRole.admin))
@@ -60,6 +66,8 @@ async def run() -> None:
             school=school,
             class_grade=None,
             subject=None,
+            gender=gender,
+            subscription=subscription,
         )
         print("admin_created")
 

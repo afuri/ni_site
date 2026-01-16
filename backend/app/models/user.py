@@ -13,6 +13,11 @@ class UserRole(str, enum.Enum):
     admin = "admin"
 
 
+class Gender(str, enum.Enum):
+    male = "male"
+    female = "female"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -39,6 +44,8 @@ class User(Base):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     school: Mapped[str | None] = mapped_column(String(255), nullable=True)
     class_grade: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0..11
+    gender: Mapped[Gender | None] = mapped_column(Enum(Gender), nullable=True)
+    subscription: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # teacher-only (MVP)
     subject: Mapped[str | None] = mapped_column(String(120), nullable=True)

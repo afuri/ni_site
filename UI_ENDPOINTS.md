@@ -43,6 +43,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "password": "StrongPass1",
     "role": "student",
     "email": "student01@example.com",
+    "gender": "male",
+    "subscription": 0,
     "surname": "Иванов",
     "name": "Иван",
     "father_name": null,
@@ -73,6 +75,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "city": "Москва",
     "school": "Школа",
     "class_grade": 7,
+    "gender": "male",
+    "subscription": 0,
     "subject": null
   }
   ```
@@ -136,6 +140,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "city": "Казань",
     "school": "Лицей",
     "class_grade": null,
+    "gender": "female",
+    "subscription": 0,
     "subject": "math"
   }
   ```
@@ -292,7 +298,7 @@ Uploads limits/types: `API_CONVENTIONS.md`
   ```
   или
   ```json
-  { "create": { "login": "student02", "password": "StrongPass1", "email": "s2@example.com", "surname": "Иванов", "name": "Иван", "father_name": null, "country": "Россия", "city": "Москва", "school": "Школа", "class_grade": 7 } }
+  { "create": { "login": "student02", "password": "StrongPass1", "email": "s2@example.com", "gender": "female", "subscription": 0, "surname": "Иванов", "name": "Иван", "father_name": null, "country": "Россия", "city": "Москва", "school": "Школа", "class_grade": 7 } }
   ```
 - `POST /teacher/students/{student_id}/confirm` — подтвердить связь
   Пример ответа:
@@ -475,7 +481,7 @@ Uploads limits/types: `API_CONVENTIONS.md`
 ## Admin: Users & Audit
 
 - `GET /admin/users` — список пользователей
-  - Query: `user_id`, `role`, `is_active`, `is_email_verified`, `must_change_password`, `is_moderator`, `moderator_requested`, `login`, `email`, `surname`, `name`, `father_name`, `country`, `city`, `school`, `class_grade`, `subject`, `limit`, `offset`
+  - Query: `user_id`, `role`, `is_active`, `is_email_verified`, `must_change_password`, `is_moderator`, `moderator_requested`, `login`, `email`, `surname`, `name`, `father_name`, `country`, `city`, `school`, `class_grade`, `gender`, `subscription`, `subject`, `limit`, `offset`
   Пример ответа (`UserRead[]`):
   ```json
   [
@@ -496,6 +502,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
       "city": "Moscow",
       "school": "School 1",
       "class_grade": 7,
+      "gender": "male",
+      "subscription": 0,
       "subject": null
     }
   ]
@@ -520,6 +528,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "city": "Moscow",
     "school": "School 1",
     "class_grade": 7,
+    "gender": "male",
+    "subscription": 0,
     "subject": null
   }
   ```
@@ -577,6 +587,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "city": "Kazan",
     "school": "School 1",
     "class_grade": 7,
+    "gender": "male",
+    "subscription": 0,
     "subject": null
   }
   ```
@@ -603,6 +615,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "city": "Moscow",
     "school": "School 1",
     "class_grade": 7,
+    "gender": "муж",
+    "subscription": 0,
     "subject": null
   }
   ```

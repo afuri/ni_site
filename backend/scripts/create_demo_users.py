@@ -1,4 +1,5 @@
 import asyncio
+import random
 import sys
 from pathlib import Path
 
@@ -88,6 +89,8 @@ async def _create_user(repo: UsersRepo, payload: dict) -> bool:
         school=COMMON_PROFILE["school"],
         class_grade=payload["class_grade"],
         subject=payload["subject"],
+        gender=random.choice(["male", "female"]),
+        subscription=0,
     )
     print(f"created:{payload['login']}")
     return True

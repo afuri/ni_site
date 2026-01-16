@@ -24,9 +24,10 @@
   - Формы: `.auth-modal`, `.auth-form`, `.auth-grid`, `.auth-actions`, `.auth-link`
   - Текст согласия: `.agreement-modal`, `.agreement-body`
 - Где менять:
-  - Поля/валидации: `validateRegister` в `HomePage.tsx`
-  - Тексты согласий: `frontend/students_agreement.txt`, `frontend/teacher_agreement.txt`
-  - Цвета ошибок/ссылок: `.auth-error`, `.auth-alert`, `.auth-link`
+- Поля/валидации: `validateRegister` в `HomePage.tsx`
+- Новое поле: выбор пола (радиокнопки «Муж/Жен») обязателен; subscription по умолчанию 0 и не редактируется пользователем.
+- Тексты согласий: `frontend/students_agreement.txt`, `frontend/teacher_agreement.txt`
+- Цвета ошибок/ссылок: `.auth-error`, `.auth-alert`, `.auth-link`
 
 ## 1.2) Личный кабинет
 - Что это: отдельная страница с результатами, личными данными и связями учитель—ученик.

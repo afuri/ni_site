@@ -2,12 +2,29 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from app.core import error_codes as codes
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.user import User
+from app.models.user import User, Gender
 
 
 class UsersRepo:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    @staticmethod
+    def _normalize_gender(value: str | None) -> Gender | None:
+        if value is None:
+            return None
+        mapping = {
+            "муж": "male",
+            "м": "male",
+            "male": "male",
+            "m": "male",
+            "жен": "female",
+            "ж": "female",
+            "female": "female",
+            "f": "female",
+        }
+        norm = mapping.get(value.lower(), value)
+        return Gender(norm)
 
     async def get_by_login(self, login: str) -> User | None:
         res = await self.db.execute(select(User).where(User.login == login))
@@ -41,6 +58,8 @@ class UsersRepo:
         school: str | None = None,
         class_grade: int | None = None,
         subject: str | None = None,
+        gender: str | None = None,
+        subscription: int | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[User]:
@@ -79,6 +98,13 @@ class UsersRepo:
             stmt = stmt.where(User.class_grade == class_grade)
         if subject:
             stmt = stmt.where(User.subject.ilike(f"%{subject}%"))
+        if gender:
+            try:
+                stmt = stmt.where(User.gender == Gender(gender))
+            except Exception:
+                stmt = stmt.where(User.gender == gender)
+        if subscription is not None:
+            stmt = stmt.where(User.subscription == subscription)
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
 
@@ -99,7 +125,10 @@ class UsersRepo:
         school: str,
         class_grade: int | None,
         subject: str | None,
+        gender: str | None,
+        subscription: int,
     ) -> User:
+        gender_value = self._normalize_gender(gender)
         user = User(
             login=login,
             email=email,
@@ -116,6 +145,8 @@ class UsersRepo:
             school=school,
             class_grade=class_grade,
             subject=subject,
+            gender=gender_value,
+            subscription=subscription,
         )
         self.db.add(user)
         try:

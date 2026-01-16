@@ -50,6 +50,8 @@ async def update_me(
     # Простейшие role-гейты на поля (MVP)
     if user.role != UserRole.teacher:
         data.pop("subject", None)
+    # Подписка пока системная, не редактируется с фронта
+    data.pop("subscription", None)
 
     repo = UsersRepo(db)
     user = await repo.get_by_id(user.id)

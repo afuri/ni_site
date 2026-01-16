@@ -131,6 +131,8 @@ async def create_user(db_session):
         is_moderator: bool = False,
         subject: str | None = None,
         class_grade: int | None = 5,
+        gender: str | None = "male",
+        subscription: int = 0,
     ):
         repo = UsersRepo(db_session)
         return await repo.create(
@@ -148,6 +150,8 @@ async def create_user(db_session):
             school="Школа",
             class_grade=class_grade,
             subject=subject,
+            gender=gender,
+            subscription=subscription,
         )
 
     return _create

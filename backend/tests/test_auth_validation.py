@@ -16,6 +16,8 @@ def _base_payload(role: str) -> dict:
         "password": "Password123",
         "role": role,
         "email": "test@example.com",
+        "gender": "male",
+        "subscription": 0,
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
@@ -58,5 +60,21 @@ def test_cyrillic_validation():
     payload = _base_payload("teacher")
     payload["class_grade"] = None
     payload["surname"] = "Ivanov"
+    with pytest.raises(ValidationError):
+        RegisterRequest(**payload)
+
+
+def test_gender_is_required_and_limited():
+    payload = _base_payload("student")
+    payload["gender"] = "X"
+    with pytest.raises(ValidationError):
+        RegisterRequest(**payload)
+    payload["gender"] = "female"
+    RegisterRequest(**payload)
+
+
+def test_subscription_bounds():
+    payload = _base_payload("student")
+    payload["subscription"] = 10
     with pytest.raises(ValidationError):
         RegisterRequest(**payload)

@@ -35,6 +35,8 @@ type RegisterPayload = {
   password: string;
   role: "student" | "teacher";
   email: string;
+  gender: "male" | "female";
+  subscription?: number;
   surname: string;
   name: string;
   father_name: string | null;
@@ -196,7 +198,7 @@ export function createApiClient(options: ClientOptions): ApiClient {
         request<UserRead>({
           path: "/auth/register",
           method: "POST",
-          body: payload,
+          body: { ...payload, subscription: payload.subscription ?? 0 },
           auth: false
         }),
       me: () => request<UserRead>({ path: "/auth/me", method: "GET" })

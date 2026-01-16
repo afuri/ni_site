@@ -104,6 +104,8 @@ async def register(
             school=payload.school,
             class_grade=payload.class_grade,
             subject=payload.subject,
+            gender=payload.gender,
+            subscription=payload.subscription,
         )
     except ValueError as e:
         if str(e) == codes.LOGIN_TAKEN:

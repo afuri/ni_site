@@ -30,6 +30,8 @@ EXAMPLE_USER_READ: dict = {
     "city": "Moscow",
     "school": "School 1",
     "class_grade": 7,
+    "gender": "male",
+    "subscription": 0,
     "subject": None,
 }
 

@@ -23,6 +23,8 @@ let mockUser = {
   city: "Москва",
   school: "Лицей",
   class_grade: 7,
+  gender: "male",
+  subscription: 0,
   subject: null
 };
 

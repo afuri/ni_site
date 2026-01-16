@@ -12,7 +12,7 @@ from app.core.security import (
     hash_token,
     validate_password_policy,
 )
-from app.models.user import UserRole
+from app.models.user import UserRole, Gender
 from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.users import UsersRepo
 from app.tasks.email import send_email_task
@@ -43,6 +43,8 @@ class AuthService:
         school: str,
         class_grade: int | None,
         subject: str | None,
+        gender: str,
+        subscription: int,
     ):
         existing = await self.users_repo.get_by_login(login)
         if existing:
@@ -71,6 +73,10 @@ class AuthService:
             if class_grade is not None:
                 raise ValueError(codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER)
 
+        try:
+            gender_enum = UsersRepo._normalize_gender(gender)
+        except Exception:
+            raise ValueError(codes.VALIDATION_ERROR)
         validate_password_policy(password)
         password_hash = hash_password(password)
         user = await self.users_repo.create(
@@ -87,6 +93,8 @@ class AuthService:
             school=school,
             class_grade=class_grade,
             subject=subject,
+            gender=gender_enum.value,
+            subscription=subscription,
         )
         await self.request_email_verification(email=email)
         return user

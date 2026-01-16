@@ -6,6 +6,7 @@ from app.models.user import UserRole
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
 CYRILLIC_RE = r"^[А-ЯЁ][А-ЯËа-яё-]+$"
+GENDER_VALUES = ("male", "female")
 
 
 class UserRead(BaseModel):
@@ -26,6 +27,8 @@ class UserRead(BaseModel):
     city: Optional[str] = None
     school: Optional[str] = None
     class_grade: Optional[int] = None
+    gender: Optional[str] = None
+    subscription: int = Field(default=0, ge=0, le=5)
 
     subject: Optional[str] = None
 
@@ -41,6 +44,8 @@ class UserUpdate(BaseModel):
     city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     school: Optional[str] = None
     class_grade: Optional[int] = Field(default=None)
+    gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
+    subscription: Optional[int] = Field(default=None, ge=0, le=5)
 
     subject: Optional[str] = Field(default=None, max_length=120)
 
@@ -71,6 +76,8 @@ class AdminUserUpdate(BaseModel):
     city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     school: Optional[str] = None
     class_grade: Optional[int] = Field(default=None)
+    gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
+    subscription: Optional[int] = Field(default=None, ge=0, le=5)
 
     subject: Optional[str] = Field(default=None, max_length=120)
 

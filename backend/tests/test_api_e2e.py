@@ -27,6 +27,8 @@ async def test_e2e_register_attempt_result(client, db_session, create_user):
         "password": "StrongPass1",
         "role": "student",
         "email": "student_e2e@example.com",
+        "gender": "male",
+        "subscription": 0,
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
