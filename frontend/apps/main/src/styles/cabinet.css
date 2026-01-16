@@ -184,6 +184,26 @@
   gap: 6px;
 }
 
+.cabinet-radio-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cabinet-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  color: rgba(31, 59, 99, 0.9);
+}
+
+.cabinet-radio input {
+  width: 18px;
+  height: 18px;
+}
+
 .cabinet-status {
   font-weight: 600;
 }

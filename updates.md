@@ -1116,3 +1116,33 @@ fullstack 0.11.0
     packages/ui/src/auth/__tests__/AuthContext.test.tsx, frontend/apps/main/src/pages/__tests__/HomePage.test.tsx).
   - Тесты backend расширены: новые проверки схем/валидаторов и наличие колонок в test_migrations_schema.py; регистрационные тесты ожидают gender/subscription
     (backend/tests/test_api_auth.py, test_auth_validation.py, test_api_negative.py, test_api_e2e.py). Конфтест создаёт пользователей с gender/subscription.
+
+
+fullstack 0.11.1
+
+- Updated city validation on registration and profile forms to require a capitalized Russian name with optional hyphen and uppercase letters (e.g., Санкт-
+    Петербург) via the new regex, with user-facing hint (frontend/apps/main/src/pages/HomePage.tsx, frontend/apps/main/src/pages/CabinetPage.tsx).
+  - Added UI gender field in cabinet profile with radio controls, validation, payload update, styling, and a test covering save flow (frontend/apps/main/src/
+    pages/CabinetPage.tsx, frontend/apps/main/src/styles/cabinet.css, frontend/apps/main/src/pages/__tests__/CabinetPage.test.tsx).
+
+
+
+• - Updated backend validation to allow city names with an initial capital and optional internal capitals/hyphens (e.g., Санкт-Петербург) by widening the Cyrillic
+    regex used for registration and teacher-student creation requests (backend/app/schemas/auth.py, backend/app/schemas/teacher_students.py).
+
+
+- Added shared father-name regex to allow multiple capitalized parts separated by spaces (e.g., “Архан Оглы”, hyphens still allowed) and applied it across
+    backend validation: registration, user update/admin update, and teacher-student creation schemas (backend/app/schemas/auth.py, backend/app/schemas/user.py,
+    backend/app/schemas/teacher_students.py).
+  - Frontend validation now uses the same rule with clearer error messaging in both registration and cabinet profile forms (frontend/apps/main/src/pages/
+    HomePage.tsx, frontend/apps/main/src/pages/CabinetPage.tsx).
+
+• - Added contextual helper hints under registration inputs to match backend rules: login format, password length, Cyrillic requirements for surname/name/country,
+    extended father name (with spaces/hyphens), and city (capitalized, hyphen allowed) (frontend/apps/main/src/pages/HomePage.tsx).
+  - Kept prior father-name regex updates on backend/frontend (capitalized parts with spaces/hyphens) and city regex updates in backend schemas.
+
+• - Backend validation relaxed for surname, name, and city: first letter must be capital, spaces/hyphens allowed, and internal capitals allowed (backend/app/
+    schemas/auth.py, backend/app/schemas/user.py, backend/app/schemas/teacher_students.py).
+  - Frontend registration/profile validation updated to match the new rules for surname, name, and city; helper texts adjusted accordingly (frontend/apps/main/
+    src/pages/HomePage.tsx, frontend/apps/main/src/pages/CabinetPage.tsx).
+

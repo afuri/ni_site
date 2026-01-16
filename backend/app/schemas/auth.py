@@ -3,7 +3,8 @@ from pydantic import BaseModel, Field, EmailStr, model_validator
 from app.core import error_codes as codes
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
-CYRILLIC_RE = r"^[А-ЯЁ][а-яё]+$"
+CYRILLIC_RE = r"^[А-ЯЁ][А-ЯЁа-яё -]+$"
+FATHER_NAME_RE = r"^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$"
 
 
 class RegisterRequest(BaseModel):
@@ -16,7 +17,7 @@ class RegisterRequest(BaseModel):
 
     surname: str = Field(max_length=120, pattern=CYRILLIC_RE)
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    father_name: Optional[str] = None
+    father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
     country: str = Field(max_length=120, pattern=CYRILLIC_RE)
     city: str = Field(max_length=120, pattern=CYRILLIC_RE)

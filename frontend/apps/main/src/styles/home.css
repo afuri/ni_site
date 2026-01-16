@@ -622,6 +622,16 @@
   height: 18px;
 }
 
+.auth-pass-match {
+  color: #15803d;
+  font-size: 0.9rem;
+}
+
+.auth-pass-mismatch {
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
 .auth-link {
   border: none;
   background: none;

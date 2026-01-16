@@ -5,7 +5,8 @@ from app.models.teacher_student import TeacherStudentStatus, TeacherStudentReque
 
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
-CYRILLIC_RE = r"^[А-ЯЁ][а-яё]+$"
+CYRILLIC_RE = r"^[А-ЯЁ][А-ЯЁа-яё -]+$"
+FATHER_NAME_RE = r"^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$"
 GENDER_RE = r"^(male|female)$"
 
 
@@ -18,7 +19,7 @@ class CreateStudentRequest(BaseModel):
 
     surname: str = Field(max_length=120, pattern=CYRILLIC_RE)
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    father_name: str | None = None
+    father_name: str | None = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
     country: str = Field(max_length=120, pattern=CYRILLIC_RE)
     city: str = Field(max_length=120, pattern=CYRILLIC_RE)

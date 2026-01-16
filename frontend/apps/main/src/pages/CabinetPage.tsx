@@ -10,7 +10,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RU_NAME_REGEX = /^[А-ЯЁ][а-яё-]+$/;
+const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
+const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
+const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
 
 const TrashIcon = () => (
@@ -54,6 +56,7 @@ type ProfileForm = {
   city: string;
   school: string;
   classGrade: string;
+  gender: "" | "male" | "female";
   subject: string;
 };
 
@@ -113,6 +116,7 @@ const buildProfileFromUser = (currentUser: UserRead): ProfileForm => ({
     currentUser.class_grade !== null && currentUser.class_grade !== undefined
       ? String(currentUser.class_grade)
       : "",
+  gender: currentUser.gender ?? "",
   subject: currentUser.subject ?? ""
 });
 
@@ -139,6 +143,7 @@ export function CabinetPage() {
     city: "",
     school: "",
     classGrade: "",
+    gender: "",
     subject: ""
   });
   const [savedProfile, setSavedProfile] = useState<ProfileForm | null>(null);
@@ -338,19 +343,24 @@ export function CabinetPage() {
       errors.email = "Введите корректный email.";
     }
     if (!form.surname || !RU_NAME_REGEX.test(form.surname)) {
-      errors.surname = "Только русские буквы, первая заглавная.";
+      errors.surname = "Первая буква заглавная, можно пробел и дефис.";
     }
     if (!form.name || !RU_NAME_REGEX.test(form.name)) {
-      errors.name = "Только русские буквы, первая заглавная.";
+      errors.name = "Первая буква заглавная, можно пробел и дефис.";
     }
-    if (form.fatherName && !RU_NAME_REGEX.test(form.fatherName)) {
-      errors.fatherName = "Только русские буквы, первая заглавная.";
+    if (form.fatherName && !FATHER_NAME_REGEX.test(form.fatherName)) {
+      errors.fatherName = "Только русские буквы, каждая часть с заглавной, можно пробел.";
     }
     if (!form.city) {
       errors.city = "Введите город.";
+    } else if (!RU_CITY_REGEX.test(form.city)) {
+      errors.city = "Первая буква заглавная, можно пробел и дефис.";
     }
     if (!form.school) {
       errors.school = "Введите школу.";
+    }
+    if (!form.gender) {
+      errors.gender = "Выберите пол.";
     }
     if (profileRole === "student" && !form.classGrade) {
       errors.classGrade = "Выберите класс.";
@@ -401,6 +411,7 @@ export function CabinetPage() {
           city: profileForm.city.trim(),
           school: profileForm.school.trim(),
           class_grade: profileForm.classGrade ? Number(profileForm.classGrade) : null,
+          gender: profileForm.gender || null,
           subject: profileForm.subject ? profileForm.subject.trim() : null
         }
       });
@@ -882,6 +893,34 @@ export function CabinetPage() {
                 onChange={(event) => handleProfileChange("fatherName", event.target.value)}
                 error={profileErrors.fatherName}
               />
+              <div className="field">
+                <span className="field-label">Пол</span>
+                <div className="cabinet-radio-group" role="radiogroup" aria-label="Пол">
+                  <label className="cabinet-radio">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="male"
+                      checked={profileForm.gender === "male"}
+                      onChange={() => handleProfileChange("gender", "male")}
+                    />
+                    <span>Муж</span>
+                  </label>
+                  <label className="cabinet-radio">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="female"
+                      checked={profileForm.gender === "female"}
+                      onChange={() => handleProfileChange("gender", "female")}
+                    />
+                    <span>Жен</span>
+                  </label>
+                </div>
+                {profileErrors.gender ? (
+                  <span className="field-helper field-helper-error">{profileErrors.gender}</span>
+                ) : null}
+              </div>
               <TextInput
                 label="Город"
                 name="city"

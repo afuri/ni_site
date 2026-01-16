@@ -6,7 +6,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { CabinetPage } from "../CabinetPage";
 
 const mockRequest = vi.fn();
-let mockUser = {
+const baseUser = {
   id: 1,
   login: "student01",
   email: "student01@example.com",
@@ -27,6 +27,7 @@ let mockUser = {
   subscription: 0,
   subject: null
 };
+let mockUser = { ...baseUser };
 
 vi.mock("@api", () => ({
   createApiClient: () => ({
@@ -50,6 +51,7 @@ vi.mock("@ui", async () => {
 
 describe("CabinetPage", () => {
   beforeEach(() => {
+    mockUser = { ...baseUser };
     mockRequest.mockReset();
   });
 
@@ -204,5 +206,51 @@ describe("CabinetPage", () => {
     expect(
       screen.getByText("Вы действительно хотите удалить Петров Петр из списка сопровождения")
     ).toBeInTheDocument();
+  });
+
+  it("allows updating gender in profile", async () => {
+    mockUser = {
+      ...baseUser,
+      role: "student",
+      is_email_verified: true,
+      gender: "male"
+    };
+    mockRequest.mockImplementation(async ({ path, method, body }) => {
+      if (path.startsWith("/attempts/results/my")) {
+        return [];
+      }
+      if (path.startsWith("/student/teachers?status=confirmed")) {
+        return [];
+      }
+      if (path.startsWith("/student/teachers?status=pending")) {
+        return [];
+      }
+      if (path === "/users/me" && method === "PUT") {
+        return {
+          ...mockUser,
+          ...body,
+          class_grade: body.class_grade,
+          gender: body.gender
+        };
+      }
+      return [];
+    });
+
+    render(
+      <MemoryRouter>
+        <CabinetPage />
+      </MemoryRouter>
+    );
+
+    const userEventApi = userEvent.setup();
+    const femaleRadio = await screen.findByLabelText("Жен");
+    await userEventApi.click(femaleRadio);
+    await userEventApi.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    expect(await screen.findByText("Данные сохранены.")).toBeInTheDocument();
+    const updateCall = mockRequest.mock.calls.find(
+      ([args]) => args.path === "/users/me" && args.method === "PUT"
+    );
+    expect(updateCall?.[0].body.gender).toBe("female");
   });
 });

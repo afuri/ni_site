@@ -5,7 +5,8 @@ from app.models.user import UserRole
 
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
-CYRILLIC_RE = r"^[А-ЯЁ][А-ЯËа-яё-]+$"
+CYRILLIC_RE = r"^[А-ЯЁ][А-ЯЁа-яё -]+$"
+FATHER_NAME_RE = r"^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$"
 GENDER_VALUES = ("male", "female")
 
 
@@ -22,7 +23,7 @@ class UserRead(BaseModel):
 
     surname: Optional[str] = None
     name: Optional[str] = None
-    father_name: Optional[str] = None
+    father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
     country: Optional[str] = None
     city: Optional[str] = None
     school: Optional[str] = None
@@ -38,7 +39,7 @@ class UserRead(BaseModel):
 class UserUpdate(BaseModel):
     surname: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    father_name: Optional[str] = None
+    father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
     country: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
@@ -70,7 +71,7 @@ class AdminUserUpdate(BaseModel):
 
     surname: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    father_name: Optional[str] = None
+    father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
     country: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
