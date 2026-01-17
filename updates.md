@@ -1246,3 +1246,40 @@ fullstack 0.11.6
   Где:
 
   - frontend/apps/main/src/pages/OlympiadPage.tsx — кнопка в хедере и оверлей с help.png.
+
+
+fullstack 0.11.7
+
+Сделал раздел «Результаты» в админке с выбором типа/наименования, таблицей попыток по олимпиаде, CSV‑экспортом и модальным просмотром попытки с подсветкой
+  правильности.
+
+  Что сделано:
+
+  Backend
+
+  - Добавил API для админ‑результатов:
+      - GET /admin/results/olympiads/{id}/attempts — список попыток с данными пользователя и результатами.
+      - GET /admin/results/attempts/{attempt_id} — просмотр попытки с задачами и is_correct.
+  - Файлы:
+      - backend/app/api/v1/admin_results.py
+      - backend/app/schemas/admin_results.py
+      - backend/app/api/v1/router.py (подключение роутера)
+
+  Frontend (admin)
+
+  - Новый раздел Результаты с двумя выпадающими списками, таблицей попыток, CSV‑экспортом и модалкой просмотра попытки.
+  - Таблица скроллится горизонтально.
+  - При клике по ID попытки открывается модалка с заданиями, картинками, ответами и цветовой индикацией (зелёный/красный).
+  - Файлы:
+      - frontend/apps/admin/src/pages/ResultsPage.tsx
+      - frontend/apps/admin/src/App.tsx (роут)
+      - frontend/apps/admin/src/pages/AdminLayout.tsx (пункт меню)
+      - frontend/apps/admin/src/styles/admin.css (стили таблицы/модалки)
+
+• Добавил колонки «Класс», «Город», «Школа», «Привязанные учителя» (ФИО1; ФИО2; …) в таблицу и в CSV.
+
+  Что изменено:
+
+  - Backend формирует class_grade, city, school, linked_teachers в GET /admin/results/olympiads/{id}/attempts.
+  - Frontend выводит новые колонки и добавляет их в CSV.
+  - Расширил горизонтальный скролл таблицы.

@@ -372,6 +372,81 @@
   white-space: nowrap;
 }
 
+.admin-results-scroll .table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 520px;
+}
+
+.admin-results-scroll .table {
+  min-width: 2000px;
+}
+
+.admin-link-button {
+  border: none;
+  background: none;
+  color: #0056d2;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.admin-result-modal {
+  width: min(980px, 95vw);
+  max-height: 85vh;
+  overflow: auto;
+}
+
+.admin-attempt {
+  text-align: left;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-attempt-tasks {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-attempt-task {
+  background: #f8f9fd;
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-attempt-task h4 {
+  margin: 0;
+}
+
+.admin-attempt-image {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.admin-attempt-content {
+  white-space: pre-wrap;
+}
+
+.admin-attempt-answer {
+  font-weight: 600;
+  color: rgba(31, 59, 99, 0.9);
+}
+
+.admin-attempt-answer.is-correct {
+  color: #15803d;
+}
+
+.admin-attempt-answer.is-wrong {
+  color: #b91c1c;
+}
+
 .admin-tag {
   padding: 4px 10px;
   border-radius: 999px;

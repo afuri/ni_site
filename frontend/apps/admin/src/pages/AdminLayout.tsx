@@ -27,6 +27,9 @@ export function AdminLayout() {
             <NavLink to="/users" className={({ isActive }) => (isActive ? "active" : "")}>
               Пользователи
             </NavLink>
+            <NavLink to="/results" className={({ isActive }) => (isActive ? "active" : "")}>
+              Результаты
+            </NavLink>
             <NavLink to="/reports" className={({ isActive }) => (isActive ? "active" : "")}>
               Отчеты
             </NavLink>

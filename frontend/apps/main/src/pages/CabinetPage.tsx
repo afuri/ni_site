@@ -8,6 +8,24 @@ import "../styles/cabinet.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
+const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
+
+const loadMockS3 = (): Record<string, string> => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const raw = window.localStorage.getItem(MOCK_S3_STORAGE_KEY);
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
@@ -39,6 +57,10 @@ type AttemptResult = {
 type AttemptTask = {
   task_id: number;
   title: string;
+  content: string;
+  task_type: "single_choice" | "multi_choice" | "short_text";
+  image_key?: string | null;
+  payload: { image_position?: "before" | "after" };
   current_answer?: unknown;
   answer_payload?: unknown;
 };
@@ -177,6 +199,7 @@ export function CabinetPage() {
   const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
   const [attemptViewStatus, setAttemptViewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [attemptViewError, setAttemptViewError] = useState<string | null>(null);
+  const [attemptImageUrls, setAttemptImageUrls] = useState<Record<string, string>>({});
   const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
 
   const [emailRequestStatus, setEmailRequestStatus] = useState<"idle" | "sending" | "sent" | "error">(
@@ -241,6 +264,60 @@ export function CabinetPage() {
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
   }, [client, user, viewingStudentId]);
+
+  useEffect(() => {
+    if (!attemptView) {
+      setAttemptImageUrls({});
+      return;
+    }
+    const missingKeys = attemptView.tasks
+      .map((task) => task.image_key)
+      .filter((key): key is string => Boolean(key))
+      .filter((key) => !attemptImageUrls[key]);
+    if (missingKeys.length === 0) {
+      return;
+    }
+    let isMounted = true;
+    const loadImages = async () => {
+      const entries = await Promise.all(
+        missingKeys.map(async (key) => {
+          if (key.startsWith("http") || key.startsWith("data:")) {
+            return [key, key] as const;
+          }
+          const mockData = loadMockS3()[key];
+          if (mockData) {
+            return [key, mockData] as const;
+          }
+          try {
+            const safeKey = key.split("/").map(encodeURIComponent).join("/");
+            const payload = await client.request<{ url: string }>({
+              path: `/uploads/${safeKey}`,
+              method: "GET"
+            });
+            return [key, payload.url] as const;
+          } catch {
+            return [key, ""] as const;
+          }
+        })
+      );
+      if (!isMounted) {
+        return;
+      }
+      setAttemptImageUrls((prev) => {
+        const next = { ...prev };
+        entries.forEach(([key, url]) => {
+          if (url) {
+            next[key] = url;
+          }
+        });
+        return next;
+      });
+    };
+    void loadImages();
+    return () => {
+      isMounted = false;
+    };
+  }, [attemptView, attemptImageUrls, client]);
 
   useEffect(() => {
     if (!user || user.role !== "student") {
@@ -1371,22 +1448,40 @@ export function CabinetPage() {
           setAttemptViewStatus("idle");
           setAttemptViewError(null);
           setAttemptView(null);
+          setAttemptImageUrls({});
         }}
-        title={attemptView ? `Попытка №${attemptView.attempt.id}` : "Просмотр попытки"}
+        title={attemptView?.olympiad_title ?? "Просмотр попытки"}
+        className="cabinet-attempt-modal"
       >
         {attemptViewStatus === "loading" ? <p>Загрузка...</p> : null}
         {attemptViewError ? <p className="cabinet-alert">{attemptViewError}</p> : null}
         {attemptView ? (
           <div className="cabinet-attempt">
             <p className="cabinet-hint">{attemptView.olympiad_title}</p>
-            <ul className="cabinet-list">
-              {attemptView.tasks.map((task) => (
-                <li key={task.task_id}>
-                  <strong>{task.title}</strong>
-                  <div className="cabinet-answer">{formatAnswer(task.current_answer ?? task.answer_payload)}</div>
-                </li>
-              ))}
-            </ul>
+            <div className="cabinet-attempt-tasks">
+              {attemptView.tasks.map((task, index) => {
+                const imageUrl = task.image_key ? attemptImageUrls[task.image_key] : null;
+                const imagePosition = task.payload?.image_position ?? "after";
+                return (
+                  <div className="cabinet-attempt-task" key={task.task_id}>
+                    <h4>
+                      Задание {index + 1}. {task.title}
+                    </h4>
+                    {imageUrl && imagePosition === "before" ? (
+                      <img src={imageUrl} alt="Иллюстрация" className="cabinet-attempt-image" />
+                    ) : null}
+                    <div className="cabinet-attempt-content">{task.content}</div>
+                    {imageUrl && imagePosition !== "before" ? (
+                      <img src={imageUrl} alt="Иллюстрация" className="cabinet-attempt-image" />
+                    ) : null}
+                    <div className="cabinet-attempt-answer">
+                      <span>Ответ:</span>
+                      <div className="cabinet-answer">{formatAnswer(task.current_answer ?? task.answer_payload)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
       </Modal>
