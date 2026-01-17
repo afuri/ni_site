@@ -846,6 +846,11 @@ export function CabinetPage() {
     href: `/cabinet?student=${link.student_id}`,
     studentId: link.student_id
   }));
+  const mobileNavItems = [
+    { label: "Результаты", href: "#results", visible: activeUser?.role === "student" },
+    { label: "Профиль", href: "#profile", visible: true },
+    { label: "Сопровождение", href: "#links", visible: true }
+  ].filter((item) => item.visible);
 
   return (
     <div className="cabinet-page">
@@ -1332,6 +1337,13 @@ export function CabinetPage() {
           </div>
         </main>
       </LayoutShell>
+      <nav className="cabinet-mobile-nav" aria-label="Навигация кабинета">
+        {mobileNavItems.map((item) => (
+          <a key={item.href} href={item.href} className="cabinet-mobile-link">
+            {item.label}
+          </a>
+        ))}
+      </nav>
 
       <Modal
         isOpen={isEmailWarningOpen}
