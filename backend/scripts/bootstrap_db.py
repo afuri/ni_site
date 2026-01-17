@@ -56,9 +56,15 @@ def main() -> int:
                 )
                 return 2
 
-    alembic_ini = Path(__file__).resolve().parents[1] / "alembic.ini"
+    project_root = Path(__file__).resolve().parents[1]
+    alembic_ini = project_root / "alembic.ini"
+    alembic_dir = project_root / "alembic"
+    if not alembic_dir.exists():
+        print(f"Alembic directory not found: {alembic_dir}", file=sys.stderr)
+        return 3
     config = Config(str(alembic_ini))
     config.set_main_option("sqlalchemy.url", _sync_url(db_url))
+    config.set_main_option("script_location", str(alembic_dir))
     command.upgrade(config, "head")
     return 0
 

@@ -141,8 +141,12 @@ export function ContentPage() {
   const togglePublish = async (item: ContentItem) => {
     setPublishStatus(item.id);
     try {
+      const path =
+        item.status === "published"
+          ? `/admin/content/${item.id}/unpublish`
+          : `/admin/content/${item.id}/publish`;
       await adminApiClient.request({
-        path: `/admin/content/${item.id}/publish?publish=${item.status !== "published"}`,
+        path,
         method: "POST"
       });
       await loadContent();

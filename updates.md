@@ -1175,3 +1175,21 @@ fulstack 0.11.3
   - Создает черновую олимпиаду “Демоверсия олимпиады” (доступна всем классам, 30 минут, 1 попытка, порог 10%, даты: сегодня — +6 месяцев) если её ещё нет.
   - Добавляет демо-новость и демо-статью (статус draft, автор admin01) с текстами о проекте.
   - Пропускает создание, если запись с таким заголовком и типом уже существует. 
+
+
+fullstack 0.11.4
+
+• Обновил окно завершения олимпиады: теперь при наличии неотвеченных заданий показывается предупреждение “Вы дали ответы не на все задания. Завершить прохождение
+  олимпиады?”, кнопки центрированы, “Завершить” красная, “Вернуться” зелёная; заголовок и текст тоже центрируются (frontend/apps/main/src/pages/OlympiadPage.tsx,
+  frontend/apps/main/src/styles/olympiad.css).
+
+  • Добавил полноэкранный просмотр иллюстраций в задачах: клик по картинке открывает оверлей на весь экран, повторный клик в любом месте закрывает (frontend/apps/
+  main/src/pages/OlympiadPage.tsx, frontend/apps/main/src/styles/olympiad.css).
+
+
+• Исправил кнопку “Снять”: теперь при опубликованном материале вызывается /admin/content/{id}/unpublish, а для черновика — /admin/content/{id}/publish (frontend/
+  apps/admin/src/pages/ContentPage.tsx).
+
+  • Removed the hardcoded Results/News/Articles placeholders and wired the homepage to published content: “Результаты” is fully removed, and “Новости”/“Статьи”
+  render only when the /content API returns items; nav links are shown only when the corresponding section exists (frontend/apps/main/src/pages/HomePage.tsx).
+

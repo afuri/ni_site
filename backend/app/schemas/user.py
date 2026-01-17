@@ -23,7 +23,7 @@ class UserRead(BaseModel):
 
     surname: Optional[str] = None
     name: Optional[str] = None
-    father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
+    father_name: Optional[str] = None
     country: Optional[str] = None
     city: Optional[str] = None
     school: Optional[str] = None

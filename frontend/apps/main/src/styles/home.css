@@ -308,6 +308,10 @@
   background: #f4f6fb;
 }
 
+.home-section-hidden {
+  display: none;
+}
+
 .home-section h2 {
   font-size: 2rem;
   margin-bottom: var(--space-4);

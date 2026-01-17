@@ -102,6 +102,7 @@ export function OlympiadPage() {
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
 
@@ -278,6 +279,12 @@ export function OlympiadPage() {
     }
     return payload.text.trim().length > 0;
   };
+
+  const unansweredCount = useMemo(
+    () => sortedTasks.filter((task) => !isAnswered(task.task_id)).length,
+    [sortedTasks, answers]
+  );
+  const hasUnanswered = unansweredCount > 0;
 
   const updateAnswer = (taskId: number, payload: AnswerPayload | null) => {
     setAnswers((prev) => ({ ...prev, [taskId]: payload }));
@@ -483,6 +490,7 @@ export function OlympiadPage() {
                 src={imageUrls[activeTask.image_key]}
                 alt="Иллюстрация"
                 className="olympiad-task-image"
+                onClick={() => setFullscreenImage(imageUrls[activeTask.image_key])}
               />
             ) : null}
             <div className="olympiad-task-content">{activeTask.content}</div>
@@ -493,6 +501,7 @@ export function OlympiadPage() {
                 src={imageUrls[activeTask.image_key]}
                 alt="Иллюстрация"
                 className="olympiad-task-image"
+                onClick={() => setFullscreenImage(imageUrls[activeTask.image_key])}
               />
             ) : null}
           </div>
@@ -598,16 +607,33 @@ export function OlympiadPage() {
         </div>
       </LayoutShell>
 
-      <Modal isOpen={isFinishOpen} onClose={() => setIsFinishOpen(false)} title="Завершить олимпиаду">
+      <Modal
+        isOpen={isFinishOpen}
+        onClose={() => setIsFinishOpen(false)}
+        title="Завершить олимпиаду"
+        className="olympiad-finish-modal"
+      >
         <div className="olympiad-modal-body">
-          <p>Вы действительно хотите завершить олимпиаду? Ответы будут отправлены.</p>
+          {hasUnanswered ? (
+            <p>Вы дали ответы не на все задания. Завершить прохождение олимпиады?</p>
+          ) : (
+            <p>Вы действительно хотите завершить олимпиаду? Ответы будут отправлены.</p>
+          )}
         </div>
-        <div className="olympiad-modal-actions">
-          <Button variant="outline" onClick={() => setIsFinishOpen(false)}>
-            Отмена
-          </Button>
-          <Button onClick={() => void submitAttempt()} isLoading={isSubmitting}>
+        <div className="olympiad-modal-actions olympiad-finish-actions">
+          <Button
+            onClick={() => void submitAttempt()}
+            isLoading={isSubmitting}
+            className="olympiad-finish-danger"
+          >
             Завершить
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsFinishOpen(false)}
+            className="olympiad-finish-back"
+          >
+            Вернуться
           </Button>
         </div>
       </Modal>
@@ -648,6 +674,12 @@ export function OlympiadPage() {
           </div>
         </div>
       </Modal>
+
+      {fullscreenImage ? (
+        <div className="olympiad-image-overlay" onClick={() => setFullscreenImage(null)}>
+          <img src={fullscreenImage} alt="Иллюстрация" />
+        </div>
+      ) : null}
     </div>
   );
 }
