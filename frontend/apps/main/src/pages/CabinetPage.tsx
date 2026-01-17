@@ -833,16 +833,18 @@ export function CabinetPage() {
                 value={profileForm.login}
                 onChange={(event) => handleProfileChange("login", event.target.value)}
                 error={profileErrors.login}
+                helperText="Не менее 5 символов. Только английские буквы и цифры. Начинаться должен с буквы."
               />
               <div className="cabinet-email-row">
-                <TextInput
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={profileForm.email}
-                  onChange={(event) => handleProfileChange("email", event.target.value)}
-                  error={profileErrors.email}
-                />
+              <TextInput
+                label="Email"
+                name="email"
+                type="email"
+                value={profileForm.email}
+                onChange={(event) => handleProfileChange("email", event.target.value)}
+                error={profileErrors.email}
+                helperText="Используйте действующий email — понадобится для входа и восстановления."
+              />
                 <div className="cabinet-email-status">
                   <span
                     className={
@@ -878,6 +880,7 @@ export function CabinetPage() {
                 value={profileForm.surname}
                 onChange={(event) => handleProfileChange("surname", event.target.value)}
                 error={profileErrors.surname}
+                helperText="Первая буква заглавная, можно пробел и дефис."
               />
               <TextInput
                 label="Имя"
@@ -885,6 +888,7 @@ export function CabinetPage() {
                 value={profileForm.name}
                 onChange={(event) => handleProfileChange("name", event.target.value)}
                 error={profileErrors.name}
+                helperText="Первая буква заглавная, можно пробел и дефис."
               />
               <TextInput
                 label="Отчество"
@@ -892,6 +896,7 @@ export function CabinetPage() {
                 value={profileForm.fatherName}
                 onChange={(event) => handleProfileChange("fatherName", event.target.value)}
                 error={profileErrors.fatherName}
+                helperText="Русские буквы, каждая часть с заглавной, можно пробел и дефис."
               />
               <div className="field">
                 <span className="field-label">Пол</span>
@@ -927,6 +932,7 @@ export function CabinetPage() {
                 value={profileForm.city}
                 onChange={(event) => handleProfileChange("city", event.target.value)}
                 error={profileErrors.city}
+                helperText="Первая буква заглавная, можно пробел и дефис."
               />
               <TextInput
                 label="Школа"
@@ -952,7 +958,9 @@ export function CabinetPage() {
                   </select>
                   {profileErrors.classGrade ? (
                     <span className="field-helper field-helper-error">{profileErrors.classGrade}</span>
-                  ) : null}
+                  ) : (
+                    <span className="field-helper">Обязательно для ученика.</span>
+                  )}
                 </label>
               ) : null}
               {activeUser?.role === "teacher" ? (
@@ -962,6 +970,7 @@ export function CabinetPage() {
                   value={profileForm.subject}
                   onChange={(event) => handleProfileChange("subject", event.target.value)}
                   error={profileErrors.subject}
+                  helperText="Только русские буквы."
                 />
               ) : null}
 

@@ -1146,3 +1146,13 @@ fullstack 0.11.1
   - Frontend registration/profile validation updated to match the new rules for surname, name, and city; helper texts adjusted accordingly (frontend/apps/main/
     src/pages/HomePage.tsx, frontend/apps/main/src/pages/CabinetPage.tsx).
 
+fullstack 0.11.2
+
+ - Relaxed Cyrillic validation across backend schemas to allow capitalized words with internal spaces/hyphens for surname, name, and city while keeping the first
+    letter uppercase (auth, user, and teacher-student schemas).
+  - Frontend registration validation and helper texts updated to match the new rules; live password match feedback remains (frontend/apps/main/src/pages/
+    HomePage.tsx).
+  - Added matching validation helper hints to the user cabinet profile form (login/email/names/city, class requirement, subject) so users see the same rules when
+    editing their profile (frontend/apps/main/src/pages/CabinetPage.tsx).
+
+    
