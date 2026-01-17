@@ -1216,3 +1216,33 @@ fullstack 0.11.5
 
   - В backend/tests/test_api_users.py добавлены тесты: студент может сохранить manual_teachers, учитель — нет.
   - В backend/tests/test_migrations_schema.py добавлен контроль наличия колонки manual_teachers у users.
+
+
+fullstack 0.11.6
+
+• Сделал центрирование для всех модалок на уровне базового компонента и добил отдельные экшены в кастомных модалках.
+
+  Изменения:
+
+  - Центрирование заголовка/описания, текста и кнопок на уровне UI‑модалки в frontend/packages/ui/src/styles/components.css.
+  - Центрирование кнопок в модалке инструкции на главной: frontend/apps/main/src/styles/home.css.
+  - Центрирование кнопок во всех модалках олимпиады: frontend/apps/main/src/styles/olympiad.css.
+
+  • Сделал правки для модалки запроса связи: убрал строку заголовков таблицы и заменил текст подсказки.
+  Обновлено в frontend/apps/main/src/pages/CabinetPage.tsx.
+
+  • Заменил кнопки на галочку и крестик в модалке запроса связи.
+  Файл: frontend/apps/main/src/pages/CabinetPage.tsx.
+
+
+• Сделал правки для модалки запроса связи: убрал строку заголовков таблицы и заменил текст подсказки.
+  Обновлено в frontend/apps/main/src/pages/CabinetPage.tsx.
+
+• Заменил кнопки на галочку и крестик в модалке запроса связи.
+  Файл: frontend/apps/main/src/pages/CabinetPage.tsx.
+
+  Добавил кнопку «?» слева от таймера и полноэкранный показ картинки. Повторный клик закрывает.
+
+  Где:
+
+  - frontend/apps/main/src/pages/OlympiadPage.tsx — кнопка в хедере и оверлей с help.png.

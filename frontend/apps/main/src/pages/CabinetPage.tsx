@@ -1273,14 +1273,8 @@ export function CabinetPage() {
         title="Запрос на связь учитель — ученик"
       >
         <div className="cabinet-link-modal">
-          <p className="cabinet-hint">Выберите действие для каждого запроса.</p>
+          <p className="cabinet-hint">Вам поступил запрос на сопровождение:</p>
           <div className="cabinet-link-table">
-            <div className="cabinet-link-row cabinet-link-header">
-              <span>№</span>
-              <span>ФИО запросившего</span>
-              <span>+</span>
-              <span>-</span>
-            </div>
             {pendingLinks.map((link, index) => {
               const requesterParts =
                 user.role === "teacher"
@@ -1302,14 +1296,14 @@ export function CabinetPage() {
                     className={`cabinet-decision-button cabinet-decision-approve ${decision === "approve" ? "is-active" : ""}`.trim()}
                     onClick={() => handleLinkDecision(link.id, "approve")}
                   >
-                    +
+                    ✓
                   </button>
                   <button
                     type="button"
                     className={`cabinet-decision-button cabinet-decision-reject ${decision === "reject" ? "is-active" : ""}`.trim()}
                     onClick={() => handleLinkDecision(link.id, "reject")}
                   >
-                    -
+                    ✕
                   </button>
                 </div>
               );

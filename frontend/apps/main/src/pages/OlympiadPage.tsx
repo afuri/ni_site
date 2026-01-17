@@ -4,6 +4,7 @@ import { createApiClient } from "@api";
 import { createAuthStorage } from "@utils";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
+import instructionImage from "../assets/help.png";
 import "../styles/olympiad.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
@@ -103,6 +104,7 @@ export function OlympiadPage() {
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
 
@@ -448,6 +450,16 @@ export function OlympiadPage() {
         nav={null}
         actions={
             <div className="olympiad-header-actions">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFullscreenImage(null);
+                  setIsHelpOpen((prev) => !prev);
+                }}
+                className="olympiad-finish-button olympiad-help-button"
+              >
+                ?
+              </Button>
               <div className="olympiad-timer">{timeLabel}</div>
               <div className="olympiad-user">{user?.login ?? "Гость"}</div>
               <Button
@@ -683,6 +695,11 @@ export function OlympiadPage() {
       {fullscreenImage ? (
         <div className="olympiad-image-overlay" onClick={() => setFullscreenImage(null)}>
           <img src={fullscreenImage} alt="Иллюстрация" />
+        </div>
+      ) : null}
+      {isHelpOpen ? (
+        <div className="olympiad-image-overlay" onClick={() => setIsHelpOpen(false)}>
+          <img src={instructionImage} alt="Инструкция" />
         </div>
       ) : null}
     </div>
