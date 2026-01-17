@@ -1346,3 +1346,4 @@ fullstack 0.11.10
   - backend/app/core/config.py: mark default JWT secret and default DB password (changethis) as missing in prod/stage, so startup fails if they’re left unchanged.
   - frontend/apps/admin/src/pages/TasksPage.tsx: escape HTML (incl. quotes), render inline Markdown safely, and drop javascript: links in preview.
 
+fullstack 0.11.11

@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     EMAIL_BASE_URL: str = "http://localhost:3000"
     EMAIL_FROM: str = "no-reply@example.com"
+    EMAIL_FROM_NAME: str | None = None
     EMAIL_VERIFY_TTL_HOURS: int = 24
     PASSWORD_RESET_TTL_HOURS: int = 2
     TEMP_PASSWORD_TTL_HOURS: int = 24
@@ -50,6 +51,7 @@ class Settings(BaseSettings):
     SMTP_USER: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
 
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
