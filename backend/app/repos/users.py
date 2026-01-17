@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from app.core import error_codes as codes
@@ -127,6 +129,7 @@ class UsersRepo:
         subject: str | None,
         gender: str | None,
         subscription: int,
+        manual_teachers: list[dict] | None = None,
     ) -> User:
         gender_value = self._normalize_gender(gender)
         user = User(
@@ -147,6 +150,7 @@ class UsersRepo:
             subject=subject,
             gender=gender_value,
             subscription=subscription,
+            manual_teachers=manual_teachers or [],
         )
         self.db.add(user)
         try:

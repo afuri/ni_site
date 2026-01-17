@@ -7,6 +7,12 @@ export type TokenPair = {
   must_change_password?: boolean;
 };
 
+export type ManualTeacher = {
+  id: number;
+  full_name: string;
+  subject: string;
+};
+
 export type UserRead = {
   id: number;
   login: string;
@@ -26,6 +32,7 @@ export type UserRead = {
   class_grade: number | null;
   gender: "male" | "female" | null;
   subscription: number;
+  manual_teachers: ManualTeacher[];
   subject: string | null;
 };
 

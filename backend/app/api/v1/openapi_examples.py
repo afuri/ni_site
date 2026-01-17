@@ -32,6 +32,7 @@ EXAMPLE_USER_READ: dict = {
     "class_grade": 7,
     "gender": "male",
     "subscription": 0,
+    "manual_teachers": [{"id": 1, "full_name": "Иванов Иван Иванович", "subject": "Math"}],
     "subject": None,
 }
 

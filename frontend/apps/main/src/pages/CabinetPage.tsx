@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
-import { createApiClient, type UserRead } from "@api";
+import { createApiClient, type ManualTeacher, type UserRead } from "@api";
 import { createAuthStorage } from "@utils";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
@@ -123,6 +123,20 @@ const buildProfileFromUser = (currentUser: UserRead): ProfileForm => ({
   subject: currentUser.subject ?? ""
 });
 
+const mapManualTeachersFromUser = (currentUser: UserRead): TeacherEntry[] =>
+  (currentUser.manual_teachers ?? []).map((teacher) => ({
+    id: teacher.id,
+    fullName: teacher.full_name,
+    subject: teacher.subject
+  }));
+
+const mapManualTeachersToPayload = (entries: TeacherEntry[]): ManualTeacher[] =>
+  entries.map((teacher) => ({
+    id: teacher.id,
+    full_name: teacher.fullName,
+    subject: teacher.subject
+  }));
+
 export function CabinetPage() {
   const { status, user, tokens, setSession, signOut } = useAuth();
   const [searchParams] = useSearchParams();
@@ -227,6 +241,14 @@ export function CabinetPage() {
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
   }, [client, user, viewingStudentId]);
+
+  useEffect(() => {
+    if (!user || user.role !== "student") {
+      setTeacherList([]);
+      return;
+    }
+    setTeacherList(mapManualTeachersFromUser(user));
+  }, [user]);
 
   useEffect(() => {
     if (activeUser && !activeUser.is_email_verified) {
@@ -556,7 +578,15 @@ export function CabinetPage() {
     setDeleteStatus("deleting");
     try {
       if (deleteTarget.kind === "manual-teacher") {
-        setTeacherList((prev) => prev.filter((entry) => entry.id !== deleteTarget.manualId));
+        const prevList = teacherList;
+        const nextList = prevList.filter((entry) => entry.id !== deleteTarget.manualId);
+        setTeacherList(nextList);
+        const saved = await saveManualTeachers(nextList);
+        if (!saved) {
+          setTeacherList(prevList);
+          setDeleteStatus("error");
+          return;
+        }
       } else if (deleteTarget.kind === "linked-teacher") {
         await client.request({
           path: `/student/teachers/${deleteTarget.teacherId}`,
@@ -644,20 +674,43 @@ export function CabinetPage() {
     return parts.filter(Boolean).join(" ");
   };
 
-  const addTeacher = () => {
+  const saveManualTeachers = async (nextList: TeacherEntry[]) => {
+    if (!user || user.role !== "student" || viewingStudentId) {
+      return true;
+    }
+    try {
+      const updated = await client.request<UserRead>({
+        path: "/users/me",
+        method: "PUT",
+        body: { manual_teachers: mapManualTeachersToPayload(nextList) }
+      });
+      if (tokens) {
+        setSession(tokens, updated);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const addTeacher = async () => {
     if (!teacherName || !teacherSubject) {
       return;
     }
-    setTeacherList((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        fullName: teacherName.trim(),
-        subject: teacherSubject.trim()
-      }
-    ]);
+    const entry = {
+      id: Date.now(),
+      fullName: teacherName.trim(),
+      subject: teacherSubject.trim()
+    };
+    const prevList = teacherList;
+    const nextList = [...prevList, entry];
+    setTeacherList(nextList);
     setTeacherName("");
     setTeacherSubject("");
+    const saved = await saveManualTeachers(nextList);
+    if (!saved) {
+      setTeacherList(prevList);
+    }
   };
 
   const sendLinkRequest = async () => {

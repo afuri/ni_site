@@ -1193,3 +1193,26 @@ fullstack 0.11.4
   • Removed the hardcoded Results/News/Articles placeholders and wired the homepage to published content: “Результаты” is fully removed, and “Новости”/“Статьи”
   render only when the /content API returns items; nav links are shown only when the corresponding section exists (frontend/apps/main/src/pages/HomePage.tsx).
 
+fullstack 0.11.5
+
+• Сделал модалку “Результат” полностью центрированной: заголовок, текст и кнопка по центру. Добавил отдельные классы, чтобы не затрагивать другие модальные окна
+  (frontend/apps/main/src/pages/OlympiadPage.tsx, frontend/apps/main/src/styles/olympiad.css).
+
+• Сохранил вручную добавленных учителей в записи пользователя и синхронизировал список с БД при добавлении/удалении; со стороны backend запретил менять этот
+  список не‑студентам.
+
+  Детали и где:
+
+  - В backend/app/api/v1/users.py добавил гейт, чтобы manual_teachers мог обновлять только студент.
+  - В backend/app/api/v1/openapi_examples.py дополнил пример пользователя полем manual_teachers.
+  - В frontend/packages/api/src/types.ts добавил тип ManualTeacher и поле manual_teachers в UserRead.
+  - В frontend/apps/main/src/pages/CabinetPage.tsx загрузка ручных учителей из профиля, сохранение в БД через /users/me при добавлении/удалении, откат списка при
+    ошибке.
+
+
+• Добавил pytest‑покрытие для сохранения ручных учителей и для схемы БД.
+
+  Что изменено:
+
+  - В backend/tests/test_api_users.py добавлены тесты: студент может сохранить manual_teachers, учитель — нет.
+  - В backend/tests/test_migrations_schema.py добавлен контроль наличия колонки manual_teachers у users.

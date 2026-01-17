@@ -647,7 +647,12 @@ export function OlympiadPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={isResultOpen} onClose={() => setIsResultOpen(false)} title="Результат">
+      <Modal
+        isOpen={isResultOpen}
+        onClose={() => setIsResultOpen(false)}
+        title="Результат"
+        className="olympiad-result-modal"
+      >
         <div className="olympiad-result">
           <div className="olympiad-modal-body">
             {result?.results_released ? (
@@ -669,7 +674,7 @@ export function OlympiadPage() {
               </p>
             </div>
           ) : null}
-          <div className="olympiad-modal-actions">
+          <div className="olympiad-modal-actions olympiad-result-actions">
             <Button onClick={() => navigate("/cabinet")}>В личный кабинет</Button>
           </div>
         </div>

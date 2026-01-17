@@ -10,6 +10,12 @@ FATHER_NAME_RE = r"^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*
 GENDER_VALUES = ("male", "female")
 
 
+class ManualTeacher(BaseModel):
+    id: int
+    full_name: str = Field(min_length=1, max_length=255)
+    subject: str = Field(min_length=1, max_length=255)
+
+
 class UserRead(BaseModel):
     id: int
     login: str
@@ -30,6 +36,7 @@ class UserRead(BaseModel):
     class_grade: Optional[int] = None
     gender: Optional[str] = None
     subscription: int = Field(default=0, ge=0, le=5)
+    manual_teachers: list["ManualTeacher"] = Field(default_factory=list)
 
     subject: Optional[str] = None
 
@@ -47,6 +54,7 @@ class UserUpdate(BaseModel):
     class_grade: Optional[int] = Field(default=None)
     gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
     subscription: Optional[int] = Field(default=None, ge=0, le=5)
+    manual_teachers: Optional[list["ManualTeacher"]] = None
 
     subject: Optional[str] = Field(default=None, max_length=120)
 
@@ -79,6 +87,7 @@ class AdminUserUpdate(BaseModel):
     class_grade: Optional[int] = Field(default=None)
     gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
     subscription: Optional[int] = Field(default=None, ge=0, le=5)
+    manual_teachers: Optional[list["ManualTeacher"]] = None
 
     subject: Optional[str] = Field(default=None, max_length=120)
 

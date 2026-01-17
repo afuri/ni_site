@@ -50,6 +50,8 @@ async def update_me(
     # Простейшие role-гейты на поля (MVP)
     if user.role != UserRole.teacher:
         data.pop("subject", None)
+    if user.role != UserRole.student:
+        data.pop("manual_teachers", None)
     # Подписка пока системная, не редактируется с фронта
     data.pop("subscription", None)
 

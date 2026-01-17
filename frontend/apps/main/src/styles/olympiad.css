@@ -287,6 +287,21 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
 }
 
+.olympiad-result-modal .modal-header {
+  justify-content: center;
+  text-align: center;
+}
+
+.olympiad-result-modal .modal-close {
+  position: absolute;
+  right: var(--space-5);
+  top: var(--space-5);
+}
+
+.olympiad-result-actions {
+  justify-content: center;
+}
+
 @media (max-width: 720px) {
   .olympiad-header-actions {
     flex-wrap: wrap;

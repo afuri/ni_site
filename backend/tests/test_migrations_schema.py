@@ -24,3 +24,15 @@ async def test_users_has_gender_and_subscription(db_engine):
     assert {"gender", "subscription"}.issubset(names)
     subscription_col = next(col for col in columns if col["name"] == "subscription")
     assert subscription_col["nullable"] is False
+
+
+@pytest.mark.asyncio
+async def test_users_has_manual_teachers(db_engine):
+    async with db_engine.begin() as conn:
+        def _get_columns(sync_conn):
+            inspector = inspect(sync_conn)
+            return inspector.get_columns("users")
+
+        columns = await conn.run_sync(_get_columns)
+    names = {col["name"] for col in columns}
+    assert "manual_teachers" in names

@@ -2,6 +2,7 @@
 import enum
 from datetime import datetime
 from sqlalchemy import String, Boolean, Enum, Integer, DateTime
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -46,6 +47,7 @@ class User(Base):
     class_grade: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 0..11
     gender: Mapped[Gender | None] = mapped_column(Enum(Gender), nullable=True)
     subscription: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    manual_teachers: Mapped[list[dict]] = mapped_column(JSONB, default=list)
 
     # teacher-only (MVP)
     subject: Mapped[str | None] = mapped_column(String(120), nullable=True)
