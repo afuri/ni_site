@@ -1332,3 +1332,17 @@ fullstack 0.11.8
 
   - frontend/apps/main/src/pages/CabinetPage.tsx — добавил мобильное меню с пунктами (Результаты/Профиль/Сопровождение) и показ по роли.
   - frontend/apps/main/src/styles/cabinet.css — стили и фиксированная панель снизу; увеличен нижний отступ контента, чтобы меню не перекрывало блоки.
+
+
+fullstack 0.11.10
+
+  Implemented the three security fixes: locked down /uploads access to known task/content keys with role-aware checks, made prod/stage fail fast on default
+  secrets, and sanitized admin task Markdown preview to prevent XSS.
+
+  Details and where:
+
+  - backend/app/api/v1/uploads.py: validate key format/prefix, require DB reference in tasks or content, and for non‑admins only allow task images from published
+    olympiads and content images from published items; return 404 when not found.
+  - backend/app/core/config.py: mark default JWT secret and default DB password (changethis) as missing in prod/stage, so startup fails if they’re left unchanged.
+  - frontend/apps/admin/src/pages/TasksPage.tsx: escape HTML (incl. quotes), render inline Markdown safely, and drop javascript: links in preview.
+

@@ -114,6 +114,9 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+DEFAULT_DATABASE_URL = "postgresql+asyncpg://postgres:changethis@localhost:5432/ni_site"
+DEFAULT_JWT_SECRET = "change_me"
+
 
 def validate_required_settings() -> list[str]:
     required = {
@@ -129,4 +132,14 @@ def validate_required_settings() -> list[str]:
         required["STORAGE_SECRET_KEY"] = settings.STORAGE_SECRET_KEY
         required["STORAGE_PUBLIC_BASE_URL"] = settings.STORAGE_PUBLIC_BASE_URL
     missing = [key for key, value in required.items() if not value]
+    if settings.ENV in {"prod", "stage"}:
+        if settings.JWT_SECRETS:
+            if any(secret.strip() == DEFAULT_JWT_SECRET for secret in settings.JWT_SECRETS.split(",")):
+                missing.append("JWT_SECRET")
+        elif settings.JWT_SECRET == DEFAULT_JWT_SECRET:
+            missing.append("JWT_SECRET")
+        if settings.DATABASE_URL == DEFAULT_DATABASE_URL or ":changethis@" in settings.DATABASE_URL:
+            missing.append("DATABASE_URL")
+    if missing:
+        missing = list(dict.fromkeys(missing))
     return missing

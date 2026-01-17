@@ -133,7 +133,12 @@ const getMockS3Object = (key: string) => {
 };
 
 const escapeHtml = (value: string) =>
-  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const renderMarkdown = (value: string) => {
   const lines = value.split(/\r?\n/);
@@ -151,12 +156,17 @@ const renderMarkdown = (value: string) => {
   };
 
   const formatInline = (text: string) => {
-    let formatted = text;
-    formatted = formatted.replace(/`([^`]+)`/g, (_, code) => `<code>${escapeHtml(code)}</code>`);
+    let formatted = escapeHtml(text);
+    formatted = formatted.replace(/`([^`]+)`/g, "<code>$1</code>");
     formatted = formatted.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     formatted = formatted.replace(/\*([^*]+)\*/g, "<em>$1</em>");
     formatted = formatted.replace(/~~([^~]+)~~/g, "<del>$1</del>");
-    formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+    formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
+      if (/^javascript:/i.test(url.trim())) {
+        return label;
+      }
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
     return formatted;
   };
 

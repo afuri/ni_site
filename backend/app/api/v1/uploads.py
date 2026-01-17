@@ -1,12 +1,20 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps_auth import require_admin_or_moderator, get_current_user
+from app.core.deps import get_db
 import re
 
 from app.core.errors import http_error
 from app.core.storage import presign_get, presign_put, presign_post
 from app.core.config import settings
 from app.core import error_codes as codes
+from app.models.content import ContentItem, ContentStatus
+from app.models.olympiad import Olympiad
+from app.models.olympiad_task import OlympiadTask
+from app.models.task import Task
+from app.models.user import UserRole
 from app.schemas.uploads import (
     UploadPresignRequest,
     UploadPresignResponse,
@@ -26,6 +34,7 @@ router = APIRouter(prefix="/uploads")
 
 ALLOWED_PREFIXES = ("tasks", "content")
 PREFIX_RE = re.compile(r"^[a-z0-9][a-z0-9/_-]*$")
+KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/_. -]*$")
 MAX_PREFIX_SEGMENTS = 3
 
 
@@ -33,6 +42,52 @@ def _normalize_prefix(prefix: str) -> str:
     normalized = prefix.strip().strip("/")
     normalized = "/".join(part for part in normalized.split("/") if part)
     return normalized
+
+
+def _normalize_key(key: str) -> str:
+    return key.strip().strip("/")
+
+
+def _validate_key(key: str) -> str:
+    normalized = _normalize_key(key)
+    if normalized in ("", ".", ".."):
+        raise http_error(422, codes.INVALID_PREFIX)
+    segments = normalized.split("/")
+    if any(not segment for segment in segments):
+        raise http_error(422, codes.INVALID_PREFIX)
+    if any(segment in (".", "..") for segment in segments):
+        raise http_error(422, codes.INVALID_PREFIX)
+    if not KEY_RE.match(normalized):
+        raise http_error(422, codes.INVALID_PREFIX)
+    if segments[0] not in ALLOWED_PREFIXES:
+        raise http_error(422, codes.INVALID_PREFIX)
+    return normalized
+
+
+def _is_admin_or_moderator(user) -> bool:
+    if user.role == UserRole.admin:
+        return True
+    return user.role == UserRole.teacher and user.is_moderator
+
+
+async def _task_image_access(db: AsyncSession, key: str, *, allow_unpublished: bool) -> bool:
+    stmt = select(Task.id).where(Task.image_key == key)
+    if not allow_unpublished:
+        stmt = (
+            stmt.join(OlympiadTask, OlympiadTask.task_id == Task.id)
+            .join(Olympiad, Olympiad.id == OlympiadTask.olympiad_id)
+            .where(Olympiad.is_published.is_(True))
+        )
+    res = await db.execute(stmt.limit(1))
+    return res.scalar_one_or_none() is not None
+
+
+async def _content_image_access(db: AsyncSession, key: str, *, allow_unpublished: bool) -> bool:
+    stmt = select(ContentItem.id).where(ContentItem.image_keys.contains([key]))
+    if not allow_unpublished:
+        stmt = stmt.where(ContentItem.status == ContentStatus.published)
+    res = await db.execute(stmt.limit(1))
+    return res.scalar_one_or_none() is not None
 
 
 @router.post(
@@ -134,9 +189,21 @@ async def presign_upload_post(
 async def get_upload_url(
     key: str,
     user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
+    normalized = _validate_key(key)
+    allow_unpublished = _is_admin_or_moderator(user)
+    prefix = normalized.split("/", 1)[0]
+    if prefix == "tasks":
+        allowed = await _task_image_access(db, normalized, allow_unpublished=allow_unpublished)
+        if not allowed:
+            raise http_error(404, codes.TASK_NOT_FOUND)
+    elif prefix == "content":
+        allowed = await _content_image_access(db, normalized, allow_unpublished=allow_unpublished)
+        if not allowed:
+            raise http_error(404, codes.CONTENT_NOT_FOUND)
     try:
-        url = presign_get(key=key)
+        url = presign_get(key=normalized)
     except RuntimeError:
         raise http_error(503, codes.STORAGE_UNAVAILABLE)
     return UploadGetResponse(url=url, expires_in=settings.STORAGE_PRESIGN_EXPIRES_SEC)
