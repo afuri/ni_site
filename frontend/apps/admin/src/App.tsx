@@ -12,6 +12,7 @@ import { ContentPage } from "./pages/ContentPage";
 import { UsersPage } from "./pages/UsersPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { ResultsPage } from "./pages/ResultsPage";
+import { SchoolsPage } from "./pages/SchoolsPage";
 
 function RedirectIfAuthenticated() {
   const { status, user } = useAuth();
@@ -40,6 +41,7 @@ export function App() {
             <Route path="olympiads" element={<OlympiadsPage />} />
             <Route path="content" element={<ContentPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="schools" element={<SchoolsPage />} />
             <Route path="results" element={<ResultsPage />} />
             <Route path="reports" element={<ReportsPage />} />
           </Route>

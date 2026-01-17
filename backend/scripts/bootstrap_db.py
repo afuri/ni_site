@@ -21,6 +21,7 @@ import app.models.auth_token  # noqa: F401
 import app.models.audit_log  # noqa: F401
 import app.models.content  # noqa: F401
 import app.models.user_change  # noqa: F401
+import app.models.school  # noqa: F401
 
 
 def _sync_url(url: str) -> str:

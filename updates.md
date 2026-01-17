@@ -1346,4 +1346,78 @@ fullstack 0.11.10
   - backend/app/core/config.py: mark default JWT secret and default DB password (changethis) as missing in prod/stage, so startup fails if they’re left unchanged.
   - frontend/apps/admin/src/pages/TasksPage.tsx: escape HTML (incl. quotes), render inline Markdown safely, and drop javascript: links in preview.
 
-fullstack 0.11.11
+fullstack 0.11.12
+
+Added a schools directory table with lookup endpoints and wired the registration/profile forms to use datalist suggestions for city/school; also included a
+  loader script to import schools.xlsx into the DB (deduped, optional truncate). Backend pieces are in backend/app/models/school.py, backend/app/api/v1/lookup.py,
+  backend/alembic/versions/ab12cd34ef56_add_schools_table.py, and backend/scripts/load_schools.py. Frontend hookups are in frontend/apps/main/src/pages/
+  HomePage.tsx, frontend/apps/main/src/pages/CabinetPage.tsx, and the client in frontend/packages/api/src/client.ts.
+
+
+
+Сделал скрипт load_school.py, который читает backend/scripts/schools.csv (по умолчанию) и загружает школы в таблицу schools.
+
+  Запуск:
+
+  python backend/scripts/load_school.py
+
+  Если нужно предварительно очистить таблицу:
+
+  python backend/scripts/load_school.py --truncate
+
+  Файл: backend/scripts/load_school.py.
+
+
+Обновил модель/миграции таблицы schools, расширил загрузчик load_school.py под schools.csv, и добавил в админке раздел «Школы» с формой добавления и таблицей.
+
+  Что сделано
+
+  - Добавлены поля full_school_name, email, consorcium, peterson, sirius в модель и БД, с проверкой 0/1 для флагов.
+  - load_school.py теперь читает все поля из backend/scripts/schools.csv.
+  - В админке добавлен раздел «Школы» с формой создания и таблицей списка.
+
+  Файлы
+
+  - backend/app/models/school.py
+  - backend/alembic/versions/c3d4e5f6a7b8_add_school_fields.py
+  - backend/scripts/load_school.py
+  - backend/app/schemas/school.py
+  - backend/app/api/v1/admin_schools.py
+  - backend/app/api/v1/router.py
+  - frontend/apps/admin/src/pages/SchoolsPage.tsx
+  - frontend/apps/admin/src/App.tsx
+  - frontend/apps/admin/src/pages/AdminLayout.tsx
+  - frontend/apps/admin/src/styles/admin.css
+
+
+• Добавил подсчет пользователей по школе в админском списке и фильтры по городу/школе. На бэке список школ теперь возвращает user_count (0, если пользователей
+  нет), на фронте добавлена колонка и поля фильтра.
+
+  Где сделано
+
+  - backend/app/api/v1/admin_schools.py — агрегат по users и user_count в ответе
+  - backend/app/schemas/school.py — схема SchoolAdminRead
+  - frontend/apps/admin/src/pages/SchoolsPage.tsx — колонка «Пользователи», фильтры по городу/школе
+  - frontend/apps/admin/src/styles/admin.css — стиль admin-hint-error
+
+
+• Сделал: фильтры в одну строку с кнопкой «Обновить» той же ширины, статус “выбрано X из Y”, и строку ИТОГО по числовым полям в конце таблицы. Добавил
+  backend‑summary для общего количества школ.
+
+  Изменения
+
+  - backend/app/api/v1/admin_schools.py — эндпоинт /admin/schools/summary
+  - backend/app/schemas/school.py — SchoolSummary
+  - frontend/apps/admin/src/pages/SchoolsPage.tsx — фильтры в одну строку, статус, итоговая строка
+  - frontend/apps/admin/src/styles/admin.css — стили для одной строки фильтров
+
+
+Сделал: фильтры в одну строку с кнопкой «Обновить» той же ширины, статус “выбрано X из Y”, и строку ИТОГО по числовым полям в конце таблицы. Добавил
+  backend‑summary для общего количества школ.
+
+  Изменения
+
+  - backend/app/api/v1/admin_schools.py — эндпоинт /admin/schools/summary
+  - backend/app/schemas/school.py — SchoolSummary
+  - frontend/apps/admin/src/pages/SchoolsPage.tsx — фильтры в одну строку, статус, итоговая строка
+  - frontend/apps/admin/src/styles/admin.css — стили для одной строки фильтров

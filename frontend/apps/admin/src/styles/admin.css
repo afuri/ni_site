@@ -101,6 +101,10 @@
   font-size: 0.95rem;
 }
 
+.admin-hint-error {
+  color: #b91c1c;
+}
+
 .admin-alert {
   padding: var(--space-3);
   background: rgba(0, 86, 210, 0.1);
@@ -111,6 +115,11 @@
 .admin-error {
   color: #b91c1c;
   font-size: 0.9rem;
+}
+
+.admin-form-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .admin-form {
@@ -343,6 +352,34 @@
 .admin-table-actions {
   display: flex;
   gap: var(--space-2);
+}
+
+.admin-table-actions-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.admin-filter-row {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: end;
+}
+
+.admin-filter-button {
+  width: 100%;
+}
+
+.admin-filter-button button {
+  width: 100%;
+}
+
+.admin-table-meta {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .admin-table-scroll {

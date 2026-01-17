@@ -189,8 +189,12 @@ export function CabinetPage() {
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
   const [profileStatus, setProfileStatus] = useState<"idle" | "saving" | "error">("idle");
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
+  const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const cityLookupTimer = useRef<number | null>(null);
+  const schoolLookupTimer = useRef<number | null>(null);
   const [viewedStudent, setViewedStudent] = useState<UserRead | null>(null);
 
   const [attemptResults, setAttemptResults] = useState<AttemptResult[]>([]);
@@ -264,6 +268,56 @@ export function CabinetPage() {
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
   }, [client, user, viewingStudentId]);
+
+  useEffect(() => {
+    const query = profileForm.city.trim();
+    if (cityLookupTimer.current !== null) {
+      window.clearTimeout(cityLookupTimer.current);
+    }
+    if (!query) {
+      setCitySuggestions([]);
+      setSchoolSuggestions([]);
+      return;
+    }
+    cityLookupTimer.current = window.setTimeout(async () => {
+      try {
+        const cities = await client.lookup.cities({ query, limit: 20 });
+        setCitySuggestions(cities);
+      } catch {
+        setCitySuggestions([]);
+      }
+    }, 250);
+    return () => {
+      if (cityLookupTimer.current !== null) {
+        window.clearTimeout(cityLookupTimer.current);
+      }
+    };
+  }, [client, profileForm.city]);
+
+  useEffect(() => {
+    const cityValue = profileForm.city.trim();
+    const query = profileForm.school.trim();
+    if (schoolLookupTimer.current !== null) {
+      window.clearTimeout(schoolLookupTimer.current);
+    }
+    if (!cityValue) {
+      setSchoolSuggestions([]);
+      return;
+    }
+    schoolLookupTimer.current = window.setTimeout(async () => {
+      try {
+        const schools = await client.lookup.schools({ city: cityValue, query, limit: 50 });
+        setSchoolSuggestions(schools);
+      } catch {
+        setSchoolSuggestions([]);
+      }
+    }, 250);
+    return () => {
+      if (schoolLookupTimer.current !== null) {
+        window.clearTimeout(schoolLookupTimer.current);
+      }
+    };
+  }, [client, profileForm.city, profileForm.school]);
 
   useEffect(() => {
     if (!attemptView) {
@@ -1093,14 +1147,26 @@ export function CabinetPage() {
                 onChange={(event) => handleProfileChange("city", event.target.value)}
                 error={profileErrors.city}
                 helperText="Первая буква заглавная, можно пробел и дефис."
+                list="profile-city-suggestions"
               />
+              <datalist id="profile-city-suggestions">
+                {citySuggestions.map((city) => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
               <TextInput
                 label="Школа"
                 name="school"
                 value={profileForm.school}
                 onChange={(event) => handleProfileChange("school", event.target.value)}
                 error={profileErrors.school}
+                list="profile-school-suggestions"
               />
+              <datalist id="profile-school-suggestions">
+                {schoolSuggestions.map((school) => (
+                  <option key={school} value={school} />
+                ))}
+              </datalist>
               {activeUser?.role === "student" ? (
                 <label className="field">
                   <span className="field-label">Класс</span>

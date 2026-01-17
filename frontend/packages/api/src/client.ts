@@ -56,6 +56,10 @@ type ApiClient = {
     register: (payload: RegisterPayload) => Promise<UserRead>;
     me: () => Promise<UserRead>;
   };
+  lookup: {
+    cities: (options?: { query?: string; limit?: number }) => Promise<string[]>;
+    schools: (options: { city: string; query?: string; limit?: number }) => Promise<string[]>;
+  };
 };
 
 const JSON_HEADERS = {
@@ -63,6 +67,22 @@ const JSON_HEADERS = {
 };
 
 const EMPTY_BODY_STATUS = new Set([204, 205]);
+
+function buildQuery(params: Record<string, string | number | undefined>): string {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+    const stringValue = String(value).trim();
+    if (!stringValue) {
+      return;
+    }
+    searchParams.set(key, stringValue);
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
 
 async function parseJson<T>(response: Response): Promise<T | null> {
   if (EMPTY_BODY_STATUS.has(response.status)) {
@@ -202,6 +222,27 @@ export function createApiClient(options: ClientOptions): ApiClient {
           auth: false
         }),
       me: () => request<UserRead>({ path: "/auth/me", method: "GET" })
+    },
+    lookup: {
+      cities: (options = {}) =>
+        request<string[]>({
+          path: `/lookup/cities${buildQuery({
+            query: options.query,
+            limit: options.limit
+          })}`,
+          method: "GET",
+          auth: false
+        }),
+      schools: (options) =>
+        request<string[]>({
+          path: `/lookup/schools${buildQuery({
+            city: options.city,
+            query: options.query,
+            limit: options.limit
+          })}`,
+          method: "GET",
+          auth: false
+        })
     }
   };
 }

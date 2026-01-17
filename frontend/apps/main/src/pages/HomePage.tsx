@@ -122,6 +122,8 @@ export function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const cityLookupTimer = useRef<number | null>(null);
+  const schoolLookupTimer = useRef<number | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
@@ -129,6 +131,8 @@ export function HomePage() {
   const [agreementRole, setAgreementRole] = useState<RoleValue>("student");
   const [newsItems, setNewsItems] = useState<ContentItem[]>([]);
   const [articleItems, setArticleItems] = useState<ContentItem[]>([]);
+  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
+  const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
   const [registerForm, setRegisterForm] = useState<RegisterFormState>({
     role: "student",
     login: "",
@@ -332,6 +336,68 @@ export function HomePage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isRegisterOpen) {
+      setCitySuggestions([]);
+      setSchoolSuggestions([]);
+      return;
+    }
+    const query = registerForm.city.trim();
+    if (cityLookupTimer.current !== null) {
+      window.clearTimeout(cityLookupTimer.current);
+    }
+    if (!query) {
+      setCitySuggestions([]);
+      setSchoolSuggestions([]);
+      return;
+    }
+    cityLookupTimer.current = window.setTimeout(async () => {
+      try {
+        const cities = await publicClient.lookup.cities({ query, limit: 20 });
+        setCitySuggestions(cities);
+      } catch {
+        setCitySuggestions([]);
+      }
+    }, 250);
+    return () => {
+      if (cityLookupTimer.current !== null) {
+        window.clearTimeout(cityLookupTimer.current);
+      }
+    };
+  }, [isRegisterOpen, registerForm.city]);
+
+  useEffect(() => {
+    if (!isRegisterOpen) {
+      return;
+    }
+    const cityValue = registerForm.city.trim();
+    const query = registerForm.school.trim();
+    if (schoolLookupTimer.current !== null) {
+      window.clearTimeout(schoolLookupTimer.current);
+    }
+    if (!cityValue) {
+      setSchoolSuggestions([]);
+      return;
+    }
+    schoolLookupTimer.current = window.setTimeout(async () => {
+      try {
+        const schools = await publicClient.lookup.schools({
+          city: cityValue,
+          query,
+          limit: 50
+        });
+        setSchoolSuggestions(schools);
+      } catch {
+        setSchoolSuggestions([]);
+      }
+    }, 250);
+    return () => {
+      if (schoolLookupTimer.current !== null) {
+        window.clearTimeout(schoolLookupTimer.current);
+      }
+    };
+  }, [isRegisterOpen, registerForm.city, registerForm.school]);
 
   const updateRegisterField = <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => {
     setRegisterForm((prev) => ({
@@ -1098,14 +1164,26 @@ export function HomePage() {
                 onChange={(event) => updateRegisterField("city", event.target.value)}
                 error={registerErrors.city}
                 helperText="Первая буква заглавная, можно пробел и дефис."
+                list="register-city-suggestions"
               />
+              <datalist id="register-city-suggestions">
+                {citySuggestions.map((city) => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
               <TextInput
                 label="Школа"
                 name="school"
                 value={registerForm.school}
                 onChange={(event) => updateRegisterField("school", event.target.value)}
                 error={registerErrors.school}
+                list="register-school-suggestions"
               />
+              <datalist id="register-school-suggestions">
+                {schoolSuggestions.map((school) => (
+                  <option key={school} value={school} />
+                ))}
+              </datalist>
               {registerForm.role === "student" ? (
                 <label className="field">
                   <span className="field-label">Класс</span>

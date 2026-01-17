@@ -31,7 +31,11 @@ let mockUser = { ...baseUser };
 
 vi.mock("@api", () => ({
   createApiClient: () => ({
-    request: mockRequest
+    request: mockRequest,
+    lookup: {
+      cities: vi.fn().mockResolvedValue([]),
+      schools: vi.fn().mockResolvedValue([])
+    }
   })
 }));
 
