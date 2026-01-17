@@ -161,16 +161,30 @@ export function HomePage() {
   const [publicOlympiads, setPublicOlympiads] = useState<PublicOlympiad[]>([]);
   const [publicOlympiadsStatus, setPublicOlympiadsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [publicOlympiadsError, setPublicOlympiadsError] = useState<string | null>(null);
-  const [selectedPublicOlympiadId, setSelectedPublicOlympiadId] = useState("");
+  const [olympiadCode, setOlympiadCode] = useState("");
   const [startError, setStartError] = useState<string | null>(null);
   const [isInstructionOpen, setIsInstructionOpen] = useState(false);
+  const [isNotFoundOpen, setIsNotFoundOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleTargetIso, setScheduleTargetIso] = useState<string | null>(null);
   const [pendingOlympiad, setPendingOlympiad] = useState<PublicOlympiad | null>(null);
   const [startStatus, setStartStatus] = useState<"idle" | "loading" | "error">("idle");
 
-  const selectedPublicOlympiad = useMemo(
-    () => publicOlympiads.find((item) => String(item.id) === selectedPublicOlympiadId) ?? null,
-    [publicOlympiads, selectedPublicOlympiadId]
-  );
+  const selectedPublicOlympiad = useMemo(() => {
+    const raw = olympiadCode.trim();
+    if (!raw) {
+      return null;
+    }
+    const code = Number(raw);
+    if (!Number.isFinite(code)) {
+      return null;
+    }
+    const olympiadId = code - 1_000_000;
+    if (olympiadId <= 0) {
+      return null;
+    }
+    return publicOlympiads.find((item) => item.id === olympiadId) ?? null;
+  }, [publicOlympiads, olympiadCode]);
 
   const parseAgeGroup = (value: string) => {
     const trimmed = value.trim();
@@ -216,6 +230,19 @@ export function HomePage() {
 
   const formatDateShort = (value: string) =>
     new Date(value).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  const toScheduleIso = (value: string) => {
+    const [dayRaw, monthRaw, yearRaw] = value.split(".");
+    const day = Number(dayRaw);
+    const month = Number(monthRaw);
+    const year = Number(yearRaw);
+    if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) {
+      return null;
+    }
+    const isoMonth = String(month).padStart(2, "0");
+    const isoDay = String(day).padStart(2, "0");
+    return `${year}-${isoMonth}-${isoDay}T00:00:00`;
+  };
 
   const agreementText = useMemo(
     () => (agreementRole === "student" ? studentAgreement : teacherAgreement),
@@ -518,8 +545,24 @@ export function HomePage() {
 
   const handleStartOlympiad = () => {
     setStartError(null);
+    setIsNotFoundOpen(false);
+    const raw = olympiadCode.trim();
+    if (!raw) {
+      setStartError("Введите код олимпиады.");
+      return;
+    }
+    const code = Number(raw);
+    if (!Number.isFinite(code)) {
+      setStartError("Введите код олимпиады.");
+      return;
+    }
+    const olympiadId = code - 1_000_000;
+    if (olympiadId <= 0) {
+      setIsNotFoundOpen(true);
+      return;
+    }
     if (!selectedPublicOlympiad) {
-      setStartError("Выберите олимпиаду.");
+      setIsNotFoundOpen(true);
       return;
     }
     if (status !== "authenticated" || !user) {
@@ -675,7 +718,7 @@ export function HomePage() {
             <div className="home-hero-panel">
               <div className="home-hero-panel-title">Ближайшая олимпиада через</div>
               <Countdown targetIso={TARGET_DATE} />
-              <Button onClick={() => navigate("/olympiad")}>Принять участие</Button>
+              {/* <Button onClick={() => navigate("/olympiad")}>Принять участие</Button> */}
             </div>
           </div>
         </section>
@@ -726,28 +769,19 @@ export function HomePage() {
             </div>
             <div className="home-olympiad-select">
               <label className="field">
-                <span className="field-label">Опубликованные олимпиады</span>
-                <select
+                <span className="field-label">Код олимпиады</span>
+                <input
                   className="field-input"
-                  value={selectedPublicOlympiadId}
+                  value={olympiadCode}
                   onChange={(event) => {
-                    setSelectedPublicOlympiadId(event.target.value);
+                    setOlympiadCode(event.target.value);
                     setStartError(null);
                   }}
-                >
-                  <option value="">Выберите олимпиаду</option>
-                  {publicOlympiads.map((item) => (
-                    <option key={item.id} value={String(item.id)}>
-                      {item.title}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Введите код олимпиады"
+                />
               </label>
               {publicOlympiadsStatus === "loading" ? (
                 <p className="home-text">Загружаем список олимпиад...</p>
-              ) : null}
-              {publicOlympiadsStatus === "error" && publicOlympiadsError ? (
-                <p className="home-error">{publicOlympiadsError}</p>
               ) : null}
               {selectedPublicOlympiad ? (
                 <div className="home-olympiad-meta">
@@ -765,7 +799,7 @@ export function HomePage() {
               <div className="home-olympiad-actions">
                 <Button
                   onClick={handleStartOlympiad}
-                  disabled={!selectedPublicOlympiadId || publicOlympiadsStatus === "loading"}
+                  disabled={!olympiadCode.trim() || publicOlympiadsStatus === "loading"}
                 >
                   Начать олимпиаду
                 </Button>
@@ -804,10 +838,17 @@ export function HomePage() {
                     className={`home-schedule-item ${index % 2 === 0 ? "top" : "bottom"}`}
                   >
                     <span className="home-schedule-dot" aria-hidden="true" />
-                    <Link to="/olympiad" className="home-schedule-card">
+                    <button
+                      type="button"
+                      className="home-schedule-card"
+                      onClick={() => {
+                        setScheduleTargetIso(toScheduleIso(item.date));
+                        setIsScheduleOpen(true);
+                      }}
+                    >
                       <div className="home-schedule-date">{item.date}</div>
                       <div className="home-schedule-title">{item.title}</div>
-                    </Link>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -905,6 +946,19 @@ export function HomePage() {
                 Начать
               </Button>
             </div>
+          </div>
+        </Modal>
+        <Modal
+          isOpen={isNotFoundOpen}
+          onClose={() => setIsNotFoundOpen(false)}
+          title="Олимпиада не найдена"
+        >
+          <p>Олимпиада не найдена.</p>
+        </Modal>
+        <Modal isOpen={isScheduleOpen} onClose={() => setIsScheduleOpen(false)}>
+          <div className="home-schedule-modal-body">
+            <p>До олимпиады осталось</p>
+            {scheduleTargetIso ? <Countdown targetIso={scheduleTargetIso} /> : null}
           </div>
         </Modal>
 
@@ -1254,8 +1308,8 @@ export function HomePage() {
         <div className="cat-widget">
           {isQuoteOpen ? (
             <div className="cat-quote" role="dialog" aria-label="Цитата" id="cat-quote">
-              <p>«Математика — царица наук»</p>
-              <span>Карл Фридрих Гаусс</span>
+              <p>Котик Интегралик очень любознательный котик. Он любит задачи, загадки и интересные вопросы, особенно те, над которыми нужно подумать. Говорят, что он появился в Лицее № 344 именно тогда, когда там решили создать Олимпиаду «Невский интеграл», и с тех пор всегда сопровождает тех, кто не боится рассуждать и искать ответы. Котик Интегралик знает, что не каждая задача решается сразу. Он учит внимательно читать условие, пробовать разные пути и не сдаваться после первой попытки. Именно поэтому его девиз - «Думай, ищи и находи». Котик верит, что каждая задача - это маленькое открытие, а каждая попытка делает нас умнее. Сегодня Котик Интегралик поддерживает участников олимпиады, радуется каждому найденному решению и напоминает, что математика и информатика - это увлекательное путешествие, в котором важно не только найти ответ, но и получить удовольствие от самого пути.</p>
+              <span>Котик Интегралик - талисман олимпиады</span>
             </div>
           ) : null}
           <button

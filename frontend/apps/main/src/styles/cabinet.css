@@ -508,3 +508,53 @@
     width: 100%;
   }
 }
+
+@media (max-width: 720px) {
+  .cabinet-page .layout-header-inner {
+    padding: 0 var(--space-4);
+  }
+
+  .cabinet-logo {
+    gap: var(--space-2);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .cabinet-nav {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .cabinet-content {
+    padding: var(--space-6) var(--space-4) var(--space-8);
+  }
+
+  .cabinet-section {
+    padding: var(--space-4);
+  }
+
+  .cabinet-section h1 {
+    font-size: 1.6rem;
+  }
+
+  .cabinet-section h2 {
+    font-size: 1.3rem;
+  }
+
+  .cabinet-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cabinet-form-actions {
+    gap: var(--space-2);
+  }
+
+  .cabinet-table-scroll,
+  .cabinet-section .table-wrap {
+    overflow-x: auto;
+  }
+
+  .cabinet-attempt-modal {
+    width: 95vw;
+  }
+}

@@ -306,6 +306,7 @@
   .olympiad-header-actions {
     flex-wrap: wrap;
     justify-content: center;
+    gap: var(--space-2);
   }
 
   .olympiad-answer-bar {
@@ -319,6 +320,43 @@
   }
 
   .olympiad-task-card {
+    width: 100%;
+  }
+
+  .olympiad-title {
+    font-size: 1rem;
+    text-align: center;
+  }
+
+  .olympiad-timer {
+    font-size: 1rem;
+  }
+
+  .olympiad-task-number {
+    width: 34px;
+    height: 34px;
+  }
+
+  .olympiad-task-card {
+    padding: var(--space-4);
+  }
+
+  .olympiad-task-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .olympiad-task-content {
+    font-size: 1rem;
+  }
+
+  .olympiad-answer-input .field-input,
+  .olympiad-option span {
+    font-size: 1rem;
+  }
+
+  .olympiad-finish-button,
+  .olympiad-help-button {
     width: 100%;
   }
 }
