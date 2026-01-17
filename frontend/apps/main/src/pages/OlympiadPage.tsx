@@ -37,6 +37,8 @@ type AttemptResult = {
   percent: number;
   score_total: number;
   score_max: number;
+  results_released?: boolean;
+  olympiad_title?: string;
 };
 
 type AnswerPayload =
@@ -622,12 +624,19 @@ export function OlympiadPage() {
       <Modal isOpen={isResultOpen} onClose={() => setIsResultOpen(false)} title="Результат">
         <div className="olympiad-result">
           <div className="olympiad-modal-body">
-            <p>
-              Олимпиада завершена. Ваш результат:{" "}
-              <strong>{result ? `${result.percent}%` : "--"}</strong>.
-            </p>
+            {result?.results_released ? (
+              <p>
+                Олимпиада завершена. Ваш результат:{" "}
+                <strong>{result ? `${result.percent}%` : "--"}</strong>.
+              </p>
+            ) : (
+              <p>
+                Прохождение «{attemptView?.olympiad_title ?? "олимпиады"}» завершено. Результаты будут
+                позже в личном кабинете.
+              </p>
+            )}
           </div>
-          {result ? (
+          {result?.results_released ? (
             <div className="olympiad-modal-body">
               <p>
                 Баллы: {result.score_total} / {result.score_max}

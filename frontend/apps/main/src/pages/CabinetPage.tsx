@@ -27,10 +27,13 @@ const TrashIcon = () => (
 type AttemptResult = {
   attempt_id: number;
   olympiad_id: number;
+  olympiad_title?: string;
   status: string;
   score_total: number;
   score_max: number;
+  percent?: number;
   graded_at: string | null;
+  results_released?: boolean;
 };
 
 type AttemptTask = {
@@ -160,6 +163,7 @@ export function CabinetPage() {
   const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
   const [attemptViewStatus, setAttemptViewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [attemptViewError, setAttemptViewError] = useState<string | null>(null);
+  const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
 
   const [emailRequestStatus, setEmailRequestStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle"
@@ -594,7 +598,12 @@ export function CabinetPage() {
     }
   };
 
-  const openAttempt = async (attemptId: number) => {
+  const openAttempt = async (attempt: AttemptResult) => {
+    if (!attempt.results_released) {
+      setPendingResultsMessage("Результаты в обработке. Дождитесь публикации администратором.");
+      return;
+    }
+    const attemptId = attempt.attempt_id;
     setAttemptViewStatus("loading");
     setAttemptViewError(null);
     setAttemptView(null);
@@ -785,30 +794,46 @@ export function CabinetPage() {
                       <tr key={item.attempt_id}>
                         <td>{index + 1}</td>
                         <td>{formatDate(item.graded_at)}</td>
-                        <td>Олимпиада #{item.olympiad_id}</td>
+                        <td>{item.olympiad_title ?? `Олимпиада #${item.olympiad_id}`}</td>
                         <td>
-                          {item.score_total}/{item.score_max}
+                          {item.results_released ? `${item.score_total}/${item.score_max}` : "Результаты в обработке"}
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="cabinet-link"
-                            onClick={() => {
-                              openAttempt(item.attempt_id);
-                            }}
-                          >
-                            Просмотр попытки
-                          </button>
+                          {item.results_released ? (
+                            <button
+                              type="button"
+                              className="cabinet-link"
+                              onClick={() => {
+                                openAttempt(item);
+                              }}
+                            >
+                              Просмотр попытки
+                            </button>
+                          ) : (
+                            <span className="cabinet-hint">Недоступно</span>
+                          )}
                         </td>
                         <td>
-                          <a
-                            className="cabinet-link"
-                            href={`${API_BASE_URL}/attempts/${item.attempt_id}/diploma`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Диплом
-                          </a>
+                          {item.results_released ? (
+                            <a
+                              className="cabinet-link"
+                              href={`${API_BASE_URL}/attempts/${item.attempt_id}/diploma`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Диплом
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              className="cabinet-link"
+                              onClick={() =>
+                                setPendingResultsMessage("Диплом в процессе изготовления.")
+                              }
+                            >
+                              Диплом
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -1051,8 +1076,24 @@ export function CabinetPage() {
                         allTeacherEntries.map((teacher, index) => (
                           <tr key={teacher.id}>
                             <td>{index + 1}</td>
-                            <td>{teacher.label}</td>
-                            <td>{teacher.sublabel ?? "—"}</td>
+                            <td
+                              className={
+                                teacher.kind === "manual"
+                                  ? "cabinet-teacher-manual"
+                                  : "cabinet-teacher-linked"
+                              }
+                            >
+                              {teacher.label}
+                            </td>
+                            <td
+                              className={
+                                teacher.kind === "manual"
+                                  ? "cabinet-teacher-manual"
+                                  : "cabinet-teacher-linked"
+                              }
+                            >
+                              {teacher.sublabel ?? "—"}
+                            </td>
                             <td>
                               <button
                                 type="button"
@@ -1301,6 +1342,14 @@ export function CabinetPage() {
             </ul>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(pendingResultsMessage)}
+        onClose={() => setPendingResultsMessage(null)}
+        title="Информация"
+      >
+        <p>{pendingResultsMessage}</p>
       </Modal>
     </div>
   );

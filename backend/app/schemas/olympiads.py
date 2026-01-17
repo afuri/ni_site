@@ -13,5 +13,6 @@ class OlympiadPublicRead(BaseModel):
     available_to: datetime
     pass_percent: int
     is_published: bool
+    results_released: bool
 
     model_config = ConfigDict(from_attributes=True)

@@ -90,6 +90,7 @@ class OlympiadRead(BaseModel):
     available_to: datetime
     pass_percent: int
     is_published: bool
+    results_released: bool
     created_by_user_id: int
 
     model_config = ConfigDict(from_attributes=True)

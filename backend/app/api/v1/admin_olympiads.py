@@ -142,6 +142,33 @@ async def update_olympiad(
         raise
 
 
+@router.post(
+    "/{olympiad_id}/results",
+    response_model=OlympiadRead,
+    tags=["admin"],
+    description="Отметить готовность результатов (админ)",
+    responses={
+        200: response_model_example(OlympiadRead, EXAMPLE_OLYMPIAD_READ),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
+    },
+)
+async def release_results(
+    olympiad_id: int,
+    released: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    repo = OlympiadsRepo(db)
+    obj = await repo.get(olympiad_id)
+    if not obj:
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+
+    service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
+    return await service.release_results(olympiad=obj, released=released)
+
+
 @router.delete(
     "/{olympiad_id}",
     status_code=204,

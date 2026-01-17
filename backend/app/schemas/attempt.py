@@ -65,9 +65,11 @@ class SubmitResponse(BaseModel):
 class AttemptResult(BaseModel):
     attempt_id: int
     olympiad_id: int
+    olympiad_title: str | None = None
     status: AttemptStatus
     score_total: int
     score_max: int
     percent: int
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
+    results_released: bool = False

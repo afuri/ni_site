@@ -44,6 +44,11 @@ class OlympiadsRepo:
         await self.db.refresh(obj)
         return obj
 
+    async def set_results_released(self, olympiad: Olympiad, released: bool) -> Olympiad:
+        olympiad.results_released = released
+        await self.save(olympiad)
+        return olympiad
+
     async def delete(self, obj: Olympiad) -> None:
         await self.db.delete(obj)
         await self.db.commit()

@@ -165,3 +165,23 @@ class AttemptsRepo:
             select(Attempt).where(Attempt.user_id == user_id).order_by(Attempt.id.desc())
         )
         return list(res.scalars().all())
+
+    async def list_attempts_with_olympiads_for_user(self, user_id: int) -> list[tuple[Attempt, Olympiad]]:
+        res = await self.db.execute(
+            select(Attempt, Olympiad)
+            .join(Olympiad, Olympiad.id == Attempt.olympiad_id)
+            .where(Attempt.user_id == user_id)
+            .order_by(Attempt.id.desc())
+        )
+        return list(res.all())
+
+    async def get_attempt_with_olympiad(self, attempt_id: int) -> tuple[Attempt, Olympiad] | None:
+        res = await self.db.execute(
+            select(Attempt, Olympiad)
+            .join(Olympiad, Olympiad.id == Attempt.olympiad_id)
+            .where(Attempt.id == attempt_id)
+        )
+        row = res.first()
+        if not row:
+            return None
+        return row

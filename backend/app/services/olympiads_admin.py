@@ -103,6 +103,13 @@ class AdminOlympiadsService:
         await self._invalidate_cache(olympiad.id)
         return saved
 
+    async def release_results(self, *, olympiad: Olympiad, released: bool) -> Olympiad:
+        olympiad.results_released = released
+        olympiad.updated_at = datetime.now(timezone.utc)
+        saved = await self.olympiads.save(olympiad)
+        await self._invalidate_cache(olympiad.id)
+        return saved
+
     async def delete(self, *, olympiad: Olympiad) -> None:
         await self.olympiads.delete(olympiad)
         await self._invalidate_cache(olympiad.id)

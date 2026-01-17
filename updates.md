@@ -1155,4 +1155,23 @@ fullstack 0.11.2
   - Added matching validation helper hints to the user cabinet profile form (login/email/names/city, class requirement, subject) so users see the same rules when
     editing their profile (frontend/apps/main/src/pages/CabinetPage.tsx).
 
-    
+
+fulstack 0.11.3
+
+• - Added “results_released” flag to olympiads (model, schemas, repo, admin service, migration 9f6b35f4c6b1_add_results_released_to_olympiads.py) and a new admin
+  endpoint to toggle it. Admin UI now shows the results status tag and provides a “Показать/Скрыть результаты” action (frontend/apps/admin/src/pages/
+  OlympiadsPage.tsx).
+  - Attempt results APIs now return olympiad title and release status; list/get result joins olympiad data and expose results_released (backend/app/schemas/
+  attempt.py, services/attempts.py, repos/attempts.py, OpenAPI example updated).
+  - User cabinet respects release status: shows olympiad title, displays “Результаты в обработке” until released, disables attempt view and diploma with an info
+  modal, and marks manual vs linked teachers with gray vs bold black (frontend/apps/main/src/pages/CabinetPage.tsx, styles/cabinet.css).
+  - Olympiad submission modal now tells users results will appear later when not released (frontend/apps/main/src/pages/OlympiadPage.tsx).
+
+  Tests not run (not requested). Run migrations before use: alembic upgrade head (via docker compose exec api).
+
+ • Добавил отдельный скрипт backend/scripts/create_demo_content.py, который:
+
+  - Проверяет наличие админа admin01.
+  - Создает черновую олимпиаду “Демоверсия олимпиады” (доступна всем классам, 30 минут, 1 попытка, порог 10%, даты: сегодня — +6 месяцев) если её ещё нет.
+  - Добавляет демо-новость и демо-статью (статус draft, автор admin01) с текстами о проекте.
+  - Пропускает создание, если запись с таким заголовком и типом уже существует. 

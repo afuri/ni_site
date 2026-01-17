@@ -35,6 +35,7 @@ class Olympiad(Base):
 
     pass_percent: Mapped[int] = mapped_column(Integer, default=60)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    results_released: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     created_by_user_id: Mapped[int] = mapped_column(Integer, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

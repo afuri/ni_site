@@ -399,6 +399,15 @@
   border-color: #b91c1c;
 }
 
+.cabinet-teacher-manual {
+  color: #6b7280;
+}
+
+.cabinet-teacher-linked {
+  color: #111827;
+  font-weight: 700;
+}
+
 .cabinet-list {
   list-style: none;
   padding: 0;

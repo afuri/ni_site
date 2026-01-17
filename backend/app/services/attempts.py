@@ -505,35 +505,44 @@ class AttemptsService:
         return int(round((score_total / score_max) * 100))
 
     async def get_result(self, *, user: User, attempt_id: int):
-        attempt = await self._ensure_attempt_access(user=user, attempt_id=attempt_id)
+        attempt_tuple = await self.repo.get_attempt_with_olympiad(attempt_id)
+        if not attempt_tuple:
+            raise ValueError(codes.ATTEMPT_NOT_FOUND)
+        attempt, olympiad = attempt_tuple
+        if attempt.user_id != user.id:
+            raise ValueError(codes.FORBIDDEN)
         percent = self._result_percent(attempt.score_total, attempt.score_max)
         return {
             "attempt_id": attempt.id,
             "olympiad_id": attempt.olympiad_id,
+            "olympiad_title": olympiad.title,
             "status": attempt.status,
             "score_total": attempt.score_total,
             "score_max": attempt.score_max,
             "percent": percent,
             "passed": attempt.passed,
             "graded_at": attempt.graded_at,
+            "results_released": olympiad.results_released,
         }
 
     async def list_results(self, *, user: User):
         if user.role != UserRole.student:
             raise ValueError(codes.FORBIDDEN)
-        attempts = await self.repo.list_attempts_for_user(user.id)
+        attempts = await self.repo.list_attempts_with_olympiads_for_user(user.id)
         results = []
-        for attempt in attempts:
+        for attempt, olympiad in attempts:
             results.append(
                 {
                     "attempt_id": attempt.id,
                     "olympiad_id": attempt.olympiad_id,
+                    "olympiad_title": olympiad.title,
                     "status": attempt.status,
                     "score_total": attempt.score_total,
                     "score_max": attempt.score_max,
                     "percent": self._result_percent(attempt.score_total, attempt.score_max),
                     "passed": attempt.passed,
                     "graded_at": attempt.graded_at,
+                    "results_released": olympiad.results_released,
                 }
             )
         return results

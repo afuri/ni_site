@@ -134,12 +134,14 @@ EXAMPLE_ATTEMPT_VIEW: dict = {
 EXAMPLE_ATTEMPT_RESULT: dict = {
     "attempt_id": 7,
     "olympiad_id": 5,
+    "olympiad_title": "Олимпиада по математике",
     "status": "submitted",
     "score_total": 1,
     "score_max": 1,
     "percent": 100,
     "passed": True,
     "graded_at": "2026-01-05T10:12:00Z",
+    "results_released": True,
 }
 
 EXAMPLE_TEACHER_ATTEMPT_VIEW: dict = {

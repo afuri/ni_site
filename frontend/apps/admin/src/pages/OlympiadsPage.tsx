@@ -15,6 +15,7 @@ type OlympiadItem = {
   available_to: string;
   pass_percent: number;
   is_published: boolean;
+  results_released: boolean;
   created_by_user_id: number;
 };
 
@@ -69,6 +70,7 @@ export function OlympiadsPage() {
   const [deleteTarget, setDeleteTarget] = useState<OlympiadItem | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
   const [publishStatus, setPublishStatus] = useState<number | null>(null);
+  const [resultsStatus, setResultsStatus] = useState<number | null>(null);
   const [taskCatalog, setTaskCatalog] = useState<TaskCatalogItem[]>([]);
   const [taskSelection, setTaskSelection] = useState<Record<number, TaskSelection>>({});
   const [taskCatalogStatus, setTaskCatalogStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -401,6 +403,19 @@ export function OlympiadsPage() {
     }
   };
 
+  const toggleResultsRelease = async (item: OlympiadItem) => {
+    setResultsStatus(item.id);
+    try {
+      await adminApiClient.request({
+        path: `/admin/olympiads/${item.id}/results?released=${!item.results_released}`,
+        method: "POST"
+      });
+      await loadOlympiads();
+    } finally {
+      setResultsStatus(null);
+    }
+  };
+
   const normalizedFilter = taskFilter.trim().toLowerCase();
   const filteredTaskCatalog = normalizedFilter
     ? taskCatalog.filter((task) => task.title.toLowerCase().includes(normalizedFilter))
@@ -453,6 +468,11 @@ export function OlympiadsPage() {
                   <span className={`admin-tag ${item.is_published ? "admin-tag-success" : "admin-tag-muted"}`}>
                     {item.is_published ? "Опубликована" : "Черновик"}
                   </span>
+                  <div>
+                    <span className={`admin-tag ${item.results_released ? "admin-tag-success" : "admin-tag-muted"}`}>
+                      {item.results_released ? "Результаты открыты" : "Результаты скрыты"}
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <div className="admin-table-actions">
@@ -467,6 +487,15 @@ export function OlympiadsPage() {
                       disabled={publishStatus === item.id}
                     >
                       {item.is_published ? "Скрыть" : "Опубликовать"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => toggleResultsRelease(item)}
+                      disabled={resultsStatus === item.id}
+                    >
+                      {item.results_released ? "Скрыть результаты" : "Показать результаты"}
                     </Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setDeleteTarget(item)}>
                       Удалить
