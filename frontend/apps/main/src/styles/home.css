@@ -948,7 +948,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .home-logo span {
     display: none;
   }
@@ -962,7 +962,9 @@
   .home-header-actions .btn {
     width: 100%;
   }
+}
 
+@media (max-width: 720px) {
   .home-hero-inner {
     padding: calc(56px + 24px) var(--space-4) var(--space-6);
   }

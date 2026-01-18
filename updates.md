@@ -1469,3 +1469,9 @@ fullstack 1.0.0
 
   Если нужно применить ещё на более узком брейкпоинте (например, только до
   560px) — скажи.
+
+Для редактирование fronta   
+  1. git pull
+  2. npm run build:app
+  3. rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-
+     integral/
