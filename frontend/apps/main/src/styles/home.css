@@ -139,6 +139,13 @@
   color: var(--color-white);
   padding: 6px 16px;
   font-size: 0.9rem;
+  text-align: center;
+  justify-content: center;
+}
+
+.home-header-actions .btn .btn-label {
+  width: 100%;
+  text-align: center;
 }
 
 .home-user-link {
@@ -948,8 +955,13 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 720px) {
   .home-logo span {
+    display: none;
+  }
+
+  .home-vk-link,
+  .home-vk-link img {
     display: none;
   }
 
@@ -961,10 +973,9 @@
 
   .home-header-actions .btn {
     width: 100%;
+    justify-content: center;
   }
-}
 
-@media (max-width: 720px) {
   .home-hero-inner {
     padding: calc(56px + 24px) var(--space-4) var(--space-6);
   }

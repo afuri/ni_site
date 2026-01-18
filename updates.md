@@ -1472,6 +1472,8 @@ fullstack 1.0.0
 
 Для редактирование fronta   
   1. git pull
+  cd frontend
+  npm ci
   2. npm run build:app
   3. rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-
      integral/
