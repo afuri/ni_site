@@ -429,7 +429,7 @@
 
 .home-instruction-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: var(--space-3);
 }
 
@@ -701,6 +701,7 @@
 }
 
 .auth-modal .modal-header {
+  position: relative;
   justify-content: center;
   text-align: center;
 }

@@ -216,14 +216,9 @@
 
 .modal-header {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--space-4);
-  text-align: center;
-}
-
-.modal-header > div {
-  width: 100%;
 }
 
 .modal-title {
@@ -235,27 +230,15 @@
 .modal-description {
   margin-top: var(--space-2);
   color: rgba(31, 59, 99, 0.65);
-  text-align: center;
 }
 
 .modal-close {
-  position: absolute;
-  right: var(--space-4);
-  top: var(--space-4);
   border: none;
   background: transparent;
   font-size: 1.2rem;
   cursor: pointer;
 }
 
-.modal-body {
-  text-align: center;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: center;
-}
 
 .toast {
   display: flex;
