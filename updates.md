@@ -1421,3 +1421,8 @@ Added a schools directory table with lookup endpoints and wired the registration
   - backend/app/schemas/school.py — SchoolSummary
   - frontend/apps/admin/src/pages/SchoolsPage.tsx — фильтры в одну строку, статус, итоговая строка
   - frontend/apps/admin/src/styles/admin.css — стили для одной строки фильтров
+
+
+fullstack 0.11.13
+
+Добавил документы и логотипы организаторов и партнеров
