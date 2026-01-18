@@ -131,15 +131,15 @@
   display: flex;
   gap: var(--space-3);
   align-items: center;
+  margin: 5px;
 }
 
 .home-header-actions .btn {
   background: #0056d2;
   border-color: #0056d2;
   color: var(--color-white);
-  height: 30px;
+  height: 35px;
   padding: 0 14px;
-  margin: 5px;
   box-sizing: border-box;
   font-size: 0.9rem;
   text-align: center;
