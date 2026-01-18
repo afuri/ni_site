@@ -1426,3 +1426,7 @@ Added a schools directory table with lookup endpoints and wired the registration
 fullstack 0.11.13
 
 Добавил документы и логотипы организаторов и партнеров
+
+fullstack 0.11.14
+
+Главная страница: небольшие изменения

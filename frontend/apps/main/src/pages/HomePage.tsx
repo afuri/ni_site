@@ -8,7 +8,12 @@ import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
 import catImage from "../assets/cat.png";
 import vkLink from "../assets/vk_link.png";
-import minprosImage from "../assets/minpros.webp";
+import minprosImage from "../assets/minpros.png";
+import lyc344Logo from "../assets/lyc344.png";
+import imcNevLogo from "../assets/imc_nev.png";
+import consorciumLogo from "../assets/consorcium.png";
+import herzenLogo from "../assets/herzen.png";
+import spassSciLogo from "../assets/spass_sci.png";
 import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
@@ -813,15 +818,25 @@ export function HomePage() {
                   интеллектуальных конкурсов на 2025/26 учебный год, утвержденный
                   приказом Министерства просвещения РФ от 31.08.2025 № 639.
                 </p>
-                <img src={minprosImage} alt="Министерство просвещения РФ" className="home-minpros" />
+                <a href="/docs/perechen.pdf" target="_blank" rel="noreferrer">
+                  <img src={minprosImage} alt="Министерство просвещения РФ" className="home-minpros" />
+                </a>
               </div>
               <div>
                 <h3>Документы</h3>
                 <div className="home-docs">
-                  <a href="#" className="home-doc-link">Положение (PDF)</a>
-                  <a href="#" className="home-doc-link">Перечень (PDF)</a>
-                  <a href="#" className="home-doc-link">Важная информация (PDF)</a>
-                  <a href="#" className="home-doc-link">Регламент проведения очного тура (PDF)</a>
+                  <a href="/docs/polozhenie.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
+                    Положение (PDF)
+                  </a>
+                  <a href="/docs/perechen.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
+                    Перечень (PDF)
+                  </a>
+                  <a href="/docs/instruction.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
+                    Инструкция по регистрации (PDF)
+                  </a>
+                  <a href="/docs/reglament.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
+                    Регламент проведения очного тура (PDF)
+                  </a>
                 </div>
               </div>
             </div>
@@ -967,14 +982,24 @@ export function HomePage() {
         <section className="home-section">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Организраторы и партнеры</h2>
+              <h2>Организаторы и партнеры</h2>
             </div>
             <div className="home-carousel">
-              <Card title="ИТМО" />
-              <Card title="СПбГУ" />
-              <Card title="Политех" />
-              <Card title="ФТШ" />
-              <Card title="Кванториум" />
+              <a href="https://licey344spb.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={lyc344Logo} alt="Лицей 344" />
+              </a>
+              <a href="http://www.imc-nev.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={imcNevLogo} alt="ИМЦ Невского района" />
+              </a>
+              <a href="https://ingtech.info/news" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={consorciumLogo} alt="Инженерно-технологический консорциум" />
+              </a>
+              <a href="https://www.herzen.spb.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={herzenLogo} alt="РГПУ им. А. И. Герцена" />
+              </a>
+              <a href="http://www.spass-sci.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={spassSciLogo} alt="СПб АППО" />
+              </a>
             </div>
           </div>
         </section>
@@ -982,7 +1007,7 @@ export function HomePage() {
         <section id="contacts" className="home-section-alt">
           <div className="container">
             <h2>Контакты</h2>
-            <p className="home-text">support@nevsky-integral.ru · +7 (812) 000-00-00</p>
+            <p className="home-text">Контактный адрес: nevsky-integral@mail.ru</p>
           </div>
         </section>
 
@@ -1177,6 +1202,7 @@ export function HomePage() {
                 value={registerForm.school}
                 onChange={(event) => updateRegisterField("school", event.target.value)}
                 error={registerErrors.school}
+                helperText="Если школы нет в списке, добавьте самостоятельно. Пример: ГБОУ СОШ №3"
                 list="register-school-suggestions"
               />
               <datalist id="register-school-suggestions">
