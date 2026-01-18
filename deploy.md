@@ -38,7 +38,7 @@ ufw --force enable
 ```bash
 mkdir -p /opt
 cd /opt
-git clone <URL_РЕПОЗИТОРИЯ> ni_site
+git clone https://github.com/afuri/ni_site.git ni_site
 cd /opt/ni_site
 ```
 
@@ -184,7 +184,7 @@ systemctl reload nginx
 
 ```bash
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d nevsky-integral.ru -d www.nevsky-integral.ru
+certbot --nginx -d nevsky-integral.ru -d www.nevsky-integral.ru -d ni344.ru -d www.ni344.ru
 ```
 
 Проверка автообновления:

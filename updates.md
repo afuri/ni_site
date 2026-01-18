@@ -1430,3 +1430,42 @@ fullstack 0.11.13
 fullstack 0.11.14
 
 Главная страница: небольшие изменения
+
+
+fullstack 1.0.0
+
+Причина: Celery не регистрировал задачу send_email, потому что автодискавер
+  искал app.tasks.tasks. Я поправил загрузку задач.
+
+  Изменения:
+
+  - backend/app/core/celery_app.py — autodiscover теперь от app
+  - backend/app/tasks/__init__.py — явный импорт email и maintenance
+
+  Что сделать на сервере:
+
+  1. Обновить код:
+
+  cd /opt/ni_site
+  git pull
+
+  2. Пересобрать и перезапустить api и worker:
+
+  docker compose up -d --build api worker
+
+  3. Проверить, что задача зарегистрирована (опционально):
+
+  docker compose exec api celery -A app.core.celery_app.celery_app inspect
+  registered
+
+  В списке должна быть send_email.
+
+Сделал для мобильной версии:
+
+  - скрывается надпись «НЕВСКИЙ ИНТЕГРАЛ» в шапке
+  - кнопки «Войти» и «Регистрация» становятся вертикально одна под другой
+
+  Файл: frontend/apps/main/src/styles/home.css
+
+  Если нужно применить ещё на более узком брейкпоинте (например, только до
+  560px) — скажи.

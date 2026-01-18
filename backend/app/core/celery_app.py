@@ -9,7 +9,7 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
-celery_app.autodiscover_tasks(["app.tasks"])
+celery_app.autodiscover_tasks(["app"])
 
 beat_schedule: dict[str, dict] = {}
 if settings.CACHE_WARMUP_INTERVAL_SEC > 0:

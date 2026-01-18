@@ -949,6 +949,20 @@
 }
 
 @media (max-width: 720px) {
+  .home-logo span {
+    display: none;
+  }
+
+  .home-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .home-header-actions .btn {
+    width: 100%;
+  }
+
   .home-hero-inner {
     padding: calc(56px + 24px) var(--space-4) var(--space-6);
   }
