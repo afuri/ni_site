@@ -694,6 +694,7 @@
 }
 
 .auth-success-message {
+  margin: 10px;
   text-align: center;
   color: rgba(31, 59, 99, 0.7);
 }
@@ -704,7 +705,7 @@
 }
 
 .auth-actions .btn {
-  width: 100%;
+  width: 20%;
   text-align: center;
   justify-content: center;
 }
