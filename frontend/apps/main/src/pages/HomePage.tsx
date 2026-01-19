@@ -773,7 +773,7 @@ export function HomePage() {
         }
         actions={
           <div className="home-header-actions">
-            <a href="https://vk.ru/olymp344" className="home-vk-link" aria-label="ВК Олимпиада">
+            <a href="https://vk.com/nevsky.integral" className="home-vk-link" aria-label="ВК Олимпиада">
               <img src={vkLink} alt="ВК" />
             </a>
             {isAuthenticated && user ? (
@@ -836,21 +836,21 @@ export function HomePage() {
             <div className="home-about-grid">
               <div>
                 <p className="home-text">
-                  Олимпиада «Невский интеграл» проводится с 2012 года и возникла как
+                    Олимпиада «Невский интеграл» проводится с 2012 года и возникла как
                   образовательная инициатива, созданная ко Дню рождения ГБОУ лицея №
                   344 Невского района Санкт-Петербурга. Со временем эта идея переросла
                   в самостоятельный и значимый проект, объединяющий школьников,
                   увлечённых математикой и информатикой.
                 </p>
                 <p className="home-text">
-                  Олимпиада предоставляет участникам возможность выйти за рамки
+                    Олимпиада предоставляет участникам возможность выйти за рамки
                   школьной программы, обратиться к нестандартным задачам, требующим
                   логики, точности и вдумчивой работы с информацией, и объединяет
                   учащихся из разных регионов, формируя общее интеллектуальное
                   пространство.
                 </p>
                 <p className="home-text">
-                  Олимпиада «Невский интеграл» включена в перечень олимпиад и иных
+                    Олимпиада «Невский интеграл» включена в перечень олимпиад и иных
                   интеллектуальных конкурсов на 2025/26 учебный год, утвержденный
                   приказом Министерства просвещения РФ от 31.08.2025 № 639.
                 </p>
@@ -874,52 +874,6 @@ export function HomePage() {
                     Регламент проведения очного тура (PDF)
                   </a>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="choose" className="home-section-alt">
-          <div className="container">
-            <div className="home-section-heading">
-              <h2>Выбрать олимпиаду</h2>
-            </div>
-            <div className="home-olympiad-select">
-              <label className="field">
-                <span className="field-label">Код олимпиады</span>
-                <input
-                  className="field-input"
-                  value={olympiadCode}
-                  onChange={(event) => {
-                    setOlympiadCode(event.target.value);
-                    setStartError(null);
-                  }}
-                  placeholder="Введите код олимпиады"
-                />
-              </label>
-              {publicOlympiadsStatus === "loading" ? (
-                <p className="home-text">Загружаем список олимпиад...</p>
-              ) : null}
-              {selectedPublicOlympiad ? (
-                <div className="home-olympiad-meta">
-                  <div>
-                    <strong>Классы:</strong> {selectedPublicOlympiad.age_group}
-                  </div>
-                  <div>
-                    <strong>Доступно:</strong>{" "}
-                    {formatDateShort(selectedPublicOlympiad.available_from)} —{" "}
-                    {formatDateShort(selectedPublicOlympiad.available_to)}
-                  </div>
-                </div>
-              ) : null}
-              {startError ? <p className="home-error">{startError}</p> : null}
-              <div className="home-olympiad-actions">
-                <Button
-                  onClick={handleStartOlympiad}
-                  disabled={!olympiadCode.trim() || publicOlympiadsStatus === "loading"}
-                >
-                  Начать олимпиаду
-                </Button>
               </div>
             </div>
           </div>
@@ -968,6 +922,52 @@ export function HomePage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="choose" className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h3>Найти олимпиаду по коду</h3>
+            </div>
+            <div className="home-olympiad-select">
+              <label className="field">
+                <span className="field-label">Код олимпиады</span>
+                <input
+                  className="field-input"
+                  value={olympiadCode}
+                  onChange={(event) => {
+                    setOlympiadCode(event.target.value);
+                    setStartError(null);
+                  }}
+                  placeholder="Введите код олимпиады"
+                />
+              </label>
+              {publicOlympiadsStatus === "loading" ? (
+                <p className="home-text">Загружаем список олимпиад...</p>
+              ) : null}
+              {selectedPublicOlympiad ? (
+                <div className="home-olympiad-meta">
+                  <div>
+                    <strong>Классы:</strong> {selectedPublicOlympiad.age_group}
+                  </div>
+                  <div>
+                    <strong>Доступно:</strong>{" "}
+                    {formatDateShort(selectedPublicOlympiad.available_from)} —{" "}
+                    {formatDateShort(selectedPublicOlympiad.available_to)}
+                  </div>
+                </div>
+              ) : null}
+              {startError ? <p className="home-error">{startError}</p> : null}
+              <div className="home-olympiad-actions">
+                <Button
+                  onClick={handleStartOlympiad}
+                  disabled={!olympiadCode.trim() || publicOlympiadsStatus === "loading"}
+                >
+                  Начать олимпиаду
+                </Button>
               </div>
             </div>
           </div>
@@ -1368,7 +1368,7 @@ export function HomePage() {
           className="auth-modal"
           closeOnBackdrop={false}
         >
-          <p className="auth-success-message">Верификация прошла успешно.</p>
+          <p className="auth-success-message">Поздравляем! <br /> Теперь можно перейти в личный кабинет</p>
           <div className="auth-actions">
             <Button
               type="button"
@@ -1502,7 +1502,7 @@ export function HomePage() {
         <div className="cat-widget">
           {isQuoteOpen ? (
             <div className="cat-quote" role="dialog" aria-label="Цитата" id="cat-quote">
-              <p>Котик Интегралик очень любознательный котик. Он любит задачи, загадки и интересные вопросы, особенно те, над которыми нужно подумать. Говорят, что он появился в Лицее № 344 именно тогда, когда там решили создать Олимпиаду «Невский интеграл», и с тех пор всегда сопровождает тех, кто не боится рассуждать и искать ответы. Котик Интегралик знает, что не каждая задача решается сразу. Он учит внимательно читать условие, пробовать разные пути и не сдаваться после первой попытки. Именно поэтому его девиз - «Думай, ищи и находи». Котик верит, что каждая задача - это маленькое открытие, а каждая попытка делает нас умнее. Сегодня Котик Интегралик поддерживает участников олимпиады, радуется каждому найденному решению и напоминает, что математика и информатика - это увлекательное путешествие, в котором важно не только найти ответ, но и получить удовольствие от самого пути.</p>
+              <p>Привет! Меня зовут Интегралик - я очень любознательный котик, который обожает задачи, загадки и интересные вопросы, особенно те, над которыми нужно хорошенько подумать.<br /> Я знаю: не каждая задача решается с первого раза. Поэтому я учу внимательно читать условие, рассматривать разные пути и не сдаваться после первой неудачи. Мой девиз простой: «Думай, ищи и находи!».<br />Я верю, что каждая задача - это маленькое открытие, а каждая попытка делает нас умнее и сильнее.</p>
               <span>Котик Интегралик - талисман олимпиады</span>
             </div>
           ) : null}
