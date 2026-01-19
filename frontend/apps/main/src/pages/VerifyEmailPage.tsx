@@ -1,10 +1,13 @@
 import React, { useEffect, useRef } from "react";
 import { createApiClient } from "@api";
+import { createAuthStorage } from "@utils";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
+const AUTH_TOKENS_KEY = "ni_main_tokens";
+const AUTH_USER_KEY = "ni_main_user";
 
 export function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -18,8 +21,11 @@ export function VerifyEmailPage() {
     }
     hasRequested.current = true;
 
+    const storage = createAuthStorage({ tokensKey: AUTH_TOKENS_KEY, userKey: AUTH_USER_KEY });
+    const hasTokens = Boolean(storage.getTokens());
+
     if (!token) {
-      navigate("/cabinet", { replace: true });
+      navigate(hasTokens ? "/cabinet" : "/", { replace: true });
       return;
     }
 
@@ -34,7 +40,7 @@ export function VerifyEmailPage() {
         window.localStorage.setItem(VERIFY_SUCCESS_STORAGE_KEY, "1");
       })
       .finally(() => {
-        navigate("/cabinet", { replace: true });
+        navigate(hasTokens ? "/cabinet" : "/", { replace: true });
       });
   }, [navigate, token]);
 

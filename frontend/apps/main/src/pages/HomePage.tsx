@@ -30,6 +30,7 @@ const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
 const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
+const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Ученик" },
@@ -133,6 +134,7 @@ export function HomePage() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterSuccessOpen, setIsRegisterSuccessOpen] = useState(false);
+  const [isVerifySuccessOpen, setIsVerifySuccessOpen] = useState(false);
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
   const [isAgreementOpen, setIsAgreementOpen] = useState(false);
   const [agreementRole, setAgreementRole] = useState<RoleValue>("student");
@@ -547,6 +549,21 @@ export function HomePage() {
     window.localStorage.removeItem(OPEN_LOGIN_STORAGE_KEY);
     openLogin();
   }, [isAuthenticated, openLogin]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (isAuthenticated) {
+      return;
+    }
+    const flag = window.localStorage.getItem(VERIFY_SUCCESS_STORAGE_KEY);
+    if (!flag) {
+      return;
+    }
+    window.localStorage.removeItem(VERIFY_SUCCESS_STORAGE_KEY);
+    setIsVerifySuccessOpen(true);
+  }, [isAuthenticated]);
 
   const handleUserMenuToggle = () => {
     setIsUserMenuOpen((prev) => !prev);
@@ -1335,6 +1352,31 @@ export function HomePage() {
               type="button"
               className="auth-success-button"
               onClick={() => setIsRegisterSuccessOpen(false)}
+            >
+              Ок
+            </Button>
+          </div>
+        </Modal>
+
+        <Modal
+          isOpen={isVerifySuccessOpen}
+          onClose={() => {
+            setIsVerifySuccessOpen(false);
+            openLogin();
+          }}
+          title="Верификация прошла успешно"
+          className="auth-modal"
+          closeOnBackdrop={false}
+        >
+          <p className="auth-success-message">Верификация прошла успешно.</p>
+          <div className="auth-actions">
+            <Button
+              type="button"
+              className="auth-success-button"
+              onClick={() => {
+                setIsVerifySuccessOpen(false);
+                openLogin();
+              }}
             >
               Ок
             </Button>
