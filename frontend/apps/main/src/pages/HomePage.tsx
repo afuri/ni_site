@@ -1428,7 +1428,7 @@ export function HomePage() {
               <Button
                 type="submit"
                 isLoading={loginStatus === "loading"}
-                className="auth-primary-button"
+                className="auth-login-button"
               >
                 Войти
               </Button>

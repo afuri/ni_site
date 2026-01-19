@@ -716,7 +716,13 @@
 }
 
 .auth-success-button {
-  width: 30%;
+  width: 20%;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+.auth-login-button {
+  width: 20%;
   margin: 0 auto;
   justify-content: center;
 }
