@@ -773,7 +773,7 @@ export function HomePage() {
         }
         actions={
           <div className="home-header-actions">
-            <a href="https://vk.com/nevsky.integral" className="home-vk-link" aria-label="ВК Олимпиада">
+            <a href="https://vk.com/nevsky.integral" target="_blank" className="home-vk-link" aria-label="ВК Олимпиада">
               <img src={vkLink} alt="ВК" />
             </a>
             {isAuthenticated && user ? (
@@ -1144,7 +1144,7 @@ export function HomePage() {
                 value={registerForm.password}
                 onChange={(event) => updateRegisterField("password", event.target.value)}
                 error={registerErrors.password}
-                helperText="Длина минимум 8 символов. Используйте минимум одну заглавную букву и цифру."
+                helperText="Длина минимум 8 символов. Используйте минимум одну цифру, одну большую и одну маленькую буквы."
               />
               <TextInput
                 label="Повтор пароля"

@@ -276,6 +276,11 @@ export function CabinetPage() {
       : null;
 
   const activeUser = viewingStudentId ? viewedStudent : user;
+  const greetingName =
+    activeUser?.role === "teacher"
+      ? [activeUser?.name, activeUser?.father_name].filter(Boolean).join(" ")
+      : activeUser?.name ?? "";
+  const greetingLabel = greetingName.trim() || activeUser?.login || "";
 
   useEffect(() => {
     if (!user) {
@@ -1025,7 +1030,7 @@ export function CabinetPage() {
           <section className="cabinet-section">
             <h1>Личный кабинет</h1>
             <p className="cabinet-subtitle">
-              Добро пожаловать, {activeUser?.surname ?? ""} {activeUser?.name ?? ""}.
+              Добро пожаловать, {greetingLabel}!
             </p>
           </section>
 
@@ -1167,7 +1172,7 @@ export function CabinetPage() {
                 value={profileForm.surname}
                 onChange={(event) => handleProfileChange("surname", event.target.value)}
                 error={profileErrors.surname}
-                helperText="Первая буква заглавная, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
               />
               <TextInput
                 label="Имя"
@@ -1175,7 +1180,7 @@ export function CabinetPage() {
                 value={profileForm.name}
                 onChange={(event) => handleProfileChange("name", event.target.value)}
                 error={profileErrors.name}
-                helperText="Первая буква заглавная, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
               />
               <TextInput
                 label="Отчество"
@@ -1183,7 +1188,7 @@ export function CabinetPage() {
                 value={profileForm.fatherName}
                 onChange={(event) => handleProfileChange("fatherName", event.target.value)}
                 error={profileErrors.fatherName}
-                helperText="Русские буквы, каждая часть с заглавной, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
               />
               <div className="field">
                 <span className="field-label">Пол</span>
@@ -1219,7 +1224,7 @@ export function CabinetPage() {
                 value={profileForm.city}
                 onChange={(event) => handleProfileChange("city", event.target.value)}
                 error={profileErrors.city}
-                helperText="Первая буква заглавная, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
                 list="profile-city-suggestions"
               />
               <datalist id="profile-city-suggestions">
@@ -1269,7 +1274,7 @@ export function CabinetPage() {
                   value={profileForm.subject}
                   onChange={(event) => handleProfileChange("subject", event.target.value)}
                   error={profileErrors.subject}
-                  helperText="Только русские буквы."
+                  helperText="С заглавной буквы на русском языке."
                 />
               ) : null}
 

@@ -1521,6 +1521,16 @@ fullstack 1.0.7
   - frontend/apps/main/src/pages/VerifyEmailPage.tsx
   - frontend/apps/main/src/pages/HomePage.tsx
 
+1.0.12
+
+Обновил приветствие в кабинете: для ученика теперь только имя, для учителя —
+  имя + отчество, с ! и запасным вариантом на login если имя пустое. Правка в
+  frontend/apps/main/src/pages/CabinetPage.tsx.
+
+VK открывается на новой вкладке
+
+В личном кабинете подсказки для изменения данных
+
 
 Для редактирование fronta mainpage
 1. cd ..   
@@ -1529,9 +1539,11 @@ fullstack 1.0.7
 4. cd frontend
 5. npm ci
 6. npm run build:app
-7. rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-integral/
+7. rsync -a --delete --exclude 'admin/' /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-integral/
 
 8.   rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-integral/admin/
+
+
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....
@@ -1553,3 +1565,32 @@ fullstack 1.0.7
 
   После этого страница должна загрузиться. Если будет белый экран — пришли
   console ошибки из браузера.
+
+  1. Открой конфиг:
+
+  nano /etc/nginx/sites-available/nevsky-integral
+
+  2. Замени блок location /admin/ на один из вариантов (лучше alias):
+
+  Вариант с alias:
+
+  location /admin/ {
+      alias /var/www/nevsky-integral/admin/;
+      try_files $uri $uri/ /index.html;
+  }
+
+  Или вариант с root (если root уже /var/www/nevsky-integral):
+
+  location /admin/ {
+      root /var/www/nevsky-integral;
+      try_files $uri $uri/ /admin/index.html;
+  }
+
+  3. Применить:
+
+  nginx -t && systemctl reload nginx
+
+  4. Проверь:
+
+  ls -la /var/www/nevsky-integral/admin/index.html
+  curl -I http://127.0.0.1/admin/
