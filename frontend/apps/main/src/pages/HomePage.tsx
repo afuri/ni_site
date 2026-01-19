@@ -29,6 +29,7 @@ const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
 const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
+const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Ученик" },
@@ -530,6 +531,22 @@ export function HomePage() {
     setRegisterErrors({});
     setIsRegisterOpen(true);
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (isAuthenticated) {
+      window.localStorage.removeItem(OPEN_LOGIN_STORAGE_KEY);
+      return;
+    }
+    const flag = window.localStorage.getItem(OPEN_LOGIN_STORAGE_KEY);
+    if (!flag) {
+      return;
+    }
+    window.localStorage.removeItem(OPEN_LOGIN_STORAGE_KEY);
+    openLogin();
+  }, [isAuthenticated, openLogin]);
 
   const handleUserMenuToggle = () => {
     setIsUserMenuOpen((prev) => !prev);
@@ -1100,7 +1117,7 @@ export function HomePage() {
                 value={registerForm.email}
                 onChange={(event) => updateRegisterField("email", event.target.value)}
                 error={registerErrors.email}
-                helperText="Используйте действующий email — понадобится для входа и восстановления."
+                helperText="Используйте действующий email — понадобится для входа и восстановления пароля."
               />
               <TextInput
                 label="Пароль"
@@ -1110,7 +1127,7 @@ export function HomePage() {
                 value={registerForm.password}
                 onChange={(event) => updateRegisterField("password", event.target.value)}
                 error={registerErrors.password}
-                helperText="От 8 до 128 символов."
+                helperText="Длина минимум 8 символов. Используйте минимум одну заглавную букву и цифру."
               />
               <TextInput
                 label="Повтор пароля"
@@ -1132,7 +1149,7 @@ export function HomePage() {
                 value={registerForm.surname}
                 onChange={(event) => updateRegisterField("surname", event.target.value)}
                 error={registerErrors.surname}
-                helperText="Первая буква заглавная, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
               />
               <TextInput
                 label="Имя"
@@ -1140,7 +1157,7 @@ export function HomePage() {
                 value={registerForm.name}
                 onChange={(event) => updateRegisterField("name", event.target.value)}
                 error={registerErrors.name}
-                helperText="Первая буква заглавная, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
               />
               <TextInput
                 label="Отчество"
@@ -1148,7 +1165,7 @@ export function HomePage() {
                 value={registerForm.fatherName}
                 onChange={(event) => updateRegisterField("fatherName", event.target.value)}
                 error={registerErrors.fatherName}
-                helperText="Русские буквы, каждая часть с заглавной, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
               />
               <div className="field">
                 <span className="field-label">Пол</span>
@@ -1184,7 +1201,7 @@ export function HomePage() {
                 value={registerForm.country}
                 onChange={(event) => updateRegisterField("country", event.target.value)}
                 error={registerErrors.country}
-                helperText="Первая буква заглавная, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
               />
               <TextInput
                 label="Город"
@@ -1192,7 +1209,7 @@ export function HomePage() {
                 value={registerForm.city}
                 onChange={(event) => updateRegisterField("city", event.target.value)}
                 error={registerErrors.city}
-                helperText="Первая буква заглавная, можно пробел и дефис."
+                helperText="С заглавной буквы на русском языке."
                 list="register-city-suggestions"
               />
               <datalist id="register-city-suggestions">
@@ -1244,7 +1261,7 @@ export function HomePage() {
                   value={registerForm.subject}
                   onChange={(event) => updateRegisterField("subject", event.target.value)}
                   error={registerErrors.subject}
-                  helperText="Только русские буквы."
+                  helperText="С заглавной буквы на русском языке."
                 />
               ) : null}
             </div>
@@ -1306,13 +1323,19 @@ export function HomePage() {
           closeOnBackdrop={false}
         >
           <p className="auth-success-message">
+            Поздравляем!
+            <br />
             Вы зарегистрировались.
             <br />
-            Подтвердите свою регистрацию по электронной почте. На электронной почте, которую указали при регистрации,
-            найдите письмо от support@nevsky-integral.ru и пройдите по ссылке, указанной в этом письме.
+            Подтвердите свою регистрацию. На электронной почте, которую вы указали при регистрации,
+            найдите письмо (возможно в спаме) от support@nevsky-integral.ru и пройдите по ссылке, указанной в этом письме.
           </p>
           <div className="auth-actions">
-            <Button type="button" onClick={() => setIsRegisterSuccessOpen(false)}>
+            <Button
+              type="button"
+              className="auth-success-button"
+              onClick={() => setIsRegisterSuccessOpen(false)}
+            >
               Ок
             </Button>
           </div>

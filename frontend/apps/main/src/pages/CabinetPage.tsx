@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
 import { createApiClient, type ManualTeacher, type UserRead } from "@api";
 import { createAuthStorage } from "@utils";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import "../styles/cabinet.css";
 
@@ -10,6 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
+const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 
 const loadMockS3 = (): Record<string, string> => {
   if (typeof window === "undefined") {
@@ -162,6 +163,7 @@ const mapManualTeachersToPayload = (entries: TeacherEntry[]): ManualTeacher[] =>
 
 export function CabinetPage() {
   const { status, user, tokens, setSession, signOut } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const storage = useMemo(
     () =>
@@ -227,6 +229,7 @@ export function CabinetPage() {
   const [linkPromptStatus, setLinkPromptStatus] = useState<"idle" | "saving" | "error">("idle");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
+  const [hasVerifySuccess, setHasVerifySuccess] = useState(false);
   const [isVerifySuccessOpen, setIsVerifySuccessOpen] = useState(false);
 
   const closeAttemptView = () => {
@@ -253,7 +256,7 @@ export function CabinetPage() {
   }, [isUserMenuOpen]);
 
   useEffect(() => {
-    if (!user || typeof window === "undefined") {
+    if (typeof window === "undefined") {
       return;
     }
     const flag = window.localStorage.getItem(VERIFY_SUCCESS_STORAGE_KEY);
@@ -261,8 +264,9 @@ export function CabinetPage() {
       return;
     }
     window.localStorage.removeItem(VERIFY_SUCCESS_STORAGE_KEY);
+    setHasVerifySuccess(true);
     setIsVerifySuccessOpen(true);
-  }, [user]);
+  }, []);
 
   const studentParam = searchParams.get("student");
   const studentIdValue = studentParam ? Number(studentParam) : null;
@@ -498,11 +502,59 @@ export function CabinetPage() {
     );
   }, [profileForm, savedProfile]);
 
+  const handleVerifySuccessClose = () => {
+    setIsVerifySuccessOpen(false);
+    if (!user && typeof window !== "undefined") {
+      window.localStorage.setItem(OPEN_LOGIN_STORAGE_KEY, "1");
+      navigate("/", { replace: true });
+    }
+  };
+
+  const verifySuccessModal = (
+    <Modal
+      isOpen={isVerifySuccessOpen}
+      onClose={handleVerifySuccessClose}
+      title="Верификация прошла успешно"
+      className="cabinet-verify-modal"
+      closeOnBackdrop={false}
+    >
+      <p className="cabinet-verify-message">Верификация прошла успешно.</p>
+      <div className="cabinet-modal-actions">
+        <Button type="button" onClick={handleVerifySuccessClose}>
+          Ок
+        </Button>
+      </div>
+    </Modal>
+  );
+
   if (status === "loading" || status === "idle") {
     return <div className="cabinet-page">Загрузка...</div>;
   }
 
   if (!user) {
+    if (hasVerifySuccess) {
+      return (
+        <div className="cabinet-page">
+          <LayoutShell
+            logo={
+              <Link to="/" className="cabinet-logo">
+                <img src={logoImage} alt="Невский интеграл" />
+                <span>НЕВСКИЙ<br />ИНТЕГРАЛ</span>
+              </Link>
+            }
+            nav={null}
+            actions={<Button variant="outline" onClick={() => navigate("/")}>На главную</Button>}
+            footer={<div>© 2026 Олимпиада «Невский интеграл»</div>}
+          >
+            <div className="cabinet-verify-standalone">
+              <p>Чтобы попасть в личный кабинет, войдите в аккаунт на главной странице.</p>
+              <Button onClick={() => navigate("/")}>Перейти на главную</Button>
+            </div>
+          </LayoutShell>
+          {verifySuccessModal}
+        </div>
+      );
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -1581,20 +1633,7 @@ export function CabinetPage() {
         ) : null}
       </Modal>
 
-      <Modal
-        isOpen={isVerifySuccessOpen}
-        onClose={() => setIsVerifySuccessOpen(false)}
-        title="Верификация прошла успешно"
-        className="cabinet-verify-modal"
-        closeOnBackdrop={false}
-      >
-        <p className="cabinet-verify-message">Верификация прошла успешно.</p>
-        <div className="cabinet-modal-actions">
-          <Button type="button" onClick={() => setIsVerifySuccessOpen(false)}>
-            Ок
-          </Button>
-        </div>
-      </Modal>
+      {verifySuccessModal}
 
       <Modal
         isOpen={Boolean(pendingResultsMessage)}

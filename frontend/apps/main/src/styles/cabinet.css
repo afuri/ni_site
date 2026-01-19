@@ -273,6 +273,16 @@
   margin: var(--space-6) 0 var(--space-8);
 }
 
+.cabinet-verify-standalone {
+  max-width: 520px;
+  margin: var(--space-10) auto;
+  text-align: center;
+  color: rgba(31, 59, 99, 0.7);
+  display: grid;
+  gap: var(--space-4);
+  justify-items: center;
+}
+
 .cabinet-logout-button {
   width: 20%;
   background: #dc2626;

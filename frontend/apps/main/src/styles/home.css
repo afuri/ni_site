@@ -715,6 +715,12 @@
   justify-content: center;
 }
 
+.auth-success-button {
+  width: 30%;
+  margin: 0 auto;
+  justify-content: center;
+}
+
 .auth-modal .modal-header {
   position: relative;
   justify-content: center;
