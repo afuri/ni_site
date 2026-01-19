@@ -34,7 +34,7 @@ const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Ученик" },
-  { value: "teacher", label: "Учитель/Родитель" }
+  { value: "teacher", label: "Учитель" }
 ];
 
 const CLASS_GRADES = Array.from({ length: 12 }, (_, index) => String(index));
