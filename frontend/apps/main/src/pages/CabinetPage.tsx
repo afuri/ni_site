@@ -9,6 +9,7 @@ import "../styles/cabinet.css";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
+const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
 
 const loadMockS3 = (): Record<string, string> => {
   if (typeof window === "undefined") {
@@ -226,6 +227,14 @@ export function CabinetPage() {
   const [linkPromptStatus, setLinkPromptStatus] = useState<"idle" | "saving" | "error">("idle");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
+  const [isVerifySuccessOpen, setIsVerifySuccessOpen] = useState(false);
+
+  const closeAttemptView = () => {
+    setAttemptViewStatus("idle");
+    setAttemptViewError(null);
+    setAttemptView(null);
+    setAttemptImageUrls({});
+  };
 
   useEffect(() => {
     if (!isUserMenuOpen) {
@@ -242,6 +251,18 @@ export function CabinetPage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    if (!user || typeof window === "undefined") {
+      return;
+    }
+    const flag = window.localStorage.getItem(VERIFY_SUCCESS_STORAGE_KEY);
+    if (!flag) {
+      return;
+    }
+    window.localStorage.removeItem(VERIFY_SUCCESS_STORAGE_KEY);
+    setIsVerifySuccessOpen(true);
+  }, [user]);
 
   const studentParam = searchParams.get("student");
   const studentIdValue = studentParam ? Number(studentParam) : null;
@@ -1522,14 +1543,10 @@ export function CabinetPage() {
 
       <Modal
         isOpen={attemptViewStatus === "loading" || Boolean(attemptView) || Boolean(attemptViewError)}
-        onClose={() => {
-          setAttemptViewStatus("idle");
-          setAttemptViewError(null);
-          setAttemptView(null);
-          setAttemptImageUrls({});
-        }}
+        onClose={closeAttemptView}
         title={attemptView?.olympiad_title ?? "Просмотр попытки"}
         className="cabinet-attempt-modal"
+        closeOnBackdrop={false}
       >
         {attemptViewStatus === "loading" ? <p>Загрузка...</p> : null}
         {attemptViewError ? <p className="cabinet-alert">{attemptViewError}</p> : null}
@@ -1562,6 +1579,21 @@ export function CabinetPage() {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={isVerifySuccessOpen}
+        onClose={() => setIsVerifySuccessOpen(false)}
+        title="Верификация прошла успешно"
+        className="cabinet-verify-modal"
+        closeOnBackdrop={false}
+      >
+        <p className="cabinet-verify-message">Верификация прошла успешно.</p>
+        <div className="cabinet-modal-actions">
+          <Button type="button" onClick={() => setIsVerifySuccessOpen(false)}>
+            Ок
+          </Button>
+        </div>
       </Modal>
 
       <Modal

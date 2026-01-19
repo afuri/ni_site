@@ -203,7 +203,16 @@ class AuthService:
 
         if settings.EMAIL_SEND_ENABLED:
             link = build_verify_link(token)
-            body = f"Подтвердите email по ссылке: {link}"
+            body = (
+                "Здравствуйте!\n\n"
+                "Вы зарегистрировались в Личном кабинете Олимпиады «Невский интеграл».\n"
+                f"Ваш логин: {user.login}\n"
+                "Для активации аккаунта перейдите по этой ссылке:\n\n"
+                f"{link}\n\n"
+                "Если вы не регистрировались, проигнорируйте это письмо.\n\n"
+                "С уважением,\n"
+                "команда проекта «Невский интеграл»"
+            )
             send_email_task.delay(user.email, "Подтверждение email", body)
 
     async def verify_email(self, *, token: str) -> None:

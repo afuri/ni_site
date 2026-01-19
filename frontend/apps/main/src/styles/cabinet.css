@@ -293,6 +293,23 @@
   margin-top: var(--space-4);
 }
 
+.cabinet-verify-modal .modal-header {
+  position: relative;
+  justify-content: center;
+  text-align: center;
+}
+
+.cabinet-verify-modal .modal-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.cabinet-verify-message {
+  text-align: center;
+  color: rgba(31, 59, 99, 0.7);
+}
+
 .cabinet-link-modal {
   display: grid;
   gap: var(--space-3);

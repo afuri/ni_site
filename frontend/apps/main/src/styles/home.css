@@ -693,6 +693,11 @@
   font-size: 0.9rem;
 }
 
+.auth-success-message {
+  text-align: center;
+  color: rgba(31, 59, 99, 0.7);
+}
+
 .auth-actions {
   display: grid;
   gap: var(--space-3);

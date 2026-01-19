@@ -6,6 +6,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
 import { OlympiadPage } from "./pages/OlympiadPage";
 import { CabinetPage } from "./pages/CabinetPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
 const storage = createAuthStorage({
   tokensKey: "ni_main_tokens",
@@ -25,6 +26,7 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/olympiad" element={<OlympiadPage />} />
           <Route path="/cabinet" element={<CabinetPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

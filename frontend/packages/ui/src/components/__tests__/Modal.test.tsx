@@ -37,4 +37,16 @@ describe("Modal", () => {
     await userEvent.setup().click(screen.getByRole("presentation"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("does not close when backdrop is disabled", async () => {
+    const onClose = vi.fn();
+    render(
+      <Modal isOpen onClose={onClose} title="Modal" closeOnBackdrop={false}>
+        <p>Body</p>
+      </Modal>
+    );
+
+    await userEvent.setup().click(screen.getByRole("presentation"));
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

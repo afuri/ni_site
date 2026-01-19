@@ -131,6 +131,7 @@ export function HomePage() {
   const schoolLookupTimer = useRef<number | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isRegisterSuccessOpen, setIsRegisterSuccessOpen] = useState(false);
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
   const [isAgreementOpen, setIsAgreementOpen] = useState(false);
   const [agreementRole, setAgreementRole] = useState<RoleValue>("student");
@@ -581,12 +582,13 @@ export function HomePage() {
       });
       setRegisterStatus("idle");
       setIsRegisterOpen(false);
+      setIsRegisterSuccessOpen(true);
       setLoginForm((prev) => ({
         ...prev,
         login: registerForm.login,
         password: ""
       }));
-      setIsLoginOpen(true);
+      setIsLoginOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось зарегистрироваться.";
       setRegisterErrorMessage(message);
@@ -1016,6 +1018,7 @@ export function HomePage() {
           onClose={() => setIsInstructionOpen(false)}
           title="Инструкция перед началом"
           className="home-instruction-modal"
+          closeOnBackdrop={false}
         >
           <div className="home-instruction">
             <p>
@@ -1058,6 +1061,7 @@ export function HomePage() {
           onClose={() => setIsRegisterOpen(false)}
           title="Регистрация"
           className="auth-modal"
+          closeOnBackdrop={false}
         >
           <form className="auth-form" onSubmit={handleRegisterSubmit}>
             <div className="auth-grid">
@@ -1295,10 +1299,31 @@ export function HomePage() {
         </Modal>
 
         <Modal
+          isOpen={isRegisterSuccessOpen}
+          onClose={() => setIsRegisterSuccessOpen(false)}
+          title="Поздравляем!"
+          className="auth-modal"
+          closeOnBackdrop={false}
+        >
+          <p className="auth-success-message">
+            Вы зарегистрировались.
+            <br />
+            Подтвердите свою регистрацию по электронной почте. На электронной почте, которую указали при регистрации,
+            найдите письмо от support@nevsky-integral.ru и пройдите по ссылке, указанной в этом письме.
+          </p>
+          <div className="auth-actions">
+            <Button type="button" onClick={() => setIsRegisterSuccessOpen(false)}>
+              Ок
+            </Button>
+          </div>
+        </Modal>
+
+        <Modal
           isOpen={isLoginOpen}
           onClose={() => setIsLoginOpen(false)}
           title="Вход"
           className="auth-modal"
+          closeOnBackdrop={false}
         >
           <form className="auth-form" onSubmit={handleLoginSubmit}>
             <div className="auth-grid auth-grid-single">

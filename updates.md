@@ -1470,10 +1470,41 @@ fullstack 1.0.0
   Если нужно применить ещё на более узком брейкпоинте (например, только до
   560px) — скажи.
 
-Для редактирование fronta   
-  1. git pull
-  cd frontend
-  npm ci
-  2. npm run build:app
-  3. rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-
-     integral/
+
+fullstack 1.0.4
+Модальные окна не закрываются при клике снаружи
+Админка фикс
+Добавлены окна подтверждения регистрации и верификации
+Текст письма верификации отредактирован
+
+Для редактирование fronta mainpage
+1. cd ..   
+2. git pull
+3. docker compose up -d --build api
+4. cd frontend
+5. npm ci
+6. npm run build:app
+7. rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-integral/
+
+8.   rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-integral/admin/
+
+Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
+  ассеты искались по /assets/... вместо /admin/assets/....
+
+  Я добавил:
+
+  - frontend/apps/admin/vite.config.ts → base: "/admin/"
+
+  Дальше на сервере:
+
+  1. cd /opt/ni_site/frontend && npm run build:admin
+  2. Скопировать билд админки в /var/www/nevsky-integral/admin/
+  3. В nginx для /admin/ обязательно:
+
+  location /admin/ {
+    root /var/www/nevsky-integral;
+    try_files $uri /admin/index.html;
+  }
+
+  После этого страница должна загрузиться. Если будет белый экран — пришли
+  console ошибки из браузера.

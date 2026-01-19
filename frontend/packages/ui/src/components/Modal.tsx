@@ -8,6 +8,7 @@ export type ModalProps = {
   footer?: React.ReactNode;
   className?: string;
   backdropClassName?: string;
+  closeOnBackdrop?: boolean;
   onClose: () => void;
 };
 
@@ -19,6 +20,7 @@ export function Modal({
   footer,
   className,
   backdropClassName,
+  closeOnBackdrop = true,
   onClose
 }: ModalProps) {
   if (!isOpen) {
@@ -29,7 +31,11 @@ export function Modal({
     <div
       className={`modal-backdrop ${backdropClassName ?? ""}`.trim()}
       role="presentation"
-      onClick={onClose}
+      onClick={() => {
+        if (closeOnBackdrop) {
+          onClose();
+        }
+      }}
     >
       <div
         className={`modal ${className ?? ""}`.trim()}
