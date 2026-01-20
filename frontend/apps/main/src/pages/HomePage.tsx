@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
-import { createApiClient } from "@api";
+import { createApiClient, type ApiError } from "@api";
 import { createAuthStorage } from "@utils";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
@@ -30,6 +30,75 @@ const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
+
+const joinWithAnd = (items: string[]): string => {
+  if (items.length === 0) {
+    return "";
+  }
+  if (items.length === 1) {
+    return items[0];
+  }
+  if (items.length === 2) {
+    return `${items[0]} и ${items[1]}`;
+  }
+  return `${items.slice(0, -1).join(", ")} и ${items[items.length - 1]}`;
+};
+
+const buildPasswordRequirementMessage = (password: string): string => {
+  const parts: string[] = [];
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasDigit = /[0-9]/.test(password);
+
+  if (password.length < 8) {
+    parts.push("не менее 8 символов");
+  }
+  if (!hasUpper) {
+    parts.push("хотя бы одну заглавную букву");
+  }
+  if (!hasLower) {
+    parts.push("хотя бы одну строчную букву");
+  }
+  if (!hasDigit) {
+    parts.push("хотя бы одну цифру");
+  }
+
+  if (parts.length === 0) {
+    return "Пароль не соответствует требованиям безопасности.";
+  }
+
+  const lengthNote = password.length < 8;
+  const requirements = joinWithAnd(parts.filter((item) => item !== "не менее 8 символов"));
+  if (lengthNote && requirements) {
+    return `Пароль должен быть не короче 8 символов и содержать ${requirements}.`;
+  }
+  if (lengthNote) {
+    return "Пароль должен быть не короче 8 символов.";
+  }
+  return `Пароль должен содержать ${requirements}.`;
+};
+
+const getRegisterErrorMessage = (error: unknown, password: string): string => {
+  if (error && typeof error === "object" && "code" in error) {
+    const { code, message } = error as ApiError;
+    if (code === "login_taken") {
+      return "Логин уже зарегистрирован. Укажите другой логин.";
+    }
+    if (code === "email_taken") {
+      return "Этот email уже зарегистрирован. Укажите другой email.";
+    }
+    if (code === "weak_password") {
+      return buildPasswordRequirementMessage(password);
+    }
+    if (message) {
+      return message;
+    }
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "Не удалось зарегистрироваться. Проверьте введенные данные.";
+};
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Ученик" },
@@ -621,8 +690,7 @@ export function HomePage() {
       }));
       setIsLoginOpen(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось зарегистрироваться.";
-      setRegisterErrorMessage(message);
+      setRegisterErrorMessage(getRegisterErrorMessage(error, registerForm.password));
       setRegisterStatus("error");
     }
   };
@@ -1121,6 +1189,7 @@ export function HomePage() {
                 value={registerForm.login}
                 onChange={(event) => updateRegisterField("login", event.target.value)}
                 error={registerErrors.login}
+                placeholder="например, popov12"
                 helperText="Не менее 5 символов. Только английские буквы и цифры. Начинаться должен с буквы."
               />
               <TextInput
@@ -1131,6 +1200,7 @@ export function HomePage() {
                 value={registerForm.email}
                 onChange={(event) => updateRegisterField("email", event.target.value)}
                 error={registerErrors.email}
+                placeholder="например, popov12@mail.ru"
                 helperText="Используйте действующий email — понадобится для входа и восстановления пароля."
               />
               <TextInput
@@ -1141,6 +1211,7 @@ export function HomePage() {
                 value={registerForm.password}
                 onChange={(event) => updateRegisterField("password", event.target.value)}
                 error={registerErrors.password}
+                placeholder="например, Password2012"
                 helperText="Длина минимум 8 символов. Используйте минимум одну цифру, одну большую и одну маленькую буквы."
               />
               <TextInput
@@ -1151,6 +1222,7 @@ export function HomePage() {
                 value={registerForm.passwordConfirm}
                 onChange={(event) => updateRegisterField("passwordConfirm", event.target.value)}
                 error={registerErrors.passwordConfirm}
+                placeholder="например, Password2012"
               />
               {passwordsFilled ? (
                 <span className={`field-helper ${passwordsMatch ? "auth-pass-match" : "auth-pass-mismatch"}`}>
@@ -1163,6 +1235,7 @@ export function HomePage() {
                 value={registerForm.surname}
                 onChange={(event) => updateRegisterField("surname", event.target.value)}
                 error={registerErrors.surname}
+                placeholder="например, Попов"
                 helperText="С заглавной буквы на русском языке."
               />
               <TextInput
@@ -1171,6 +1244,7 @@ export function HomePage() {
                 value={registerForm.name}
                 onChange={(event) => updateRegisterField("name", event.target.value)}
                 error={registerErrors.name}
+                placeholder="например, Иван"
                 helperText="С заглавной буквы на русском языке."
               />
               <TextInput
@@ -1179,6 +1253,7 @@ export function HomePage() {
                 value={registerForm.fatherName}
                 onChange={(event) => updateRegisterField("fatherName", event.target.value)}
                 error={registerErrors.fatherName}
+                placeholder="например, Иванович"
                 helperText="С заглавной буквы на русском языке."
               />
               <div className="field">
@@ -1215,6 +1290,7 @@ export function HomePage() {
                 value={registerForm.country}
                 onChange={(event) => updateRegisterField("country", event.target.value)}
                 error={registerErrors.country}
+                placeholder="например, Россия"
                 helperText="С заглавной буквы на русском языке."
               />
               <TextInput
@@ -1275,6 +1351,7 @@ export function HomePage() {
                   value={registerForm.subject}
                   onChange={(event) => updateRegisterField("subject", event.target.value)}
                   error={registerErrors.subject}
+                  placeholder="например, Математика"
                   helperText="С заглавной буквы на русском языке."
                 />
               ) : null}

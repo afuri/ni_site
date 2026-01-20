@@ -1538,10 +1538,17 @@ VK открывается на новой вкладке
   Добавлен файл: backend/alembic/versions/
   e2f3a4b5c6d7_extend_user_subject_length.py.
 
-  Как применить на сервере:
+1.0.14
 
-  cd /opt/ni_site
-  docker compose exec api alembic -c /app/alembic.ini upgrade head
+ Сделал расшифровку ошибок регистрации на фронте: теперь показывается понятное
+  сообщение для login_taken, email_taken и weak_password, включая подсказку про
+  заглавную/строчную/цифру и длину. Это в frontend/apps/main/src/pages/
+  HomePage.tsx.
+
+
+ 1.0.15
+ • Добавил плейсхолдеры для всех указанных полей регистрации в frontend/apps/
+  main/src/pages/HomePage.tsx. 
 
 Для редактирование fronta mainpage
 1. cd ..   
@@ -1605,3 +1612,15 @@ VK открывается на новой вкладке
 
   ls -la /var/www/nevsky-integral/admin/index.html
   curl -I http://127.0.0.1/admin/
+
+
+Для изменения БД
+
+cd /opt/ni_site
+git pull
+
+  # пересобрать образ, чтобы внутри /app появился новый файл миграции
+  docker compose up -d --build api
+
+  # применить миграции
+  docker compose exec api alembic -c /app/alembic.ini upgrade head
