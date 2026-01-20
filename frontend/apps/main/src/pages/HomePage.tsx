@@ -1010,11 +1010,11 @@ export function HomePage() {
         <section id="choose" className="home-section-alt">
           <div className="container">
             <div className="home-section-heading">
-              <h3>Найти олимпиаду по коду</h3>
+              <h3>Найти тестирование по коду</h3>
             </div>
             <div className="home-olympiad-select">
               <label className="field">
-                <span className="field-label">Код олимпиады</span>
+                <span className="field-label">Код тестирования можно получить у ответственного лица</span>
                 <input
                   className="field-input"
                   value={olympiadCode}
@@ -1022,7 +1022,7 @@ export function HomePage() {
                     setOlympiadCode(event.target.value);
                     setStartError(null);
                   }}
-                  placeholder="Введите код олимпиады"
+                  placeholder="Введите код тестирования"
                 />
               </label>
               {publicOlympiadsStatus === "loading" ? (

@@ -1591,7 +1591,8 @@ VK открывается на новой вкладке
   rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-
   integral/admin/
 
-
+1.0.17
+Олимпиада -> Тестирование
 
 Для редактирование fronta mainpage
 1. cd ..   
