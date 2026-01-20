@@ -229,6 +229,64 @@ async def list_users(
 
 
 @router.get(
+    "/count",
+    response_model=int,
+    tags=["admin"],
+    description="Количество пользователей по фильтрам",
+    responses={
+        200: {"content": {"application/json": {"example": 0}}},
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+    },
+)
+async def count_users(
+    user_id: int | None = Query(default=None),
+    role: UserRole | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    is_email_verified: bool | None = Query(default=None),
+    must_change_password: bool | None = Query(default=None),
+    is_moderator: bool | None = Query(default=None),
+    moderator_requested: bool | None = Query(default=None),
+    login: str | None = Query(default=None),
+    email: str | None = Query(default=None),
+    surname: str | None = Query(default=None),
+    name: str | None = Query(default=None),
+    father_name: str | None = Query(default=None),
+    country: str | None = Query(default=None),
+    city: str | None = Query(default=None),
+    school: str | None = Query(default=None),
+    class_grade: int | None = Query(default=None),
+    subject: str | None = Query(default=None),
+    gender: str | None = Query(default=None, pattern="^(male|female)$"),
+    subscription: int | None = Query(default=None, ge=0, le=5),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    repo = UsersRepo(db)
+    return await repo.count(
+        user_id=user_id,
+        role=role,
+        is_active=is_active,
+        is_email_verified=is_email_verified,
+        must_change_password=must_change_password,
+        is_moderator=is_moderator,
+        moderator_requested=moderator_requested,
+        login=login,
+        email=email,
+        surname=surname,
+        name=name,
+        father_name=father_name,
+        country=country,
+        city=city,
+        school=school,
+        class_grade=class_grade,
+        subject=subject,
+        gender=gender,
+        subscription=subscription,
+    )
+
+
+@router.get(
     "/{user_id}",
     response_model=UserRead,
     tags=["admin"],

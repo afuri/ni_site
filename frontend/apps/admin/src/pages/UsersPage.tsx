@@ -118,17 +118,22 @@ const buildUsersCsv = (users: UserRead[]) => {
 };
 
 export function UsersPage() {
+  const pageSize = 200;
   const [form, setForm] = useState<UserUpdateForm>(emptyForm);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [otpStatus, setOtpStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [listStatus, setListStatus] = useState<"idle" | "loading" | "error">("idle");
   const [listError, setListError] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [exportError, setExportError] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState("");
   const [tempResult, setTempResult] = useState<string | null>(null);
   const [tempStatus, setTempStatus] = useState<"idle" | "saving" | "error">("idle");
   const [managedUsers, setManagedUsers] = useState<UserRead[]>([]);
   const [usersList, setUsersList] = useState<UserRead[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
     userId: "",
     role: "",
@@ -151,28 +156,7 @@ export function UsersPage() {
     subscription: ""
   });
 
-  const handleOtpRequest = async () => {
-    setOtpStatus("sending");
-    setMessage(null);
-    try {
-      const response = await adminApiClient.request<{ sent: boolean; otp?: string }>({
-        path: "/admin/users/otp",
-        method: "POST"
-      });
-      if (response?.otp) {
-        setForm((prev) => ({ ...prev, adminOtp: response.otp ?? "" }));
-      }
-      setOtpStatus("sent");
-      setMessage("OTP отправлен.");
-    } catch {
-      setOtpStatus("error");
-      setMessage("Не удалось получить OTP.");
-    }
-  };
-
-  const loadUsers = async () => {
-    setListStatus("loading");
-    setListError(null);
+  const buildFilterParams = () => {
     const params = new URLSearchParams();
     if (filters.userId) params.set("user_id", filters.userId);
     if (filters.role) params.set("role", filters.role);
@@ -193,12 +177,57 @@ export function UsersPage() {
     if (filters.gender) params.set("gender", filters.gender);
     if (filters.subscription) params.set("subscription", filters.subscription);
     if (filters.subject) params.set("subject", filters.subject);
+    return params;
+  };
+
+  const fetchUsersCount = async () => {
+    const params = buildFilterParams();
+    return await adminApiClient.request<number>({
+      path: `/admin/users/count?${params.toString()}`,
+      method: "GET"
+    });
+  };
+
+  const fetchUsersPage = async (limit: number, offset: number) => {
+    const params = buildFilterParams();
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    return await adminApiClient.request<UserRead[]>({
+      path: `/admin/users?${params.toString()}`,
+      method: "GET"
+    });
+  };
+
+  const handleOtpRequest = async () => {
+    setOtpStatus("sending");
+    setMessage(null);
     try {
-      const data = await adminApiClient.request<UserRead[]>({
-        path: `/admin/users?${params.toString()}`,
-        method: "GET"
+      const response = await adminApiClient.request<{ sent: boolean; otp?: string }>({
+        path: "/admin/users/otp",
+        method: "POST"
       });
+      if (response?.otp) {
+        setForm((prev) => ({ ...prev, adminOtp: response.otp ?? "" }));
+      }
+      setOtpStatus("sent");
+      setMessage("OTP отправлен.");
+    } catch {
+      setOtpStatus("error");
+      setMessage("Не удалось получить OTP.");
+    }
+  };
+
+  const loadUsers = async (pageToLoad = page) => {
+    setListStatus("loading");
+    setListError(null);
+    try {
+      const offset = (pageToLoad - 1) * pageSize;
+      const [data, total] = await Promise.all([
+        fetchUsersPage(pageSize, offset),
+        fetchUsersCount()
+      ]);
       setUsersList(data ?? []);
+      setTotalUsers(total ?? 0);
       setListStatus("idle");
     } catch {
       setListStatus("error");
@@ -206,22 +235,65 @@ export function UsersPage() {
     }
   };
 
-  const handleDownloadCsv = () => {
-    const csv = buildUsersCsv(usersList);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "users_filtered.csv";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+  const handleDownloadCsv = async () => {
+    setExportStatus("loading");
+    setExportError(null);
+    try {
+      const total = await fetchUsersCount();
+      const allUsers: UserRead[] = [];
+      for (let offset = 0; offset < total; offset += pageSize) {
+        const data = await fetchUsersPage(pageSize, offset);
+        if (data?.length) {
+          allUsers.push(...data);
+        }
+        if (!data || data.length < pageSize) {
+          break;
+        }
+      }
+      const csv = buildUsersCsv(allUsers);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "users_full.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setExportStatus("idle");
+    } catch {
+      setExportStatus("error");
+      setExportError("Не удалось выгрузить пользователей.");
+    }
   };
 
   useEffect(() => {
     void loadUsers();
   }, []);
+
+  const handleApplyFilters = () => {
+    setPage(1);
+    void loadUsers(1);
+  };
+
+  const handlePrevPage = () => {
+    if (page <= 1) {
+      return;
+    }
+    const nextPage = page - 1;
+    setPage(nextPage);
+    void loadUsers(nextPage);
+  };
+
+  const handleNextPage = () => {
+    const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
+    if (page >= totalPages) {
+      return;
+    }
+    const nextPage = page + 1;
+    setPage(nextPage);
+    void loadUsers(nextPage);
+  };
 
   const handleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -667,11 +739,31 @@ export function UsersPage() {
           />
             </div>
             <div className="admin-toolbar-actions">
-              <Button type="button" variant="outline" onClick={loadUsers}>
+              <Button type="button" variant="outline" onClick={handleApplyFilters}>
                 Применить фильтры
               </Button>
-              <Button type="button" variant="outline" onClick={handleDownloadCsv}>
+              <Button type="button" variant="outline" onClick={handleDownloadCsv} disabled={exportStatus === "loading"}>
                 Скачать CSV
+              </Button>
+            </div>
+            {exportStatus === "error" && exportError ? <div className="admin-alert">{exportError}</div> : null}
+            <div className="admin-toolbar-actions">
+              <span className="admin-hint">
+                Показано {usersList.length} из {totalUsers}.
+              </span>
+              <span className="admin-hint">
+                Страница {page} из {Math.max(1, Math.ceil(totalUsers / pageSize))}.
+              </span>
+              <Button type="button" variant="outline" onClick={handlePrevPage} disabled={page <= 1}>
+                Назад
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleNextPage}
+                disabled={page >= Math.max(1, Math.ceil(totalUsers / pageSize))}
+              >
+                Вперед
               </Button>
             </div>
             {listStatus === "error" && listError ? <div className="admin-alert">{listError}</div> : null}

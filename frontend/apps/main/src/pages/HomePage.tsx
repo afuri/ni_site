@@ -31,6 +31,19 @@ const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-�
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
 
+const normalizeRegisterForm = (form: RegisterFormState): RegisterFormState => ({
+  ...form,
+  login: form.login.trim(),
+  email: form.email.trim(),
+  surname: form.surname.trim(),
+  name: form.name.trim(),
+  fatherName: form.fatherName.trim(),
+  country: form.country.trim(),
+  city: form.city.trim(),
+  school: form.school.trim(),
+  subject: form.subject.trim()
+});
+
 const joinWithAnd = (items: string[]): string => {
   if (items.length === 0) {
     return "";
@@ -656,7 +669,9 @@ export function HomePage() {
   const handleRegisterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setRegisterErrorMessage(null);
-    const errors = validateRegister(registerForm);
+    const normalizedRegisterForm = normalizeRegisterForm(registerForm);
+    setRegisterForm(normalizedRegisterForm);
+    const errors = validateRegister(normalizedRegisterForm);
     if (Object.keys(errors).length > 0) {
       setRegisterErrors(errors);
       return;
@@ -665,20 +680,20 @@ export function HomePage() {
     setRegisterStatus("loading");
     try {
       await registerClient.auth.register({
-        login: registerForm.login.trim(),
-        password: registerForm.password,
-        role: registerForm.role,
-        email: registerForm.email.trim(),
-        gender: registerForm.gender as "male" | "female",
-        subscription: registerForm.subscription,
-        surname: registerForm.surname.trim(),
-        name: registerForm.name.trim(),
-        father_name: registerForm.fatherName ? registerForm.fatherName.trim() : null,
-        country: registerForm.country.trim(),
-        city: registerForm.city.trim(),
-        school: registerForm.school.trim(),
-        class_grade: registerForm.role === "student" ? Number(registerForm.classGrade) : null,
-        subject: registerForm.role === "teacher" ? registerForm.subject.trim() : null
+        login: normalizedRegisterForm.login,
+        password: normalizedRegisterForm.password,
+        role: normalizedRegisterForm.role,
+        email: normalizedRegisterForm.email,
+        gender: normalizedRegisterForm.gender as "male" | "female",
+        subscription: normalizedRegisterForm.subscription,
+        surname: normalizedRegisterForm.surname,
+        name: normalizedRegisterForm.name,
+        father_name: normalizedRegisterForm.fatherName ? normalizedRegisterForm.fatherName : null,
+        country: normalizedRegisterForm.country,
+        city: normalizedRegisterForm.city,
+        school: normalizedRegisterForm.school,
+        class_grade: normalizedRegisterForm.role === "student" ? Number(normalizedRegisterForm.classGrade) : null,
+        subject: normalizedRegisterForm.role === "teacher" ? normalizedRegisterForm.subject : null
       });
       setRegisterStatus("idle");
       setIsRegisterOpen(false);

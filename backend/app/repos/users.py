@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from app.core import error_codes as codes
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,6 +66,104 @@ class UsersRepo:
         offset: int = 0,
     ) -> list[User]:
         stmt = select(User).order_by(User.id).limit(limit).offset(offset)
+        stmt = self._apply_filters(
+            stmt,
+            user_id=user_id,
+            role=role,
+            is_active=is_active,
+            is_email_verified=is_email_verified,
+            must_change_password=must_change_password,
+            is_moderator=is_moderator,
+            moderator_requested=moderator_requested,
+            login=login,
+            email=email,
+            surname=surname,
+            name=name,
+            father_name=father_name,
+            country=country,
+            city=city,
+            school=school,
+            class_grade=class_grade,
+            subject=subject,
+            gender=gender,
+            subscription=subscription,
+        )
+        res = await self.db.execute(stmt)
+        return list(res.scalars().all())
+
+    async def count(
+        self,
+        *,
+        user_id: int | None = None,
+        role=None,
+        is_active: bool | None = None,
+        is_email_verified: bool | None = None,
+        must_change_password: bool | None = None,
+        is_moderator: bool | None = None,
+        moderator_requested: bool | None = None,
+        login: str | None = None,
+        email: str | None = None,
+        surname: str | None = None,
+        name: str | None = None,
+        father_name: str | None = None,
+        country: str | None = None,
+        city: str | None = None,
+        school: str | None = None,
+        class_grade: int | None = None,
+        subject: str | None = None,
+        gender: str | None = None,
+        subscription: int | None = None,
+    ) -> int:
+        stmt = select(func.count()).select_from(User)
+        stmt = self._apply_filters(
+            stmt,
+            user_id=user_id,
+            role=role,
+            is_active=is_active,
+            is_email_verified=is_email_verified,
+            must_change_password=must_change_password,
+            is_moderator=is_moderator,
+            moderator_requested=moderator_requested,
+            login=login,
+            email=email,
+            surname=surname,
+            name=name,
+            father_name=father_name,
+            country=country,
+            city=city,
+            school=school,
+            class_grade=class_grade,
+            subject=subject,
+            gender=gender,
+            subscription=subscription,
+        )
+        res = await self.db.execute(stmt)
+        return int(res.scalar_one())
+
+    def _apply_filters(
+        self,
+        stmt,
+        *,
+        user_id: int | None,
+        role,
+        is_active: bool | None,
+        is_email_verified: bool | None,
+        must_change_password: bool | None,
+        is_moderator: bool | None,
+        moderator_requested: bool | None,
+        login: str | None,
+        email: str | None,
+        surname: str | None,
+        name: str | None,
+        father_name: str | None,
+        country: str | None,
+        city: str | None,
+        school: str | None,
+        class_grade: int | None,
+        subject: str | None,
+        gender: str | None,
+        subscription: int | None,
+    ):
         if user_id is not None:
             stmt = stmt.where(User.id == user_id)
         if role is not None:
@@ -107,8 +205,7 @@ class UsersRepo:
                 stmt = stmt.where(User.gender == gender)
         if subscription is not None:
             stmt = stmt.where(User.subscription == subscription)
-        res = await self.db.execute(stmt)
-        return list(res.scalars().all())
+        return stmt
 
     async def create(
         self,

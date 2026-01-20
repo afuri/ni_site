@@ -34,6 +34,19 @@ const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 
+const normalizeProfileForm = (form: ProfileForm): ProfileForm => ({
+  ...form,
+  login: form.login.trim(),
+  email: form.email.trim(),
+  surname: form.surname.trim(),
+  name: form.name.trim(),
+  fatherName: form.fatherName.trim(),
+  country: form.country.trim(),
+  city: form.city.trim(),
+  school: form.school.trim(),
+  subject: form.subject.trim()
+});
+
 const TrashIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -623,7 +636,9 @@ export function CabinetPage() {
   const handleProfileSave = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setProfileMessage(null);
-    const errors = validateProfile(profileForm);
+    const normalizedProfileForm = normalizeProfileForm(profileForm);
+    setProfileForm(normalizedProfileForm);
+    const errors = validateProfile(normalizedProfileForm);
     if (Object.keys(errors).length > 0) {
       setProfileErrors(errors);
       return;
@@ -635,15 +650,15 @@ export function CabinetPage() {
         path,
         method: "PUT",
         body: {
-          surname: profileForm.surname.trim(),
-          name: profileForm.name.trim(),
-          father_name: profileForm.fatherName ? profileForm.fatherName.trim() : null,
-          country: profileForm.country.trim(),
-          city: profileForm.city.trim(),
-          school: profileForm.school.trim(),
-          class_grade: profileForm.classGrade ? Number(profileForm.classGrade) : null,
-          gender: profileForm.gender || null,
-          subject: profileForm.subject ? profileForm.subject.trim() : null
+          surname: normalizedProfileForm.surname,
+          name: normalizedProfileForm.name,
+          father_name: normalizedProfileForm.fatherName ? normalizedProfileForm.fatherName : null,
+          country: normalizedProfileForm.country,
+          city: normalizedProfileForm.city,
+          school: normalizedProfileForm.school,
+          class_grade: normalizedProfileForm.classGrade ? Number(normalizedProfileForm.classGrade) : null,
+          gender: normalizedProfileForm.gender || null,
+          subject: normalizedProfileForm.subject ? normalizedProfileForm.subject : null
         }
       });
       if (tokens && !viewingStudentId) {

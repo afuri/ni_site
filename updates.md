@@ -1550,6 +1550,49 @@ VK открывается на новой вкладке
  • Добавил плейсхолдеры для всех указанных полей регистрации в frontend/apps/
   main/src/pages/HomePage.tsx. 
 
+1.0.16
+
+  Сделал авто‑трим пробелов по краям для регистрационных полей при регистрации
+  и при сохранении профиля в личном кабинете (логин, email, ФИО, страна, город,
+  школа, предмет). Это делается перед валидацией и отправкой, и сразу обновляет
+  состояние формы.
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/HomePage.tsx — normalizeRegisterForm +
+    использование в handleRegisterSubmit.
+  - frontend/apps/main/src/pages/CabinetPage.tsx — normalizeProfileForm +
+    использование в handleProfileSave.
+
+Увеличил лимит до 200, добавил счетчик «показано из N» и пагинацию, а экспорт
+  CSV теперь выгружает всех пользователей по текущим фильтрам, а не только
+  текущую страницу. Для счетчика добавлен отдельный эндпоинт /admin/users/
+  count.
+
+  Изменения:
+
+  - Добавлен count‑эндпоинт и общий фильтр в репозитории: backend/app/api/v1/
+    admin_users.py, backend/app/repos/users.py.
+  - Админка: лимит 200, пагинация, счетчик, полный CSV‑экспорт: frontend/apps/
+    admin/src/pages/UsersPage.tsx.
+
+  Что нужно сделать на сервере:
+
+  1. Обновить API контейнер, чтобы появился /admin/users/count:
+
+  cd /opt/ni_site
+  docker compose up -d --build api
+
+  2. Пересобрать и выложить админку:
+
+  cd /opt/ni_site/frontend
+  npm install
+  npm run build:admin
+  rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-
+  integral/admin/
+
+
+
 Для редактирование fronta mainpage
 1. cd ..   
 2. git pull
