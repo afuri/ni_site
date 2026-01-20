@@ -40,7 +40,7 @@ async def lookup_schools(
         return []
     stmt = select(School.name).where(School.city.ilike(city_value))
     if query:
-        stmt = stmt.where(School.name.ilike(f"{query}%"))
+        stmt = stmt.where(School.name.ilike(f"%{query}%"))
     stmt = stmt.distinct().order_by(School.name).limit(limit)
     result = await db.execute(stmt)
     return [row[0] for row in result.all()]

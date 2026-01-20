@@ -1531,6 +1531,17 @@ VK открывается на новой вкладке
 
 В личном кабинете подсказки для изменения данных
 
+1.0.13
+Увеличил в БД размер поля "Subject"
+• Сделал миграцию для увеличения длины users.subject до 120.
+
+  Добавлен файл: backend/alembic/versions/
+  e2f3a4b5c6d7_extend_user_subject_length.py.
+
+  Как применить на сервере:
+
+  cd /opt/ni_site
+  docker compose exec api alembic -c /app/alembic.ini upgrade head
 
 Для редактирование fronta mainpage
 1. cd ..   
