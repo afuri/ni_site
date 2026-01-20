@@ -1046,7 +1046,7 @@ export function HomePage() {
                   onClick={handleStartOlympiad}
                   disabled={!olympiadCode.trim() || publicOlympiadsStatus === "loading"}
                 >
-                  Начать олимпиаду
+                  Начать
                 </Button>
               </div>
             </div>
