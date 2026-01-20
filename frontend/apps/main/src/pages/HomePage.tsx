@@ -26,7 +26,6 @@ const publicClient = createApiClient({ baseUrl: API_BASE_URL });
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]{4,}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
-const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
 const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
@@ -498,8 +497,6 @@ export function HomePage() {
     if (form.role === "teacher") {
       if (!form.subject) {
         errors.subject = "Введите предмет.";
-      } else if (!RU_TEXT_REGEX.test(form.subject)) {
-        errors.subject = "Только русские буквы.";
       }
     }
     if (!form.consent) {

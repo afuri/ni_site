@@ -33,7 +33,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
-const RU_TEXT_REGEX = /^[А-ЯЁа-яё]+$/;
 
 const TrashIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -603,11 +602,8 @@ export function CabinetPage() {
     if (profileRole === "teacher") {
       if (!form.subject) {
         errors.subject = "Введите предмет.";
-      } else if (!RU_TEXT_REGEX.test(form.subject)) {
-        errors.subject = "Только русские буквы.";
       }
     }
-
     return errors;
   };
 
