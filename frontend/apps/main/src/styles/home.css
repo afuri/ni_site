@@ -613,6 +613,30 @@
   gap: var(--space-4);
 }
 
+.auth-instruction-link {
+  text-align: center;
+}
+
+.auth-instruction-link a {
+  color: #0056d2;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.auth-form-centered {
+  justify-items: center;
+  text-align: center;
+}
+
+.auth-form-centered .auth-grid {
+  width: 100%;
+  justify-items: center;
+}
+
+.auth-form-centered .field {
+  width: min(420px, 100%);
+}
+
 .auth-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -702,6 +726,11 @@
 .auth-actions {
   display: grid;
   gap: var(--space-3);
+}
+
+.auth-actions-centered {
+  justify-items: center;
+  text-align: center;
 }
 
 .auth-actions .btn {

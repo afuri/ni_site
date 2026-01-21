@@ -1594,6 +1594,54 @@ VK открывается на новой вкладке
 1.0.17
 Олимпиада -> Тестирование
 
+
+1.1.0
+
+Сделал восстановление пароля строго по email с нужными модалками и обратной
+  связью, плюс на бэкенде отдаем понятную ошибку user_not_found, чтобы фронт
+  корректно показывал сообщения.
+
+  - Логика восстановления по email, отправка запроса и показ двух инфо‑модалок:
+    frontend/apps/main/src/pages/HomePage.tsx
+  - Центровка элементов в форме восстановления: frontend/apps/main/src/styles/
+    home.css
+  - Ошибка user_not_found при неизвестном email: backend/app/services/auth.py
+  - Маппинг user_not_found в 404 для запроса восстановления: backend/app/api/
+    v1/auth.py
+
+Ссылка ведёт на {EMAIL_BASE_URL}/reset-password?token=….
+  Генерация в backend/app/core/email.py.
+
+Обновил текст письма восстановления и добавил логин пользователя в шаблон.
+
+  Изменение в backend/app/services/auth.py.
+
+Готово: ссылка из письма теперь открывает модалку смены пароля. При переходе
+  на /reset-password?token=... токен сохраняется и на главной открывается окно
+  с вводом нового пароля и подтверждением. После успешной смены показывается
+  модалка “Пароль успешно изменен” с переходом ко входу. На бэкенде добавил 404
+  user_not_found для запроса восстановления.
+
+  Где правки:
+
+  - Роут для ссылки из письма: frontend/apps/main/src/App.tsx
+  - Страница-перенаправление с токеном: frontend/apps/main/src/pages/
+    ResetPasswordPage.tsx
+  - Модалки и логика сброса: frontend/apps/main/src/pages/HomePage.tsx
+  - Центровка формы сброса: frontend/apps/main/src/styles/home.css
+  - Ошибка user_not_found для reset request: backend/app/services/auth.py,
+    backend/app/api/v1/auth.py
+
+Сделал ссылку “инструкция” в модалке регистрации сразу под заголовком и перед
+  полем “Роль”, открывается в новой вкладке на /instruction.pdf, выравнивание
+  по центру как у заголовка.
+
+  Изменения:
+
+  - frontend/apps/main/src/pages/HomePage.tsx
+  - frontend/apps/main/src/styles/home.css
+
+
 Для редактирование fronta mainpage
 1. cd ..   
 2. git pull

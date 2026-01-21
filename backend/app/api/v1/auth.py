@@ -263,6 +263,9 @@ async def change_password(
     response_model=MessageResponse,
     tags=["auth"],
     description="Запросить сброс пароля по email",
+    responses={
+        404: response_example(codes.USER_NOT_FOUND),
+    },
 )
 async def request_password_reset(
     payload: PasswordResetRequest,
@@ -277,7 +280,12 @@ async def request_password_reset(
         identity=payload.email,
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
-    await service.request_password_reset(email=payload.email)
+    try:
+        await service.request_password_reset(email=payload.email)
+    except ValueError as e:
+        if str(e) == codes.USER_NOT_FOUND:
+            raise http_error(404, codes.USER_NOT_FOUND)
+        raise
     return {"status": "ok"}
 
 

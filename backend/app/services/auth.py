@@ -237,7 +237,7 @@ class AuthService:
     async def request_password_reset(self, *, email: str) -> None:
         user = await self.users_repo.get_by_email(email)
         if not user:
-            return
+            raise ValueError(codes.USER_NOT_FOUND)
 
         await self.tokens_repo.delete_password_resets(user.id)
         token = generate_token()
@@ -253,7 +253,14 @@ class AuthService:
 
         if settings.EMAIL_SEND_ENABLED:
             link = build_reset_link(token)
-            body = f"Сброс пароля по ссылке: {link}"
+            body = (
+                "Здравствуйте, вы отправили запрос на восстановление пароля "
+                f"для пользователя {user.login} на платформе олимпиады "
+                "\"Невский интеграл\".\n\n"
+                f"Для восстановления пароля перейдите по ссылке {link}.\n\n"
+                "С уважением,\n"
+                "команда проекта \"Невский интеграл\""
+            )
             send_email_task.delay(user.email, "Сброс пароля", body)
 
     async def confirm_password_reset(self, *, token: str, new_password: str) -> None:

@@ -30,6 +30,7 @@ const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
+const RESET_TOKEN_STORAGE_KEY = "ni_password_reset_token";
 
 const normalizeRegisterForm = (form: RegisterFormState): RegisterFormState => ({
   ...form,
@@ -179,6 +180,11 @@ type RegisterFormState = {
 };
 
 type RegisterErrors = Partial<Record<keyof RegisterFormState, string>>;
+type ResetErrors = {
+  password?: string;
+  passwordConfirm?: string;
+  form?: string;
+};
 
 type PublicOlympiad = {
   id: number;
@@ -217,6 +223,10 @@ export function HomePage() {
   const [isRegisterSuccessOpen, setIsRegisterSuccessOpen] = useState(false);
   const [isVerifySuccessOpen, setIsVerifySuccessOpen] = useState(false);
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+  const [isRecoverySentOpen, setIsRecoverySentOpen] = useState(false);
+  const [isRecoveryNotFoundOpen, setIsRecoveryNotFoundOpen] = useState(false);
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [isResetSuccessOpen, setIsResetSuccessOpen] = useState(false);
   const [isAgreementOpen, setIsAgreementOpen] = useState(false);
   const [agreementRole, setAgreementRole] = useState<RoleValue>("student");
   const [newsItems, setNewsItems] = useState<ContentItem[]>([]);
@@ -252,6 +262,13 @@ export function HomePage() {
   const [loginStatus, setLoginStatus] = useState<"idle" | "loading" | "error">("idle");
   const [loginErrorMessage, setLoginErrorMessage] = useState<string | null>(null);
   const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
+  const [resetErrors, setResetErrors] = useState<ResetErrors>({});
+  const [resetStatus, setResetStatus] = useState<"idle" | "loading" | "error">("idle");
   const [publicOlympiads, setPublicOlympiads] = useState<PublicOlympiad[]>([]);
   const [publicOlympiadsStatus, setPublicOlympiadsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [publicOlympiadsError, setPublicOlympiadsError] = useState<string | null>(null);
@@ -588,6 +605,21 @@ export function HomePage() {
     return errors;
   };
 
+  const validateResetPassword = () => {
+    const errors: ResetErrors = {};
+    if (!resetPassword) {
+      errors.password = "Введите пароль.";
+    } else if (resetPassword.length < 8) {
+      errors.password = "Пароль должен быть не короче 8 символов.";
+    }
+    if (!resetPasswordConfirm) {
+      errors.passwordConfirm = "Повторите пароль.";
+    } else if (resetPassword !== resetPasswordConfirm) {
+      errors.passwordConfirm = "Пароли не совпадают.";
+    }
+    return errors;
+  };
+
   const passwordsFilled =
     registerForm.password.trim().length > 0 && registerForm.passwordConfirm.trim().length > 0;
   const passwordsMatch =
@@ -598,15 +630,18 @@ export function HomePage() {
   const openLogin = () => {
     setIsRegisterOpen(false);
     setIsRecoveryOpen(false);
+    setIsResetOpen(false);
     setRegisterErrors({});
     setRegisterErrorMessage(null);
     setLoginErrorMessage(null);
+    setResetErrors({});
     setIsLoginOpen(true);
   };
 
   const openRegister = () => {
     setIsLoginOpen(false);
     setIsRecoveryOpen(false);
+    setIsResetOpen(false);
     setLoginErrorMessage(null);
     setRegisterErrorMessage(null);
     setRegisterErrors({});
@@ -644,6 +679,22 @@ export function HomePage() {
     setIsVerifySuccessOpen(true);
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const token = window.localStorage.getItem(RESET_TOKEN_STORAGE_KEY);
+    if (!token) {
+      return;
+    }
+    window.localStorage.removeItem(RESET_TOKEN_STORAGE_KEY);
+    setResetToken(token);
+    setResetErrors({});
+    setResetPassword("");
+    setResetPasswordConfirm("");
+    setIsResetOpen(true);
+  }, []);
+
   const handleUserMenuToggle = () => {
     setIsUserMenuOpen((prev) => !prev);
   };
@@ -663,7 +714,90 @@ export function HomePage() {
   const openRecovery = () => {
     setIsLoginOpen(false);
     setIsRegisterOpen(false);
+    setRecoveryError(null);
+    setRecoveryStatus("idle");
+    setRecoveryEmail("");
+    setIsRecoverySentOpen(false);
+    setIsRecoveryNotFoundOpen(false);
     setIsRecoveryOpen(true);
+  };
+
+  const handleRecoverySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRecoveryError(null);
+    const trimmedEmail = recoveryEmail.trim();
+    setRecoveryEmail(trimmedEmail);
+    if (!trimmedEmail) {
+      setRecoveryError("Введите email.");
+      return;
+    }
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setRecoveryError("Введите корректный email.");
+      return;
+    }
+
+    setRecoveryStatus("loading");
+    try {
+      await publicClient.request({
+        path: "/auth/password/reset/request",
+        method: "POST",
+        body: { email: trimmedEmail },
+        auth: false
+      });
+      setRecoveryStatus("idle");
+      setIsRecoveryOpen(false);
+      setIsRecoverySentOpen(true);
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (apiError?.code === "user_not_found") {
+        setRecoveryStatus("idle");
+        setIsRecoveryOpen(false);
+        setIsRecoveryNotFoundOpen(true);
+        return;
+      }
+      setRecoveryStatus("error");
+      setRecoveryError("Не удалось отправить письмо. Попробуйте позже.");
+    }
+  };
+
+  const handleResetSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setResetErrors({});
+    if (!resetToken) {
+      setResetErrors({ form: "Ссылка для восстановления недействительна." });
+      return;
+    }
+    const errors = validateResetPassword();
+    if (Object.keys(errors).length > 0) {
+      setResetErrors(errors);
+      return;
+    }
+
+    setResetStatus("loading");
+    try {
+      await publicClient.request({
+        path: "/auth/password/reset/confirm",
+        method: "POST",
+        body: { token: resetToken, new_password: resetPassword },
+        auth: false
+      });
+      setResetStatus("idle");
+      setIsResetOpen(false);
+      setIsResetSuccessOpen(true);
+      setResetToken(null);
+      setResetPassword("");
+      setResetPasswordConfirm("");
+    } catch (error) {
+      const apiError = error as ApiError;
+      if (apiError?.code === "weak_password") {
+        setResetErrors({ password: buildPasswordRequirementMessage(resetPassword) });
+      } else if (apiError?.code === "invalid_token") {
+        setResetErrors({ form: "Ссылка для восстановления недействительна или устарела." });
+      } else {
+        setResetErrors({ form: "Не удалось изменить пароль. Попробуйте позже." });
+      }
+      setResetStatus("error");
+    }
   };
 
   const handleRegisterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1178,6 +1312,11 @@ export function HomePage() {
           closeOnBackdrop={false}
         >
           <form className="auth-form" onSubmit={handleRegisterSubmit}>
+            <div className="auth-instruction-link">
+              <a href="/instruction.pdf" target="_blank" rel="noreferrer">
+                инструкция
+              </a>
+            </div>
             <div className="auth-grid">
               <label className="field">
                 <span className="field-label">Роль</span>
@@ -1536,27 +1675,133 @@ export function HomePage() {
         <Modal
           isOpen={isRecoveryOpen}
           onClose={() => setIsRecoveryOpen(false)}
-          title="Восстановление пароля"
+          title="Запрос на восстановление"
           className="auth-modal"
+          closeOnBackdrop={false}
         >
-          <form className="auth-form">
+          <form className="auth-form auth-form-centered" onSubmit={handleRecoverySubmit}>
             <div className="auth-grid auth-grid-single">
               <TextInput
-                label="Email или логин"
+                label="Email"
                 name="recovery"
                 value={recoveryEmail}
                 onChange={(event) => setRecoveryEmail(event.target.value)}
+                placeholder="email, указанный при регистрации"
+                error={recoveryError ?? undefined}
               />
             </div>
-            <div className="auth-actions">
-              <Button type="button" disabled>
-                Отправить инструкцию
+            <div className="auth-actions auth-actions-centered">
+              <Button type="submit" isLoading={recoveryStatus === "loading"}>
+                Отправить
               </Button>
               <button type="button" className="auth-link" onClick={openLogin}>
                 Назад к входу
               </button>
             </div>
           </form>
+        </Modal>
+
+        <Modal
+          isOpen={isRecoverySentOpen}
+          onClose={() => setIsRecoverySentOpen(false)}
+          title="Восстановление пароля"
+          className="auth-modal"
+          closeOnBackdrop={false}
+        >
+          <p className="auth-success-message">
+            Письмо на восстановление отправленно. Проверьте email.
+          </p>
+          <div className="auth-actions">
+            <Button
+              type="button"
+              className="auth-success-button"
+              onClick={() => setIsRecoverySentOpen(false)}
+            >
+              Ок
+            </Button>
+          </div>
+        </Modal>
+
+        <Modal
+          isOpen={isRecoveryNotFoundOpen}
+          onClose={() => setIsRecoveryNotFoundOpen(false)}
+          title="Восстановление пароля"
+          className="auth-modal"
+          closeOnBackdrop={false}
+        >
+          <p className="auth-success-message">Пользователь с таким email не зарегистрирован</p>
+          <div className="auth-actions">
+            <Button
+              type="button"
+              className="auth-success-button"
+              onClick={() => setIsRecoveryNotFoundOpen(false)}
+            >
+              Ок
+            </Button>
+          </div>
+        </Modal>
+
+        <Modal
+          isOpen={isResetOpen}
+          onClose={() => setIsResetOpen(false)}
+          title="Восстановление пароля"
+          className="auth-modal"
+          closeOnBackdrop={false}
+        >
+          <form className="auth-form auth-form-centered" onSubmit={handleResetSubmit}>
+            <div className="auth-grid auth-grid-single">
+              <TextInput
+                label="Новый пароль"
+                name="resetPassword"
+                type="password"
+                autoComplete="new-password"
+                value={resetPassword}
+                onChange={(event) => setResetPassword(event.target.value)}
+                error={resetErrors.password}
+              />
+              <TextInput
+                label="Повтор пароля"
+                name="resetPasswordConfirm"
+                type="password"
+                autoComplete="new-password"
+                value={resetPasswordConfirm}
+                onChange={(event) => setResetPasswordConfirm(event.target.value)}
+                error={resetErrors.passwordConfirm}
+              />
+            </div>
+            {resetErrors.form ? (
+              <div className="auth-alert" role="alert">
+                {resetErrors.form}
+              </div>
+            ) : null}
+            <div className="auth-actions auth-actions-centered">
+              <Button type="submit" isLoading={resetStatus === "loading"}>
+                Сохранить пароль
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal
+          isOpen={isResetSuccessOpen}
+          onClose={() => setIsResetSuccessOpen(false)}
+          title="Восстановление пароля"
+          className="auth-modal"
+          closeOnBackdrop={false}
+        >
+          <p className="auth-success-message">Пароль успешно изменен</p>
+          <div className="auth-actions">
+            <Button
+              type="button"
+              className="auth-success-button"
+              onClick={() => {
+                setIsResetSuccessOpen(false);
+                openLogin();
+              }}
+            >
+              Ок
+            </Button>
+          </div>
         </Modal>
 
         <Modal

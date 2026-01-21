@@ -7,6 +7,7 @@ import { HomePage } from "./pages/HomePage";
 import { OlympiadPage } from "./pages/OlympiadPage";
 import { CabinetPage } from "./pages/CabinetPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 const storage = createAuthStorage({
   tokensKey: "ni_main_tokens",
@@ -27,6 +28,7 @@ export function App() {
           <Route path="/olympiad" element={<OlympiadPage />} />
           <Route path="/cabinet" element={<CabinetPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
