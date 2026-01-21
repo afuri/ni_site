@@ -1313,7 +1313,7 @@ export function HomePage() {
         >
           <form className="auth-form" onSubmit={handleRegisterSubmit}>
             <div className="auth-instruction-link">
-              <a href="/instruction.pdf" target="_blank" rel="noreferrer">
+              <a href="/docs/instruction.pdf" target="_blank" rel="noreferrer">
                 инструкция
               </a>
             </div>
