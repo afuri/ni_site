@@ -1,9 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { prerender } from "vite-plugin-prerender";
+import * as prerenderPlugin from "vite-plugin-prerender";
 
 const isPrerender = process.env.PRERENDER === "true";
+const prerender =
+  (prerenderPlugin as { prerender?: (...args: unknown[]) => unknown }).prerender ??
+  (prerenderPlugin as { default?: (...args: unknown[]) => unknown }).default;
 
 export default defineConfig({
   plugins: [

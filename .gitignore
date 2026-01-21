@@ -1,3 +1,6 @@
 .cursor/rules.md
 .venv312
 ./backend/.venv
+./frontend/node_modules
+./frontend/apps/admin/node_modules
+./frontend/apps/main/node_modules

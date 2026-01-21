@@ -1780,6 +1780,21 @@ const FAQ_ITEMS = [
     frontend/apps/main/vite.config.ts
     frontend/apps/main/package.json
 
+1.2.3
+
+
+Сделал правки в ni_site, чтобы сборка с vite-plugin-prerender@1.0.8 работала.
+  Обновил импорт плагина на default‑export fallback и закрепил версии
+  зависимостей.
+
+  Детали по файлам:
+
+  - frontend/apps/main/vite.config.ts — перешел на import * as prerenderPlugin
+    и вычисляю prerender через fallback на default, чтобы не падало на версии
+    1.0.8.
+  - frontend/apps/main/package.json — зафиксировал vite-plugin-prerender на
+    ^1.0.8 и @prerenderer/renderer-puppeteer на ^1.2.4.
+
 Что нужно сделать для prerender
 
   1. Обновить зависимости и lock:
