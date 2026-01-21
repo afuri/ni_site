@@ -16,8 +16,12 @@ class TeacherStudentsService:
         self.links_repo = links_repo
         self.auth = AuthService(users_repo, AuthTokensRepo(users_repo.db))
 
-    async def attach_existing(self, *, teacher: User, student_login: str):
-        student = await self.users_repo.get_by_login(student_login)
+    async def attach_existing(self, *, teacher: User, student_identifier: str):
+        identifier = student_identifier.strip().lower()
+        if "@" in identifier:
+            student = await self.users_repo.get_by_email(identifier)
+        else:
+            student = await self.users_repo.get_by_login(identifier)
         if not student:
             raise ValueError(codes.STUDENT_NOT_FOUND)
 
@@ -111,12 +115,12 @@ class TeacherStudentsService:
             raise ValueError(codes.LINK_NOT_FOUND)
         await self.links_repo.delete_link(link)
 
-    async def request_teacher(self, *, student: User, teacher_login: str | None, teacher_email: str | None):
-        teacher = None
-        if teacher_login:
-            teacher = await self.users_repo.get_by_login(teacher_login)
-        if teacher is None and teacher_email:
-            teacher = await self.users_repo.get_by_email(teacher_email)
+    async def request_teacher(self, *, student: User, teacher_identifier: str):
+        identifier = teacher_identifier.strip().lower()
+        if "@" in identifier:
+            teacher = await self.users_repo.get_by_email(identifier)
+        else:
+            teacher = await self.users_repo.get_by_login(identifier)
         if not teacher:
             raise ValueError(codes.USER_NOT_FOUND)
         if teacher.role != UserRole.teacher:

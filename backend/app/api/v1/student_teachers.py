@@ -38,14 +38,11 @@ async def request_teacher_link(
     student: User = Depends(require_role(UserRole.student)),
 ):
     service = TeacherStudentsService(UsersRepo(db), TeacherStudentsRepo(db))
-    teacher_login = payload.attach.teacher_login.strip()
-    teacher_email = teacher_login if "@" in teacher_login else None
-    teacher_login_value = None if teacher_email else teacher_login
+    teacher_identifier = payload.attach.teacher_login
     try:
         link = await service.request_teacher(
             student=student,
-            teacher_login=teacher_login_value,
-            teacher_email=teacher_email,
+            teacher_identifier=teacher_identifier,
         )
         return link
     except ValueError as e:

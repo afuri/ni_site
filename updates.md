@@ -1740,6 +1740,27 @@ const FAQ_ITEMS = [
   - backend/app/services/auth.py: в login() выбирается поиск по email, если
     есть @, иначе по логину (оба case‑insensitive через repo).
 
+1.1.6
+
+Сделал нормализацию login/email в других эндпоинтах и добавил поддержку email
+  в запросах связи учитель‑ученик.
+
+  Что изменено:
+
+  - Нормализация и валидация login/email в teacher/student payload‑ах (разрешён
+    логин или email): backend/app/schemas/teacher_students.py
+  - Поиск ученика/учителя по login или email в сервисе: backend/app/services/
+    teacher_students.py
+  - Эндпоинты student↔teacher теперь принимают login или email в том же поле:
+    backend/app/api/v1/student_teachers.py, backend/app/api/v1/
+    teacher_students.py
+  - Нормализация login/email в админских фильтрах и при обновлении логина:
+    backend/app/api/v1/admin_users.py
+
+  Важно: поле всё ещё называется student_login / teacher_login, но теперь может
+  содержать email.
+
+
 Для редактирование fronta mainpage
 1. cd ..   
 2. git pull

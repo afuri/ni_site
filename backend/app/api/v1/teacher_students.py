@@ -55,7 +55,10 @@ async def create_or_attach_student(
 
     try:
         if payload.attach is not None:
-            link = await service.attach_existing(teacher=teacher, student_login=payload.attach.student_login)
+            link = await service.attach_existing(
+                teacher=teacher,
+                student_identifier=payload.attach.student_login,
+            )
             return link
 
         # create mode

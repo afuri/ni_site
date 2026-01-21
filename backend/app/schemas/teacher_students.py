@@ -1,13 +1,31 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+import re
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator, TypeAdapter
 
 from app.models.teacher_student import TeacherStudentStatus, TeacherStudentRequestedBy
+from app.core import error_codes as codes
 
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
 CYRILLIC_RE = r"^[А-ЯЁ][А-ЯЁа-яё -]+$"
 FATHER_NAME_RE = r"^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$"
 GENDER_RE = r"^(male|female)$"
+EMAIL_ADAPTER = TypeAdapter(EmailStr)
+
+
+def _normalize_login_or_email(value: str) -> str:
+    candidate = value.strip()
+    if not candidate:
+        raise ValueError(codes.VALIDATION_ERROR)
+    if "@" in candidate:
+        try:
+            EMAIL_ADAPTER.validate_python(candidate)
+        except Exception:
+            raise ValueError(codes.VALIDATION_ERROR)
+        return candidate.lower()
+    if not re.match(LOGIN_RE, candidate):
+        raise ValueError(codes.VALIDATION_ERROR)
+    return candidate.lower()
 
 
 class CreateStudentRequest(BaseModel):
@@ -26,9 +44,28 @@ class CreateStudentRequest(BaseModel):
     school: str = Field(max_length=255)
     class_grade: int
 
+    @field_validator("login", mode="before")
+    @classmethod
+    def normalize_login(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
 
 class AttachStudentRequest(BaseModel):
-    student_login: str = Field(pattern=LOGIN_RE)
+    student_login: str
+
+    @field_validator("student_login")
+    @classmethod
+    def validate_student_login(cls, value: str) -> str:
+        return _normalize_login_or_email(value)
 
 
 class TeacherStudentCreateRequest(BaseModel):
@@ -38,6 +75,11 @@ class TeacherStudentCreateRequest(BaseModel):
 
 class AttachTeacherRequest(BaseModel):
     teacher_login: str = Field(min_length=1)
+
+    @field_validator("teacher_login")
+    @classmethod
+    def validate_teacher_login(cls, value: str) -> str:
+        return _normalize_login_or_email(value)
 
 
 class StudentTeacherRequest(BaseModel):

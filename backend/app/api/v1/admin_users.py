@@ -41,6 +41,13 @@ from app.core import error_codes as codes
 router = APIRouter(prefix="/admin/users")
 
 
+def _normalize_query(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    return normalized if normalized else None
+
+
 class AdminActor:
     def __init__(self, *, user: User | None, is_super_admin: bool, label: str):
         self.user = user
@@ -211,8 +218,8 @@ async def list_users(
         must_change_password=must_change_password,
         is_moderator=is_moderator,
         moderator_requested=moderator_requested,
-        login=login,
-        email=email,
+        login=_normalize_query(login),
+        email=_normalize_query(email),
         surname=surname,
         name=name,
         father_name=father_name,
@@ -271,8 +278,8 @@ async def count_users(
         must_change_password=must_change_password,
         is_moderator=is_moderator,
         moderator_requested=moderator_requested,
-        login=login,
-        email=email,
+        login=_normalize_query(login),
+        email=_normalize_query(email),
         surname=surname,
         name=name,
         father_name=father_name,
@@ -375,9 +382,9 @@ async def update_user(
     old_is_active = user.is_active
 
     if "login" in patch:
-        patch_login = patch["login"].strip()
+        patch_login = patch["login"].strip().lower()
         patch["login"] = patch_login
-        if patch_login.lower() != user.login.lower():
+        if patch_login != user.login.lower():
             existing = await repo.get_by_login(patch_login)
             if existing and existing.id != user.id:
                 raise http_error(409, codes.LOGIN_TAKEN)
