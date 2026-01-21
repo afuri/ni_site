@@ -1771,6 +1771,58 @@ const FAQ_ITEMS = [
   1.2.1
   favicon fixes and title
 
+1.2.2
+
+ OG 1200×630 + JSON‑LD:
+    frontend/apps/main/index.html
+    frontend/apps/main/public/og.png
+  - Prerender конфиг (opt‑in через PRERENDER=true):
+    frontend/apps/main/vite.config.ts
+    frontend/apps/main/package.json
+
+Что нужно сделать для prerender
+
+  1. Обновить зависимости и lock:
+
+  cd frontend
+  npm install
+
+  2. Сборка с пререндером:
+
+  PRERENDER=true npm run build:app
+
+  Если билд делаете на сервере — нужен headless Chromium. Проще собирать
+  локально и копировать dist на сервер.
+
+  Search Console / Яндекс
+
+  - Добавить сайт как domain‑property: nevsky-integral.ru
+  - Подтверждение (DNS TXT или HTML‑файл).
+  - Отправить https://nevsky-integral.ru/sitemap.xml.
+
+  Core Web Vitals (минимум)
+
+  - Lighthouse (Mobile) → устранить LCP: оптимизировать крупные изображения,
+    lazy‑loading для второстепенных.
+  - В nginx: gzip/brotli, кеш‑заголовки для *.js, *.css, *.png.
+  - Следить за TTFB (API/DB).
+
+  Nginx 301 редиректы
+  Выбери канонический домен (сейчас в meta — без www). Пример:
+
+  server {
+    listen 80;
+    server_name nevsky-integral.ru www.nevsky-integral.ru;
+    return 301 https://nevsky-integral.ru$request_uri;
+  }
+
+  server {
+    listen 443 ssl;
+    server_name www.nevsky-integral.ru;
+    return 301 https://nevsky-integral.ru$request_uri;
+  }
+
+
 Для редактирование fronta mainpage
 1. cd ..   
 2. git pull

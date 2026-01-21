@@ -1,9 +1,23 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+import { prerender } from "vite-plugin-prerender";
+
+const isPrerender = process.env.PRERENDER === "true";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    ...(isPrerender
+      ? [
+          prerender({
+            routes: ["/", "/olympiad"],
+            renderer: "@prerenderer/renderer-puppeteer",
+            renderAfterTime: 1000
+          })
+        ]
+      : [])
+  ],
   server: {
     proxy: {
       "/api/v1": {
