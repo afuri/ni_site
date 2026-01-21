@@ -1760,6 +1760,15 @@ const FAQ_ITEMS = [
   Важно: поле всё ещё называется student_login / teacher_login, но теперь может
   содержать email.
 
+1.2.0
+
+Обновил базовое SEO: задал заголовок вкладки и мета‑теги, добавил OG/
+  Twitter‑разметку и каноникал, а также robots/sitemap и OG‑картинку в public.
+  Это даст поисковикам корректный минимум даже для SPA.
+  Изменения в frontend/apps/main/index.html, frontend/apps/main/public/og.png,
+  frontend/apps/main/public/robots.txt, frontend/apps/main/public/sitemap.xml.
+
+  
 
 Для редактирование fronta mainpage
 1. cd ..   
