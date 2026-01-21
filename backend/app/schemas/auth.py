@@ -1,10 +1,12 @@
+import re
 from typing import Optional, Literal
-from pydantic import BaseModel, Field, EmailStr, model_validator
+from pydantic import BaseModel, Field, EmailStr, model_validator, field_validator, TypeAdapter
 from app.core import error_codes as codes
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
 CYRILLIC_RE = r"^[А-ЯЁ][А-ЯЁа-яё -]+$"
 FATHER_NAME_RE = r"^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$"
+EMAIL_ADAPTER = TypeAdapter(EmailStr)
 
 
 class RegisterRequest(BaseModel):
@@ -26,6 +28,20 @@ class RegisterRequest(BaseModel):
     class_grade: Optional[int] = None
     subject: Optional[str] = None
 
+    @field_validator("login", mode="before")
+    @classmethod
+    def normalize_login(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
     @model_validator(mode="after")
     def validate_role_fields(self):
         if self.role == "student":
@@ -39,8 +55,24 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    login: str = Field(pattern=LOGIN_RE)
+    login: str
     password: str
+
+    @field_validator("login")
+    @classmethod
+    def validate_login_or_email(cls, value: str) -> str:
+        candidate = value.strip()
+        if not candidate:
+            raise ValueError(codes.VALIDATION_ERROR)
+        if "@" in candidate:
+            try:
+                EMAIL_ADAPTER.validate_python(candidate)
+            except Exception:
+                raise ValueError(codes.VALIDATION_ERROR)
+            return candidate.lower()
+        if not re.match(LOGIN_RE, candidate):
+            raise ValueError(codes.VALIDATION_ERROR)
+        return candidate.lower()
 
 
 class TokenPair(BaseModel):
@@ -53,6 +85,13 @@ class TokenPair(BaseModel):
 class EmailVerificationRequest(BaseModel):
     email: EmailStr
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
 
 class EmailVerificationConfirm(BaseModel):
     token: str = Field(min_length=10, max_length=512)
@@ -60,6 +99,13 @@ class EmailVerificationConfirm(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
 
 
 class PasswordResetConfirm(BaseModel):

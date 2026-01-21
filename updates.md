@@ -1718,6 +1718,28 @@ const FAQ_ITEMS = [
   - Добавил уникальный индекс lower(email) через миграцию: backend/alembic/
     versions/b2c3d4e5f6a7_email_case_insensitive.py
 
+   - Нормализация в валидаторах (strip + lower):
+      - RegisterRequest.login, RegisterRequest.email
+      - EmailVerificationRequest.email
+      - PasswordResetRequest.email
+      - LoginRequest.login (и для логина, и для email)
+      - файл: backend/app/schemas/auth.py
+  - Нормализация на уровне auth‑эндпоинтов:
+      - /auth/register, /auth/login, /auth/verify/request, /auth/password/
+        reset/request
+      - файл: backend/app/api/v1/auth.py
+  - Login‑логика: теперь использует strip().lower() перед выбором login/email
+      - файл: backend/app/services/auth.py
+
+Сделал бэкенд‑правки с кастомным валидатором (frontend не трогал).
+
+  Что изменено:
+
+  - backend/app/schemas/auth.py: LoginRequest теперь принимает логин или email
+    через @field_validator (валидация email через TypeAdapter(EmailStr)).
+  - backend/app/services/auth.py: в login() выбирается поиск по email, если
+    есть @, иначе по логину (оба case‑insensitive через repo).
+
 Для редактирование fronta mainpage
 1. cd ..   
 2. git pull

@@ -100,7 +100,11 @@ class AuthService:
         return user
 
     async def login(self, login: str, password: str):
-        user = await self.users_repo.get_by_login(login)
+        login_value = login.strip().lower()
+        if "@" in login_value:
+            user = await self.users_repo.get_by_email(login_value)
+        else:
+            user = await self.users_repo.get_by_login(login_value)
         if not user or not user.is_active:
             raise ValueError(codes.INVALID_CREDENTIALS)
 

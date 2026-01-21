@@ -87,15 +87,17 @@ async def register(
         key_prefix="auth:register",
         limit=settings.AUTH_REGISTER_RL_LIMIT,
         window_sec=settings.AUTH_REGISTER_RL_WINDOW_SEC,
-        identity=payload.login,
+        identity=payload.login.strip().lower(),
     )
+    login_value = payload.login.strip().lower()
+    email_value = payload.email.strip().lower()
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         user = await service.register(
-            payload.login,
+            login_value,
             payload.password,
             payload.role,
-            payload.email,
+            email_value,
             surname=payload.surname,
             name=payload.name,
             father_name=payload.father_name,
@@ -152,7 +154,8 @@ async def login(
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
-        access, refresh, must_change_password = await service.login(payload.login, payload.password)
+        login_value = payload.login.strip().lower()
+        access, refresh, must_change_password = await service.login(login_value, payload.password)
     except ValueError as e:
         if str(e) == codes.TEMP_PASSWORD_EXPIRED:
             raise http_error(409, codes.TEMP_PASSWORD_EXPIRED)
@@ -192,7 +195,8 @@ async def request_email_verification(
         identity=payload.email.strip().lower(),
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
-    await service.request_email_verification(email=payload.email)
+    email_value = payload.email.strip().lower()
+    await service.request_email_verification(email=email_value)
     return {"status": "ok"}
 
 
@@ -281,7 +285,8 @@ async def request_password_reset(
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
-        await service.request_password_reset(email=payload.email)
+        email_value = payload.email.strip().lower()
+        await service.request_password_reset(email=email_value)
     except ValueError as e:
         if str(e) == codes.USER_NOT_FOUND:
             raise http_error(404, codes.USER_NOT_FOUND)
