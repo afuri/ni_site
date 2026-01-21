@@ -15,21 +15,36 @@ const PuppeteerRenderer = RendererModule.default ?? RendererModule;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const staticDir = path.resolve(__dirname, "..", "dist");
 
+const routes = ["/", "/olympiad"];
+
 const prerenderer = new Prerenderer({
   staticDir,
-  routes: ["/", "/olympiad"],
+  routes,
   renderer: new PuppeteerRenderer({
     renderAfterTime: 1000
   })
 });
 
-prerenderer
-  .renderRoutes()
-  .then(() => prerenderer.destroy())
-  .catch((error) => {
-    console.error("prerender_failed", error);
-    return prerenderer
-      .destroy()
-      .catch(() => {})
-      .finally(() => process.exit(1));
-  });
+const run = async () => {
+  if (typeof prerenderer.initialize === "function") {
+    await prerenderer.initialize();
+  }
+
+  if (prerenderer.renderRoutes.length > 0) {
+    await prerenderer.renderRoutes(routes);
+  } else {
+    await prerenderer.renderRoutes();
+  }
+
+  if (typeof prerenderer.destroy === "function") {
+    await prerenderer.destroy();
+  }
+};
+
+run().catch((error) => {
+  console.error("prerender_failed", error);
+  return (typeof prerenderer.destroy === "function"
+    ? prerenderer.destroy().catch(() => {})
+    : Promise.resolve()
+  ).finally(() => process.exit(1));
+});
