@@ -1073,8 +1073,18 @@ export function HomePage() {
           id="top"
           className="home-hero"
           data-testid="home-hero"
-          style={{ backgroundImage: `url(${bannerImage})` }}
         >
+          <img
+            className="home-hero-image"
+            src={bannerImage}
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            loading="eager"
+            fetchpriority="high"
+            width={1536}
+            height={864}
+          />
           <div className="container home-hero-inner">
             <div className="home-hero-title">
               <h1>
