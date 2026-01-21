@@ -1768,7 +1768,8 @@ const FAQ_ITEMS = [
   Изменения в frontend/apps/main/index.html, frontend/apps/main/public/og.png,
   frontend/apps/main/public/robots.txt, frontend/apps/main/public/sitemap.xml.
 
-  
+  1.2.1
+  favicon fixes and title
 
 Для редактирование fronta mainpage
 1. cd ..   
