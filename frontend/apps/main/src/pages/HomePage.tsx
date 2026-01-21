@@ -1752,6 +1752,7 @@ export function HomePage() {
             <div className="auth-grid auth-grid-single">
               <TextInput
                 label="Новый пароль"
+                placeholder="Password123" 
                 name="resetPassword"
                 type="password"
                 autoComplete="new-password"
@@ -1762,6 +1763,7 @@ export function HomePage() {
               <TextInput
                 label="Повтор пароля"
                 name="resetPasswordConfirm"
+                placeholder="Password123" 
                 type="password"
                 autoComplete="new-password"
                 value={resetPasswordConfirm}

@@ -735,6 +735,7 @@
 
 .auth-actions .btn {
   width: 60%;
+  min-width: 100px;
   text-align: center;
   justify-content: center;
 }
