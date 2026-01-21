@@ -1687,6 +1687,25 @@ const FAQ_ITEMS = [
   }
 ];
 
+
+1.1.3
+
+Сделал case‑insensitive для логина на бэкенде: сравнение идет по
+  lower(login), добавил уникальный индекс по lower(login) и нормализовал
+  проверки в админ‑обновлении/суперадминах.
+
+  Где и что:
+
+  - Нормализация и поиск логина без учета регистра: backend/app/repos/users.py
+  - Админ‑обновление логина учитывает регистр и не конфликтует на том же
+    пользователе: backend/app/api/v1/admin_users.py
+  - Список суперадминов сравнивается в lower‑case: backend/app/api/v1/
+    admin_users.py
+  - Rate‑limit для логина тоже нормализован: backend/app/api/v1/auth.py
+  - Миграция с уникальным индексом lower(login): backend/alembic/versions/
+    f1a2b3c4d5e6_login_case_insensitive.py
+
+
 Для редактирование fronta mainpage
 1. cd ..   
 2. git pull

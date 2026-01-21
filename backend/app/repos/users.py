@@ -12,6 +12,10 @@ class UsersRepo:
         self.db = db
 
     @staticmethod
+    def _normalize_login(value: str) -> str:
+        return value.strip().lower()
+
+    @staticmethod
     def _normalize_gender(value: str | None) -> Gender | None:
         if value is None:
             return None
@@ -29,7 +33,8 @@ class UsersRepo:
         return Gender(norm)
 
     async def get_by_login(self, login: str) -> User | None:
-        res = await self.db.execute(select(User).where(User.login == login))
+        login_value = self._normalize_login(login)
+        res = await self.db.execute(select(User).where(func.lower(User.login) == login_value))
         return res.scalar_one_or_none()
 
     async def get_by_email(self, email: str) -> User | None:

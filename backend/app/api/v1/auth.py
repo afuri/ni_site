@@ -148,7 +148,7 @@ async def login(
         key_prefix="auth:login",
         limit=settings.AUTH_LOGIN_RL_LIMIT,
         window_sec=settings.AUTH_LOGIN_RL_WINDOW_SEC,
-        identity=payload.login,
+        identity=payload.login.strip().lower(),
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:

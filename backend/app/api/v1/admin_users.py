@@ -69,11 +69,11 @@ def _generate_temp_password(length: int = 12) -> str:
 
 
 def _super_admin_logins() -> set[str]:
-    return {login.strip() for login in settings.SUPER_ADMIN_LOGINS.split(",") if login.strip()}
+    return {login.strip().lower() for login in settings.SUPER_ADMIN_LOGINS.split(",") if login.strip()}
 
 
 def _is_super_admin(user: User) -> bool:
-    return user.login in _super_admin_logins()
+    return user.login.lower() in _super_admin_logins()
 
 
 def _service_tokens() -> set[str]:
@@ -374,10 +374,13 @@ async def update_user(
     old_role = user.role
     old_is_active = user.is_active
 
-    if "login" in patch and patch["login"] != user.login:
-        existing = await repo.get_by_login(patch["login"])
-        if existing:
-            raise http_error(409, codes.LOGIN_TAKEN)
+    if "login" in patch:
+        patch_login = patch["login"].strip()
+        patch["login"] = patch_login
+        if patch_login.lower() != user.login.lower():
+            existing = await repo.get_by_login(patch_login)
+            if existing and existing.id != user.id:
+                raise http_error(409, codes.LOGIN_TAKEN)
 
     new_role = patch.get("role", user.role)
     requested_is_moderator = payload.is_moderator
