@@ -1705,6 +1705,18 @@ const FAQ_ITEMS = [
   - Миграция с уникальным индексом lower(login): backend/alembic/versions/
     f1a2b3c4d5e6_login_case_insensitive.py
 
+1.1.4
+
+Сделал email case‑insensitive так же, как логины.
+
+  Что изменилось:
+
+  - Поиск email теперь сравнивает lower(email) (нормализация + регистр не
+    важен): backend/app/repos/users.py
+  - Rate‑limit для запросов верификации/восстановления нормализует email:
+    backend/app/api/v1/auth.py
+  - Добавил уникальный индекс lower(email) через миграцию: backend/alembic/
+    versions/b2c3d4e5f6a7_email_case_insensitive.py
 
 Для редактирование fronta mainpage
 1. cd ..   

@@ -189,7 +189,7 @@ async def request_email_verification(
         key_prefix="auth:verify",
         limit=settings.AUTH_VERIFY_RL_LIMIT,
         window_sec=settings.AUTH_VERIFY_RL_WINDOW_SEC,
-        identity=payload.email,
+        identity=payload.email.strip().lower(),
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     await service.request_email_verification(email=payload.email)
@@ -277,7 +277,7 @@ async def request_password_reset(
         key_prefix="auth:reset",
         limit=settings.AUTH_RESET_RL_LIMIT,
         window_sec=settings.AUTH_RESET_RL_WINDOW_SEC,
-        identity=payload.email,
+        identity=payload.email.strip().lower(),
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
