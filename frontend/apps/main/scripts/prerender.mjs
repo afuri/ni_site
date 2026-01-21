@@ -15,7 +15,7 @@ const PuppeteerRenderer = RendererModule.default ?? RendererModule;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const staticDir = path.resolve(__dirname, "..", "dist");
 
-const routes = ["/", "/olympiad"];
+const routes = ["/"];
 
 const prerenderer = new Prerenderer({
   staticDir,
