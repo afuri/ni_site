@@ -1837,6 +1837,10 @@ const FAQ_ITEMS = [
     return 301 https://nevsky-integral.ru$request_uri;
   }
 
+1.2.6
+
+Попытался оптимизироавть картинки
+
 
 Для редактирование fronta mainpage
 1. cd ..   
