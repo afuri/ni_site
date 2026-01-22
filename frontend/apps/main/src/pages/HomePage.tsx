@@ -1144,6 +1144,9 @@ export function HomePage() {
                   <a href="/docs/reglament.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
                     Регламент проведения очного тура (PDF)
                   </a>
+                  <a href="/docs/poster.jpg" target="_blank" rel="noreferrer" className="home-doc-link">
+                    Презентационный плакат (JPG)
+                  </a>
                 </div>
               </div>
             </div>
