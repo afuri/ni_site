@@ -23,6 +23,7 @@ export type UserRead = {
   must_change_password: boolean;
   is_moderator: boolean;
   moderator_requested: boolean;
+  created_at: string;
   surname: string;
   name: string;
   father_name: string | null;

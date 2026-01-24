@@ -1,4 +1,5 @@
 """User schemas."""
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from app.models.user import UserRole
@@ -26,6 +27,7 @@ class UserRead(BaseModel):
     must_change_password: bool
     is_moderator: bool
     moderator_requested: bool
+    created_at: datetime
 
     surname: Optional[str] = None
     name: Optional[str] = None

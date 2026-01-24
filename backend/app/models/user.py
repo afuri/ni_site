@@ -1,7 +1,7 @@
 """User model."""
 import enum
 from datetime import datetime
-from sqlalchemy import String, Boolean, Enum, Integer, DateTime
+from sqlalchemy import String, Boolean, Enum, Integer, DateTime, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,6 +35,8 @@ class User(Base):
     temp_password_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_moderator: Mapped[bool] = mapped_column(Boolean, default=False)
     moderator_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # profile (общие)
     surname: Mapped[str | None] = mapped_column(String(120), nullable=True)

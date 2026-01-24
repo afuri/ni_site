@@ -2022,7 +2022,32 @@ Fix admin task panel
       - Форматирование ответа по типу задания (single/multi/short), без сырого
         JSON.
 
-        
+
+1.3.4
+
+Готово. Добавил created_at в модель/схему/тип, колонку в таблице админки и в
+  CSV, плюс BOM+CRLF для корректной кириллицы в Excel.
+
+  Что изменил
+
+  - backend/app/models/user.py — поле created_at с server_default=now().
+  - backend/app/schemas/user.py — created_at в UserRead.
+  - backend/alembic/versions/a1b2c3d4e5f7_add_user_created_at.py — миграция.
+  - frontend/packages/api/src/types.ts — created_at в UserRead.
+  - frontend/apps/admin/src/pages/UsersPage.tsx — новая колонка “Регистрация”,
+    в CSV тоже; CSV теперь с BOM + CRLF.
+
+  Важно: нужно применить миграцию
+
+  docker compose exec api alembic -c /app/alembic.ini upgrade head
+
+  CSV кириллица
+
+  - Добавил \ufeff в начало и \r\n в строки — Excel будет нормально открывать
+    UTF‑8.
+
+
+
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....
 

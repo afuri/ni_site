@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Table, TextInput } from "@ui";
 import type { UserRead } from "@api";
 import { adminApiClient } from "../lib/adminClient";
+import { formatDate } from "../lib/formatters";
 
 type UserUpdateForm = {
   userId: string;
@@ -78,6 +79,7 @@ const buildUsersCsv = (users: UserRead[]) => {
     "Требует смены пароля",
     "Модератор",
     "Запрос модератора",
+    "Дата регистрации",
     "Фамилия",
     "Имя",
     "Отчество",
@@ -100,6 +102,7 @@ const buildUsersCsv = (users: UserRead[]) => {
     user.must_change_password ? "Да" : "Нет",
     user.is_moderator ? "Да" : "Нет",
     user.moderator_requested ? "Да" : "Нет",
+    formatDate(user.created_at),
     user.surname,
     user.name,
     user.father_name ?? "",
@@ -112,9 +115,8 @@ const buildUsersCsv = (users: UserRead[]) => {
     user.subject ?? ""
   ]);
 
-  return [headers, ...rows]
-    .map((row) => row.map((value) => escapeCsvValue(String(value))).join(","))
-    .join("\n");
+  const csvRows = [headers, ...rows].map((row) => row.map((value) => escapeCsvValue(String(value))).join(","));
+  return `\ufeff${csvRows.join("\r\n")}`;
 };
 
 export function UsersPage() {
@@ -780,6 +782,7 @@ export function UsersPage() {
                     <th>Смена пароля</th>
                     <th>Модератор</th>
                     <th>Запрос модератора</th>
+                    <th>Регистрация</th>
                     <th>Фамилия</th>
                     <th>Имя</th>
                     <th>Отчество</th>
@@ -795,11 +798,11 @@ export function UsersPage() {
                 <tbody>
                   {listStatus === "loading" ? (
                     <tr>
-                      <td colSpan={19}>Загрузка...</td>
+                      <td colSpan={20}>Загрузка...</td>
                     </tr>
                   ) : usersList.length === 0 ? (
                     <tr>
-                      <td colSpan={19}>Пользователи не найдены.</td>
+                      <td colSpan={20}>Пользователи не найдены.</td>
                     </tr>
                   ) : (
                     usersList.map((item) => (
@@ -813,6 +816,7 @@ export function UsersPage() {
                         <td>{item.must_change_password ? "Да" : "Нет"}</td>
                         <td>{item.is_moderator ? "Да" : "Нет"}</td>
                         <td>{item.moderator_requested ? "Да" : "Нет"}</td>
+                        <td>{formatDate(item.created_at)}</td>
                         <td>{item.surname}</td>
                         <td>{item.name}</td>
                         <td>{item.father_name ?? "—"}</td>
