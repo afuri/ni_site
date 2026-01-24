@@ -518,15 +518,15 @@ export function OlympiadPage() {
             ) : null}
           </div>
 
-          <div className="olympiad-answer-bar">
-            <div className="olympiad-nav olympiad-nav-left">
-              <Button variant="ghost" onClick={() => navigateTo(0)}>
-                Начало
-              </Button>
-              <Button variant="outline" onClick={() => navigateTo(activeIndex - 1)} disabled={activeIndex === 0}>
-                &lt;
-              </Button>
-            </div>
+        <div className="olympiad-answer-bar">
+          <div className="olympiad-nav olympiad-nav-left">
+            <Button variant="ghost" onClick={() => navigateTo(0)}>
+              Начало
+            </Button>
+            <Button variant="outline" onClick={() => navigateTo(activeIndex - 1)} disabled={activeIndex === 0}>
+              &lt;
+            </Button>
+          </div>
             <div className="olympiad-answer-input">
               {activeTask.task_type === "single_choice" ? (
                 <div className="olympiad-options">
@@ -612,8 +612,30 @@ export function OlympiadPage() {
                 &gt;
               </Button>
               <Button variant="ghost" onClick={() => navigateTo(sortedTasks.length - 1)}>
-                Последнее
+                Последняя
               </Button>
+            </div>
+            <div className="olympiad-nav olympiad-nav-mobile" aria-label="Навигация по заданиям">
+              <div className="olympiad-nav-row">
+                <Button variant="outline" onClick={() => navigateTo(activeIndex - 1)} disabled={activeIndex === 0}>
+                  &lt;
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigateTo(activeIndex + 1)}
+                  disabled={activeIndex === sortedTasks.length - 1}
+                >
+                  &gt;
+                </Button>
+              </div>
+              <div className="olympiad-nav-row">
+                <Button variant="ghost" onClick={() => navigateTo(0)}>
+                  Начало
+                </Button>
+                <Button variant="ghost" onClick={() => navigateTo(sortedTasks.length - 1)}>
+                  Последняя
+                </Button>
+              </div>
             </div>
           </div>
         </div>

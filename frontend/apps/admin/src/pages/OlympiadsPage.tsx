@@ -511,6 +511,7 @@ export function OlympiadsPage() {
       <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
+        closeOnBackdrop={false}
         title={formMode === "create" ? "Новая олимпиада" : "Редактирование олимпиады"}
         className="admin-olympiad-modal"
       >

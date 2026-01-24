@@ -904,6 +904,7 @@ export function TasksPage() {
       <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
+        closeOnBackdrop={false}
         title={formMode === "create" ? "Новое задание" : "Редактирование задания"}
         className="admin-task-modal"
       >

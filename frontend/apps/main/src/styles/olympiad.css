@@ -206,6 +206,17 @@
   justify-content: flex-end;
 }
 
+.olympiad-nav-mobile {
+  display: none;
+}
+
+.olympiad-nav-row {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  align-items: center;
+}
+
 .olympiad-error {
   color: #b91c1c;
   margin: var(--space-2) 0 0;
@@ -303,10 +314,26 @@
 }
 
 @media (max-width: 720px) {
-  .olympiad-header-actions {
-    flex-wrap: wrap;
-    justify-content: center;
+  .olympiad-page .layout-header-inner {
+    flex-direction: column;
+    align-items: center;
     gap: var(--space-2);
+  }
+
+  .olympiad-logo {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .olympiad-header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "timer user"
+      "help finish";
+    gap: var(--space-2);
+    justify-items: center;
   }
 
   .olympiad-answer-bar {
@@ -316,7 +343,13 @@
 
   .olympiad-nav-left,
   .olympiad-nav-right {
-    justify-content: center;
+    display: none;
+  }
+
+  .olympiad-nav-mobile {
+    display: grid;
+    gap: var(--space-2);
+    justify-items: center;
   }
 
   .olympiad-task-card {
@@ -330,6 +363,13 @@
 
   .olympiad-timer {
     font-size: 1rem;
+    grid-area: timer;
+    justify-self: center;
+  }
+
+  .olympiad-user {
+    grid-area: user;
+    justify-self: center;
   }
 
   .olympiad-task-number {
@@ -358,5 +398,13 @@
   .olympiad-finish-button,
   .olympiad-help-button {
     width: 100%;
+  }
+
+  .olympiad-finish-button {
+    grid-area: finish;
+  }
+
+  .olympiad-help-button {
+    grid-area: help;
   }
 }

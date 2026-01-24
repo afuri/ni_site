@@ -220,6 +220,7 @@ export function CabinetPage() {
   const [attemptViewError, setAttemptViewError] = useState<string | null>(null);
   const [attemptImageUrls, setAttemptImageUrls] = useState<Record<string, string>>({});
   const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const [emailRequestStatus, setEmailRequestStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle"
@@ -1038,15 +1039,18 @@ export function CabinetPage() {
         footer={<div className="home-footer">© 2026 Олимпиада «Невский интеграл»</div>}
       >
         <main className="cabinet-content">
-          <section className="cabinet-section">
-            <h1>Личный кабинет</h1>
-            <p className="cabinet-subtitle">
-              Добро пожаловать, {greetingLabel}!
-            </p>
-          </section>
+          <div className="cabinet-section-scroll">
+            <section className="cabinet-section">
+              <h1>Личный кабинет</h1>
+              <p className="cabinet-subtitle">
+                Добро пожаловать, {greetingLabel}!
+              </p>
+            </section>
+          </div>
 
           {activeUser?.role === "student" ? (
-            <section className="cabinet-section" id="results">
+            <div className="cabinet-section-scroll">
+              <section className="cabinet-section" id="results">
               <div className="cabinet-section-heading">
                 <h2>Результаты прохождения олимпиад</h2>
               </div>
@@ -1122,14 +1126,28 @@ export function CabinetPage() {
                   )}
                 </tbody>
               </Table>
-            </section>
+              </section>
+            </div>
           ) : null}
 
-          <section className="cabinet-section" id="profile">
-            <div className="cabinet-section-heading">
-              <h2>Личные данные</h2>
-            </div>
-            <form className="cabinet-form" onSubmit={handleProfileSave}>
+          <div className="cabinet-section-scroll">
+            <section className="cabinet-section" id="profile">
+              <div className="cabinet-section-heading">
+                <button
+                  type="button"
+                  className={`cabinet-toggle ${isProfileOpen ? "is-open" : ""}`}
+                  onClick={() => setIsProfileOpen((prev) => !prev)}
+                  aria-expanded={isProfileOpen}
+                  aria-controls="cabinet-profile-form"
+                >
+                  <span>Личные данные</span>
+                  <span className="cabinet-toggle-icon" aria-hidden="true">
+                    {isProfileOpen ? "▲" : "▼"}
+                  </span>
+                </button>
+              </div>
+              {isProfileOpen ? (
+                <form className="cabinet-form" id="cabinet-profile-form" onSubmit={handleProfileSave}>
               <TextInput
                 label="Логин"
                 name="login"
@@ -1306,15 +1324,18 @@ export function CabinetPage() {
                   Отмена
                 </Button>
               </div>
-            </form>
-          </section>
+                </form>
+              ) : null}
+            </section>
+          </div>
 
-          <section className="cabinet-section" id="links">
-            <div className="cabinet-section-heading">
-              <h2>Сопровождение</h2>
-            </div>
-            {user.role === "student" ? (
-              <div className="cabinet-grid">
+          <div className="cabinet-section-scroll">
+            <section className="cabinet-section" id="links">
+              <div className="cabinet-section-heading">
+                <h2>Сопровождение</h2>
+              </div>
+              {user.role === "student" ? (
+                <div className="cabinet-grid">
                 <div className="cabinet-card">
                   <h3>Добавить учителя вручную</h3>
                   <TextInput
@@ -1414,9 +1435,9 @@ export function CabinetPage() {
                     </tbody>
                   </Table>
                 </div>
-              </div>
-            ) : (
-              <div className="cabinet-grid">
+                </div>
+              ) : (
+                <div className="cabinet-grid">
                 <div className="cabinet-card">
                   <h3>Добавить ученика</h3>
                   <TextInput
@@ -1482,9 +1503,10 @@ export function CabinetPage() {
                     </tbody>
                   </Table>
                 </div>
-              </div>
-            )}
-          </section>
+                </div>
+              )}
+            </section>
+          </div>
           <div className="cabinet-logout">
             <Button type="button" className="cabinet-logout-button" onClick={handleLogoutClick}>
               Выйти
