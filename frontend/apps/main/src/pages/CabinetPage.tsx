@@ -74,7 +74,7 @@ type AttemptTask = {
   content: string;
   task_type: "single_choice" | "multi_choice" | "short_text";
   image_key?: string | null;
-  payload: { image_position?: "before" | "after" };
+  payload: { image_position?: "before" | "after"; options?: { id: string; text: string }[] };
   current_answer?: unknown;
   answer_payload?: unknown;
 };
@@ -880,14 +880,53 @@ export function CabinetPage() {
     return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("ru-RU");
   };
 
-  const formatAnswer = (answer: unknown) => {
+  const extractAnswerPayload = (answer: unknown): unknown => {
     if (!answer) {
+      return null;
+    }
+    if (typeof answer === "object" && answer && "answer_payload" in answer) {
+      return (answer as { answer_payload?: unknown }).answer_payload ?? null;
+    }
+    return answer;
+  };
+
+  const formatAnswer = (task: AttemptTask): React.ReactNode => {
+    const payload = extractAnswerPayload(task.current_answer ?? task.answer_payload);
+    if (!payload) {
       return "Нет ответа";
     }
+    if (task.task_type === "short_text" && typeof (payload as { text?: string }).text === "string") {
+      return (payload as { text: string }).text;
+    }
+    if (task.task_type === "single_choice") {
+      const choiceId = (payload as { choice_id?: string }).choice_id;
+      if (!choiceId) {
+        return "Нет ответа";
+      }
+      const option = task.payload?.options?.find((item) => item.id === choiceId);
+      return option?.text ?? choiceId;
+    }
+    if (task.task_type === "multi_choice") {
+      const choiceIds = (payload as { choice_ids?: string[] }).choice_ids ?? [];
+      if (choiceIds.length === 0) {
+        return "Нет ответа";
+      }
+      const options = task.payload?.options ?? [];
+      const labels = choiceIds.map((id) => options.find((item) => item.id === id)?.text ?? id);
+      return (
+        <div className="cabinet-answer-chips">
+          {labels.map((label, index) => (
+            <span className="cabinet-answer-chip" key={`${task.task_id}-${index}`}>
+              {label}
+            </span>
+          ))}
+        </div>
+      );
+    }
     try {
-      return JSON.stringify(answer);
+      return JSON.stringify(payload);
     } catch {
-      return String(answer);
+      return String(payload);
     }
   };
 
@@ -1666,7 +1705,7 @@ export function CabinetPage() {
                     ) : null}
                     <div className="cabinet-attempt-answer">
                       <span>Ответ:</span>
-                      <div className="cabinet-answer">{formatAnswer(task.current_answer ?? task.answer_payload)}</div>
+                      <div className="cabinet-answer">{formatAnswer(task)}</div>
                     </div>
                   </div>
                 );

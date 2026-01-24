@@ -542,6 +542,22 @@
   color: rgba(31, 59, 99, 0.7);
 }
 
+.cabinet-answer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cabinet-answer-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 60, 122, 0.12);
+  color: #0f3c7a;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 .cabinet-hint {
   font-size: 0.9rem;
   color: rgba(31, 59, 99, 0.7);

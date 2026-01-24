@@ -314,6 +314,10 @@
 }
 
 @media (max-width: 720px) {
+  .olympiad-page .layout-header {
+    position: static;
+  }
+
   .olympiad-page .layout-header-inner {
     flex-direction: column;
     align-items: center;
