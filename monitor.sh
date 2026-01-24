@@ -78,8 +78,10 @@ for i in $(seq 1 "$ITER"); do
         (n?sum/n:0),(nu?sumu/nu:0),n,nu
       }' >> "$OUT"
     log "[nginx rt p95 last 2000]"
-    tail -n 2000 /var/log/nginx/access.log | awk -F'rt=' 'NF>=2{split($2,a,\" \"); if(a[1]!=\"-\") print a[1]}' | \
-      sort -n | awk 'NR==1{min=$1} {vals[NR]=$1} END {if(NR==0){print \"rt_p95=0\"; exit} idx=int((NR*0.95)+0.5); if(idx<1) idx=1; if(idx>NR) idx=NR; printf \"rt_p95=%.4f (n=%d min=%.4f max=%.4f)\\n\", vals[idx], NR, min, vals[NR] }' >> "$OUT"
+    tail -n 2000 /var/log/nginx/access.log | \
+      awk -F'rt=' 'NF>=2{split($2,a," "); if(a[1]!="-") print a[1]}' | \
+      sort -n | \
+      awk 'NR==1{min=$1} {vals[NR]=$1} END {if(NR==0){print "rt_p95=0"; exit} idx=int((NR*0.95)+0.5); if(idx<1) idx=1; if(idx>NR) idx=NR; printf "rt_p95=%.4f (n=%d min=%.4f max=%.4f)\n", vals[idx], NR, min, vals[NR] }' >> "$OUT"
     log "[nginx top paths by bytes last 2000]"
     tail -n 2000 /var/log/nginx/access.log | \
       awk 'match($0, /\"[A-Z]+ ([^ ]+) HTTP\\/[^\\\"]+\" ([0-9]+) ([0-9]+)/, m){path=m[1]; bytes=m[3]; if(bytes!=\"-\"){sum[path]+=bytes; cnt[path]++}} END {for(p in sum) printf \"%s\\t%s\\t%d\\n\", p, sum[p], cnt[p]}' | \
