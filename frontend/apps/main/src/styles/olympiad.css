@@ -406,5 +406,7 @@
 
   .olympiad-help-button {
     grid-area: help;
+    width: auto;
+    padding: 0 12px;
   }
 }

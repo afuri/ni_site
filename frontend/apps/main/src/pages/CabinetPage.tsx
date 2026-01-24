@@ -1007,8 +1007,13 @@ export function CabinetPage() {
         }
         nav={
           <div className="cabinet-nav">
-            <Link to="/">Главная</Link>
-            <span className="cabinet-nav-current">Личный кабинет</span>
+            <Link to="/" className="cabinet-nav-home">
+              На главную
+            </Link>
+            <Link to="/" className="cabinet-nav-desktop">
+              Главная
+            </Link>
+            <span className="cabinet-nav-current cabinet-nav-desktop">Личный кабинет</span>
           </div>
         }
         actions={

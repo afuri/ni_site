@@ -1983,7 +1983,24 @@ Fix admin task panel
   - frontend/apps/admin/src/pages/TasksPage.tsx → closeOnBackdrop={false}
   - frontend/apps/admin/src/pages/OlympiadsPage.tsx → closeOnBackdrop={false}
 
+1.3.1
 
+Изменения:
+
+  - В кабинете добавил ссылку «На главную» в центре (между логотипом и именем
+    пользователя), видно только на мобильных.
+  - Верхнее меню кабинета на мобиле теперь выглядит как на главной (логотип без
+    текста, центр – «На главную», справа – имя/меню).
+  - На странице олимпиады в мобильной шапке кнопка «?» теперь по ширине
+    контента (не растягивается на всю строку).
+
+  Файлы:
+
+  - frontend/apps/main/src/pages/CabinetPage.tsx
+  - frontend/apps/main/src/styles/cabinet.css
+  - frontend/apps/main/src/styles/olympiad.css
+
+Фикс F.A.Q.
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....

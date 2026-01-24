@@ -65,6 +65,17 @@
   justify-content: center;
 }
 
+.cabinet-nav-home {
+  display: none;
+  color: var(--color-white);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cabinet-nav-desktop {
+  display: inline-flex;
+}
+
 .cabinet-nav a {
   color: var(--color-white);
   font-weight: 500;
@@ -597,6 +608,15 @@
   }
 
   .cabinet-nav {
+    display: flex;
+    justify-content: center;
+  }
+
+  .cabinet-nav-home {
+    display: inline-flex;
+  }
+
+  .cabinet-nav-desktop {
     display: none;
   }
 
