@@ -1884,13 +1884,13 @@ const FAQ_ITEMS = [
   3. Перезапусти:
 
   nginx -t && systemctl reload nginx
-  docker compose restart api
+  docker compose up -d --build api
 
   4. Пересобери фронт (если ещё не):
 
   cd /opt/ni_site/frontend
   npm ci
-  npm run build:app
+  PRERENDER=true npm run build:app
   rsync -a --delete --exclude 'admin/' /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-integral/
   npm run build:admin
   rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-integral/admin/
@@ -1900,6 +1900,9 @@ const FAQ_ITEMS = [
   внутренний minio:9000. Поэтому старые картинки уже не восстановить — их нужно
   перезагрузить (после исправления).
 
+1.2.9
+Fix admin task panel 
+Правильное отображение картинок у admin
 
 Для редактирование fronta mainpage
 1. cd ..   

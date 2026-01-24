@@ -262,6 +262,7 @@ export function TasksPage() {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<TaskPreview | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
 
   const loadTasks = async () => {
     setStatus("loading");
@@ -309,6 +310,59 @@ export function TasksPage() {
   useEffect(() => {
     void loadTasks();
   }, []);
+
+  useEffect(() => {
+    if (tasks.length === 0) {
+      return;
+    }
+    const missingKeys = tasks
+      .map((task) => task.image_key)
+      .filter((key): key is string => Boolean(key))
+      .filter((key) => !imageUrls[key]);
+    if (missingKeys.length === 0) {
+      return;
+    }
+    let isMounted = true;
+    const loadImages = async () => {
+      const entries = await Promise.all(
+        missingKeys.map(async (key) => {
+          if (key.startsWith("http") || key.startsWith("data:")) {
+            return [key, key] as const;
+          }
+          const mockData = getMockS3Object(key);
+          if (mockData) {
+            return [key, mockData] as const;
+          }
+          try {
+            const safeKey = key.split("/").map(encodeURIComponent).join("/");
+            const payload = await adminApiClient.request<{ url: string; public_url?: string | null }>({
+              path: `/uploads/${safeKey}`,
+              method: "GET"
+            });
+            return [key, payload.public_url ?? payload.url] as const;
+          } catch {
+            return [key, ""] as const;
+          }
+        })
+      );
+      if (!isMounted) {
+        return;
+      }
+      setImageUrls((prev) => {
+        const next = { ...prev };
+        entries.forEach(([key, url]) => {
+          if (url) {
+            next[key] = url;
+          }
+        });
+        return next;
+      });
+    };
+    void loadImages();
+    return () => {
+      isMounted = false;
+    };
+  }, [tasks, imageUrls]);
 
   const openCreate = () => {
     setFormMode("create");
@@ -370,18 +424,7 @@ export function TasksPage() {
       options: hydratedOptions.length > 0 ? hydratedOptions : DEFAULT_OPTIONS,
       shortAnswer
     });
-    if (task.image_key) {
-      const stored = getMockS3Object(task.image_key);
-      if (stored) {
-        setImagePreviewUrl(stored);
-      } else if (task.image_key.startsWith("http") || task.image_key.startsWith("data:")) {
-        setImagePreviewUrl(task.image_key);
-      } else {
-        setImagePreviewUrl(null);
-      }
-    } else {
-      setImagePreviewUrl(null);
-    }
+    setImagePreviewUrl(resolveImageUrl(task.image_key));
     setFormError(null);
     setPreviewData(null);
     setIsFormOpen(true);
@@ -511,6 +554,10 @@ export function TasksPage() {
     if (!imageKey) {
       return null;
     }
+    const resolved = imageUrls[imageKey];
+    if (resolved) {
+      return resolved;
+    }
     const stored = getMockS3Object(imageKey);
     if (stored) {
       return stored;
@@ -520,6 +567,16 @@ export function TasksPage() {
     }
     return null;
   };
+
+  useEffect(() => {
+    if (!form.imageKey) {
+      return;
+    }
+    const resolved = resolveImageUrl(form.imageKey);
+    if (resolved && resolved !== imagePreviewUrl) {
+      setImagePreviewUrl(resolved);
+    }
+  }, [form.imageKey, imageUrls, imagePreviewUrl]);
 
   const openPreviewFromForm = () => {
     const imageUrl = imagePreviewUrl ?? resolveImageUrl(form.imageKey);
