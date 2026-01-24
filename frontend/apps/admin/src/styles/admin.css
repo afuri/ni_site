@@ -96,6 +96,20 @@
   gap: var(--space-3);
 }
 
+.admin-page-jump {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-page-input {
+  width: 90px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  font-size: 0.95rem;
+}
+
 .admin-hint {
   color: rgba(31, 59, 99, 0.7);
   font-size: 0.95rem;

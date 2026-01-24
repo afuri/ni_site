@@ -136,6 +136,7 @@ export function UsersPage() {
   const [usersList, setUsersList] = useState<UserRead[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
   const [filters, setFilters] = useState({
     userId: "",
     role: "",
@@ -273,9 +274,33 @@ export function UsersPage() {
     void loadUsers();
   }, []);
 
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
+
   const handleApplyFilters = () => {
     setPage(1);
     void loadUsers(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
+
+  const clampPage = (value: number) => Math.min(totalPages, Math.max(1, value));
+
+  const handleFirstPage = () => {
+    if (page === 1) {
+      return;
+    }
+    setPage(1);
+    void loadUsers(1);
+  };
+
+  const handleLastPage = () => {
+    if (page >= totalPages) {
+      return;
+    }
+    setPage(totalPages);
+    void loadUsers(totalPages);
   };
 
   const handlePrevPage = () => {
@@ -288,13 +313,26 @@ export function UsersPage() {
   };
 
   const handleNextPage = () => {
-    const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
     if (page >= totalPages) {
       return;
     }
     const nextPage = page + 1;
     setPage(nextPage);
     void loadUsers(nextPage);
+  };
+
+  const handlePageJump = () => {
+    const numeric = Number(pageInput);
+    if (Number.isNaN(numeric)) {
+      setPageInput(String(page));
+      return;
+    }
+    const nextPage = clampPage(Math.trunc(numeric));
+    setPageInput(String(nextPage));
+    if (nextPage !== page) {
+      setPage(nextPage);
+      void loadUsers(nextPage);
+    }
   };
 
   const handleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -753,9 +791,30 @@ export function UsersPage() {
               <span className="admin-hint">
                 Показано {usersList.length} из {totalUsers}.
               </span>
-              <span className="admin-hint">
-                Страница {page} из {Math.max(1, Math.ceil(totalUsers / pageSize))}.
-              </span>
+              <span className="admin-hint">Страница {page} из {totalPages}.</span>
+              <div className="admin-page-jump">
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={pageInput}
+                  onChange={(event) => setPageInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handlePageJump();
+                    }
+                  }}
+                  className="admin-page-input"
+                  aria-label="Номер страницы"
+                />
+                <Button type="button" variant="outline" onClick={handlePageJump}>
+                  Перейти
+                </Button>
+              </div>
+              <Button type="button" variant="outline" onClick={handleFirstPage} disabled={page <= 1}>
+                В начало
+              </Button>
               <Button type="button" variant="outline" onClick={handlePrevPage} disabled={page <= 1}>
                 Назад
               </Button>
@@ -763,9 +822,12 @@ export function UsersPage() {
                 type="button"
                 variant="outline"
                 onClick={handleNextPage}
-                disabled={page >= Math.max(1, Math.ceil(totalUsers / pageSize))}
+                disabled={page >= totalPages}
               >
                 Вперед
+              </Button>
+              <Button type="button" variant="outline" onClick={handleLastPage} disabled={page >= totalPages}>
+                В конец
               </Button>
             </div>
             {listStatus === "error" && listError ? <div className="admin-alert">{listError}</div> : null}

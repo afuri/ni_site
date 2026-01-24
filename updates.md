@@ -2046,7 +2046,23 @@ Fix admin task panel
   - Добавил \ufeff в начало и \r\n в строки — Excel будет нормально открывать
     UTF‑8.
 
+1.3.5 fix admin panel
 
+Сделал пагинацию как просили:
+
+  Что добавлено
+
+  - Кнопки «В начало» и «В конец»
+  - Поле ввода номера страницы + кнопка «Перейти»
+  - Работает на страницы по 200 пользователей
+
+  Изменённые файлы
+
+  - frontend/apps/admin/src/pages/UsersPage.tsx
+  - frontend/apps/admin/src/styles/admin.css
+
+
+--- 
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....
@@ -2116,3 +2132,30 @@ git pull
   1. PageSpeed Insights
      Открой https://pagespeed.web.dev/ → вставь https://nevsky-integral.ru →
      смотри Mobile/ Desktop.
+
+
+Backup БД
+
+Полный бэкап базы ni_site (рекомендуется):
+
+  mkdir -p /opt/ni_site/backups
+  docker compose exec db pg_dump -U postgres -d ni_site | gzip > /opt/ni_site/
+  backups/ni_site_$(date +%F_%H-%M).sql.gz
+
+  Только таблица users:
+
+  mkdir -p /opt/ni_site/backups
+  docker compose exec db pg_dump -U postgres -d ni_site -t users | gzip > /opt/
+  ni_site/backups/users_$(date +%F_%H-%M).sql.gz
+
+  Проверить, что файл создался:
+
+  ls -lh /opt/ni_site/backups/
+
+  Восстановление (если надо):
+
+  gunzip -c /opt/ni_site/backups/ni_site_YYYY-MM-DD_HH-MM.sql.gz | docker
+  compose exec -T db psql -U postgres -d ni_site
+
+  Если хочешь, могу дать команду для бэкапа только схемы или сделать ежедневный
+  cron‑бэкап.
