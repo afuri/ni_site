@@ -25,4 +25,5 @@ class UploadPresignPostResponse(BaseModel):
 
 class UploadGetResponse(BaseModel):
     url: str
+    public_url: str | None = None
     expires_in: int

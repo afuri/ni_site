@@ -1845,6 +1845,61 @@ const FAQ_ITEMS = [
 
 ---
 
+1.2.8 решаем проблему с загрузкой изображений в задачах
+
+Сделал правки, чтобы изображения больше не “пропадали” из‑за истечения
+  presigned‑URL и корректно подгружались в клиенте:
+
+  Изменения в коде:
+
+  - backend/app/schemas/uploads.py — UploadGetResponse теперь возвращает
+    public_url.
+  - backend/app/core/storage.py — добавлен public_url_for_key.
+  - backend/app/api/v1/uploads.py — /uploads/{key} возвращает и public_url.
+  - frontend/apps/main/src/pages/OlympiadPage.tsx — берём public_url ?? url.
+  - frontend/apps/main/src/pages/CabinetPage.tsx — берём public_url ?? url.
+  - frontend/apps/admin/src/pages/ResultsPage.tsx — берём public_url ?? url.
+
+  Что нужно сделать на сервере:
+
+  1. Убедись, что в .env правильно:
+
+  STORAGE_ENDPOINT=https://nevsky-integral.ru/storage
+  STORAGE_BUCKET=ni-site
+  STORAGE_USE_SSL=true
+  STORAGE_ACCESS_KEY=<MINIO_ROOT_USER>
+  STORAGE_SECRET_KEY=<MINIO_ROOT_PASSWORD>
+  STORAGE_PUBLIC_BASE_URL=https://nevsky-integral.ru/storage/ni-site
+
+  2. В nginx в HTTPS‑server блоке есть:
+
+  location /storage/ {
+    proxy_pass http://127.0.0.1:9000/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    client_max_body_size 20m;
+  }
+
+  3. Перезапусти:
+
+  nginx -t && systemctl reload nginx
+  docker compose restart api
+
+  4. Пересобери фронт (если ещё не):
+
+  cd /opt/ni_site/frontend
+  npm ci
+  npm run build:app
+  rsync -a --delete --exclude 'admin/' /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-integral/
+  npm run build:admin
+  rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-integral/admin/
+
+  Важно:
+  Ранее изображения не загружались в MinIO, потому что presigned URL шёл на
+  внутренний minio:9000. Поэтому старые картинки уже не восстановить — их нужно
+  перезагрузить (после исправления).
+
 
 Для редактирование fronta mainpage
 1. cd ..   
@@ -1920,3 +1975,10 @@ git pull
 
   # применить миграции
   docker compose exec api alembic -c /app/alembic.ini upgrade head
+
+
+## Проверяем скорость загрузки сайта
+
+  1. PageSpeed Insights
+     Открой https://pagespeed.web.dev/ → вставь https://nevsky-integral.ru →
+     смотри Mobile/ Desktop.

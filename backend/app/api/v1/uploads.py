@@ -7,7 +7,7 @@ from app.core.deps import get_db
 import re
 
 from app.core.errors import http_error
-from app.core.storage import presign_get, presign_put, presign_post
+from app.core.storage import presign_get, presign_put, presign_post, public_url_for_key
 from app.core.config import settings
 from app.core import error_codes as codes
 from app.models.content import ContentItem, ContentStatus
@@ -206,4 +206,5 @@ async def get_upload_url(
         url = presign_get(key=normalized)
     except RuntimeError:
         raise http_error(503, codes.STORAGE_UNAVAILABLE)
-    return UploadGetResponse(url=url, expires_in=settings.STORAGE_PRESIGN_EXPIRES_SEC)
+    public_url = public_url_for_key(normalized)
+    return UploadGetResponse(url=url, public_url=public_url, expires_in=settings.STORAGE_PRESIGN_EXPIRES_SEC)

@@ -63,6 +63,10 @@ def _public_url_for_key(key: str) -> str | None:
     return f"{base}/{key}"
 
 
+def public_url_for_key(key: str) -> str | None:
+    return _public_url_for_key(key)
+
+
 def presign_put(prefix: str, content_type: str) -> PresignPutResult:
     client = _get_s3_client()
     if client is None:

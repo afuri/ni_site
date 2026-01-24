@@ -194,11 +194,11 @@ export function ResultsPage() {
           }
           try {
             const safeKey = key.split("/").map(encodeURIComponent).join("/");
-            const payload = await adminApiClient.request<{ url: string }>({
+            const payload = await adminApiClient.request<{ url: string; public_url?: string | null }>({
               path: `/uploads/${safeKey}`,
               method: "GET"
             });
-            return [key, payload.url] as const;
+            return [key, payload.public_url ?? payload.url] as const;
           } catch {
             return [key, ""] as const;
           }
