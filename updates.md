@@ -2061,7 +2061,8 @@ Fix admin task panel
   - frontend/apps/admin/src/pages/UsersPage.tsx
   - frontend/apps/admin/src/styles/admin.css
 
-
+1.3.6 тест производительности 
+monitor.sh
 --- 
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
