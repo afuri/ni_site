@@ -6,8 +6,8 @@ mkdir -p "$OUT_DIR"
 TS="$(date +%F_%H-%M-%S)"
 OUT="$OUT_DIR/metrics_${TS}.log"
 
-INTERVAL=3
-DURATION=660
+INTERVAL="${INTERVAL:-5}"
+DURATION="${DURATION:-660}"
 ITER=$((DURATION / INTERVAL))
 
 log() { echo "$@" >> "$OUT"; }
@@ -15,6 +15,10 @@ log() { echo "$@" >> "$OUT"; }
 log "Logging to $OUT"
 log "Start: $(date)"
 log "Interval: ${INTERVAL}s, Duration: ${DURATION}s, Iterations: ${ITER}"
+log "[sysctl tcp]"
+sysctl net.core.somaxconn net.ipv4.tcp_max_syn_backlog net.ipv4.tcp_fin_timeout net.ipv4.tcp_tw_reuse 2>/dev/null >> "$OUT" || true
+log "[ulimit]"
+ulimit -n >> "$OUT" 2>/dev/null || true
 
 for i in $(seq 1 "$ITER"); do
   log "---- $(date '+%F %T') ----"
@@ -47,6 +51,10 @@ for i in $(seq 1 "$ITER"); do
     log "ESTABLISHED: $(ss -tan state established | tail -n +2 | wc -l | tr -d ' ')"
     log "TIME-WAIT: $(ss -tan state time-wait | tail -n +2 | wc -l | tr -d ' ')"
     log "SYN-RECV: $(ss -tan state syn-recv | tail -n +2 | wc -l | tr -d ' ')"
+    log "[ss 443 states]"
+    ss -tan 'sport = :443' | awk 'NR>1 {state[$1]++} END {for (s in state) printf "%s %d\n", s, state[s]}' >> "$OUT"
+    log "[ss 80 states]"
+    ss -tan 'sport = :80' | awk 'NR>1 {state[$1]++} END {for (s in state) printf "%s %d\n", s, state[s]}' >> "$OUT"
     log "[ss listen queues]"
     ss -ltnp | awk 'NR==1 || /:(80|443)\\b/' >> "$OUT"
   fi
