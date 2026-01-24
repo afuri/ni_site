@@ -2063,6 +2063,14 @@ Fix admin task panel
 
 1.3.6 тест производительности 
 monitor.sh
+
+Команда на сервере
+chmod +x /opt/ni_site/monitor.sh
+
+./monitor.sh &
+
+Логи:
+/opt/ni_site/monitor_logs/metrics_YYYY-MM-DD_HH-MM-SS.log
 --- 
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
@@ -2160,3 +2168,6 @@ Backup БД
 
   Если хочешь, могу дать команду для бэкапа только схемы или сделать ежедневный
   cron‑бэкап.
+
+
+  log_format timed '$remote_addr - $remote_user [$time_local] "$request" ' '$status $body_bytes_sent "$http_referer" "$http_user_agent"' 'rt=$request_time urt=$upstream_response_time'; access_log /var/log/nginx/access.log timed;

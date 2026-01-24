@@ -7,7 +7,7 @@ TS="$(date +%F_%H-%M-%S)"
 OUT="$OUT_DIR/metrics_${TS}.log"
 
 INTERVAL=3
-DURATION=60
+DURATION=660
 ITER=$((DURATION / INTERVAL))
 
 log() { echo "$@" >> "$OUT"; }
@@ -46,6 +46,9 @@ for i in $(seq 1 "$ITER"); do
     log "[ss counts]"
     log "ESTABLISHED: $(ss -tan state established | tail -n +2 | wc -l | tr -d ' ')"
     log "TIME-WAIT: $(ss -tan state time-wait | tail -n +2 | wc -l | tr -d ' ')"
+    log "SYN-RECV: $(ss -tan state syn-recv | tail -n +2 | wc -l | tr -d ' ')"
+    log "[ss listen queues]"
+    ss -ltnp | awk 'NR==1 || /:(80|443)\\b/' >> "$OUT"
   fi
 
   log "[df -h]"
@@ -66,13 +69,20 @@ for i in $(seq 1 "$ITER"); do
         printf "rt_avg=%.4f urt_avg=%.4f (samples rt=%d urt=%d)\n",
         (n?sum/n:0),(nu?sumu/nu:0),n,nu
       }' >> "$OUT"
+    log "[nginx rt p95 last 2000]"
+    tail -n 2000 /var/log/nginx/access.log | awk -F'rt=' 'NF>=2{split($2,a,\" \"); if(a[1]!=\"-\") print a[1]}' | \
+      sort -n | awk 'NR==1{min=$1} {vals[NR]=$1} END {if(NR==0){print \"rt_p95=0\"; exit} idx=int((NR*0.95)+0.5); if(idx<1) idx=1; if(idx>NR) idx=NR; printf \"rt_p95=%.4f (n=%d min=%.4f max=%.4f)\\n\", vals[idx], NR, min, vals[NR] }' >> "$OUT"
+    log "[nginx top paths by bytes last 2000]"
+    tail -n 2000 /var/log/nginx/access.log | \
+      awk 'match($0, /\"[A-Z]+ ([^ ]+) HTTP\\/[^\\\"]+\" ([0-9]+) ([0-9]+)/, m){path=m[1]; bytes=m[3]; if(bytes!=\"-\"){sum[path]+=bytes; cnt[path]++}} END {for(p in sum) printf \"%s\\t%s\\t%d\\n\", p, sum[p], cnt[p]}' | \
+      sort -k2,2nr | head -n 10 >> "$OUT"
   fi
 
   log "[postgres activity]"
   docker compose exec -T db psql -U postgres -d ni_site -c "\
 select count(*) as total,\
        count(*) filter (where state='active') as active,\
-       count(*) filter (where wait_event_type is not null) as waiting\
+       count(*) filter (where wait_event_type is not null) as waiting \
 from pg_stat_activity;\
 select state, count(*) from pg_stat_activity group by state;\
 select wait_event_type, wait_event, count(*)\
