@@ -89,32 +89,113 @@ for i in $(seq 1 "$ITER"); do
   fi
 
   log "[postgres activity]"
-  docker compose exec -T db psql -U postgres -d ni_site -c "\
-select count(*) as total,\
-       count(*) filter (where state='active') as active,\
-       count(*) filter (where wait_event_type is not null) as waiting \
-from pg_stat_activity;\
-select state, count(*) from pg_stat_activity group by state;\
-select wait_event_type, wait_event, count(*)\
-from pg_stat_activity\
-where wait_event_type is not null\
-group by 1,2 order by count(*) desc limit 5;\
-select pid, now()-query_start as age, wait_event_type, wait_event, left(query,120) as query\
-from pg_stat_activity\
-where state='active'\
-order by age desc limit 5;\
-select blks_read, blks_hit, xact_commit, xact_rollback, tup_returned, tup_fetched, tup_inserted, tup_updated, tup_deleted\
-from pg_stat_database where datname='ni_site';\
-" >> "$OUT" 2>&1 || true
+  docker compose exec -T db psql -U postgres -d ni_site <<'SQL' >> "$OUT" 2>&1 || true
+select count(*) as total,
+       count(*) filter (where state = 'active') as active,
+       count(*) filter (where wait_event_type is not null) as waiting
+from pg_stat_activity;
+
+select state, count(*) from pg_stat_activity group by state;
+
+select wait_event_type, wait_event, count(*)
+from pg_stat_activity
+where wait_event_type is not null
+group by 1,2 order by count(*) desc limit 5;
+
+select pid,
+       now() - query_start as age,
+       wait_event_type,
+       wait_event,
+       left(query, 120) as query
+from pg_stat_activity
+where state = 'active'
+order by age desc
+limit 5;
+
+select pid,
+       now() - xact_start as xact_age,
+       state,
+       left(query, 120) as query
+from pg_stat_activity
+where xact_start is not null
+order by xact_start asc
+limit 5;
+
+select datname,
+       round(blks_hit * 100.0 / nullif(blks_hit + blks_read, 0), 2) as cache_hit_pct,
+       blks_read, blks_hit, xact_commit, xact_rollback,
+       tup_returned, tup_fetched, tup_inserted, tup_updated, tup_deleted
+from pg_stat_database
+where datname = 'ni_site';
+
+select checkpoints_timed, checkpoints_req, checkpoint_write_time, checkpoint_sync_time,
+       buffers_checkpoint, buffers_clean, maxwritten_clean, buffers_backend
+from pg_stat_bgwriter;
+
+select count(*) filter (where not granted) as locks_waiting
+from pg_locks;
+
+select bl.pid as blocked_pid,
+       now() - a.query_start as blocked_age,
+       left(a.query, 120) as blocked_query,
+       kl.pid as blocking_pid,
+       left(ka.query, 120) as blocking_query
+from pg_locks bl
+join pg_stat_activity a on a.pid = bl.pid
+join pg_locks kl on kl.locktype = bl.locktype
+  and kl.database is not distinct from bl.database
+  and kl.relation is not distinct from bl.relation
+  and kl.page is not distinct from bl.page
+  and kl.tuple is not distinct from bl.tuple
+  and kl.virtualxid is not distinct from bl.virtualxid
+  and kl.transactionid is not distinct from bl.transactionid
+  and kl.classid is not distinct from bl.classid
+  and kl.objid is not distinct from bl.objid
+  and kl.objsubid is not distinct from bl.objsubid
+  and kl.pid <> bl.pid
+join pg_stat_activity ka on ka.pid = kl.pid
+where bl.granted = false
+limit 5;
+
+select mode, count(*) as locks
+from pg_locks
+group by mode
+order by locks desc;
+SQL
 
   if docker compose exec -T db psql -U postgres -d ni_site -Atc "select 1 from pg_extension where extname='pg_stat_statements'" 2>/dev/null | grep -q 1; then
     log "[pg_stat_statements top]"
-    docker compose exec -T db psql -U postgres -d ni_site -c "\
-select calls, mean_exec_time, rows, left(query,120)\
-from pg_stat_statements\
-order by mean_exec_time desc limit 5;\
-" >> "$OUT" 2>&1 || true
+    docker compose exec -T db psql -U postgres -d ni_site <<'SQL' >> "$OUT" 2>&1 || true
+select calls, mean_exec_time, rows, left(query, 120) as query
+from pg_stat_statements
+order by mean_exec_time desc
+limit 5;
+
+select calls, total_exec_time, rows, left(query, 120) as query
+from pg_stat_statements
+order by total_exec_time desc
+limit 5;
+
+select calls, mean_exec_time, rows, left(query, 120) as query
+from pg_stat_statements
+order by calls desc
+limit 5;
+SQL
   fi
+
+  log "[autovacuum stats]"
+  docker compose exec -T db psql -U postgres -d ni_site <<'SQL' >> "$OUT" 2>&1 || true
+select relname,
+       n_live_tup,
+       n_dead_tup,
+       last_vacuum,
+       last_autovacuum,
+       last_analyze,
+       last_autoanalyze
+from pg_stat_user_tables
+order by n_dead_tup desc
+limit 5;
+SQL
 
   log "[redis info]"
   docker compose exec -T redis redis-cli info stats >> "$OUT" 2>&1 || true

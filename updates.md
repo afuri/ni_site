@@ -2073,6 +2073,8 @@ chmod +x /opt/ni_site/monitor.sh
 /opt/ni_site/monitor_logs/metrics_YYYY-MM-DD_HH-MM-SS.log
 --- 
 
+1.3.7 small ui fixes
+
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....
 
