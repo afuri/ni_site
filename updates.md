@@ -2075,6 +2075,17 @@ chmod +x /opt/ni_site/monitor.sh
 
 1.3.7 small ui fixes
 
+
+1.3.8 yandex pidors fix
+
+Ваш email будет автоматически верифицирован в ближайшие 12 часов.
+сли Вы обнаружили ошибку в email, свяжитесь с нами по почте nevsky-integral@mail.ru
+---
+
+codex resume 019bcd29-4382-7fd2-bee8-858843f62978
+---
+
+
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....
 
