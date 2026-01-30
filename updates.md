@@ -2082,8 +2082,15 @@ chmod +x /opt/ni_site/monitor.sh
 сли Вы обнаружили ошибку в email, свяжитесь с нами по почте nevsky-integral@mail.ru
 ---
 
-codex resume 019bcd29-4382-7fd2-bee8-858843f62978
----
+
+1.3.9 unisender 
+
+Настроил отправку писем через сервис unisender
+- Отправка в UniSender идёт JSON‑ом, в message с recipients, body.plaintext,
+    subject, from_email, from_name.
+  - Авторизация через заголовок X-API-KEY.
+  - URL по умолчанию: https://go1.unisender.ru/ru/transactional/api/v1/email/
+    send.json.
 
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому

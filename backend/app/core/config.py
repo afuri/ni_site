@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     PASSWORD_RESET_TTL_HOURS: int = 2
     TEMP_PASSWORD_TTL_HOURS: int = 24
     EMAIL_SEND_ENABLED: bool = False
+    EMAIL_PROVIDER: str = "smtp"
     PASSWORD_MIN_LEN: int = 8
     PASSWORD_REQUIRE_UPPER: bool = True
     PASSWORD_REQUIRE_LOWER: bool = True
@@ -52,6 +53,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
     SMTP_USE_SSL: bool = False
+
+    UNISENDER_API_URL: str = "https://go1.unisender.ru/ru/transactional/api/v1/email/send.json"
+    UNISENDER_API_KEY: str | None = None
 
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"

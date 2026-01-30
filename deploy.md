@@ -55,6 +55,7 @@ nano /opt/ni_site/docker-compose.yml
 Рекомендуется:
 - выставить `ENV=prod` и `LOG_FORMAT=json` для `api` и `worker`.
 - задать безопасные `JWT_SECRET`, `SMTP_PASSWORD`, `STORAGE_*` и пр.
+- при переходе на UniSender Go (Web API) задайте `EMAIL_PROVIDER=unisender` и `UNISENDER_API_KEY`.
 - привязать сервисы к localhost там, где нет внешнего доступа.
 
 Примерно так (схематично):

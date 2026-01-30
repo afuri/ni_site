@@ -137,7 +137,14 @@ async def deps():
     storage_ok = True if not storage_required else storage_health()
 
     email_required = settings.EMAIL_SEND_ENABLED
-    email_ok = True if not email_required else bool(settings.SMTP_HOST)
+    if not email_required:
+        email_ok = True
+    else:
+        provider = (settings.EMAIL_PROVIDER or "smtp").lower()
+        if provider == "unisender":
+            email_ok = bool(settings.UNISENDER_API_KEY)
+        else:
+            email_ok = bool(settings.SMTP_HOST)
 
     payload = {
         "status": "ok" if storage_ok and email_ok else "degraded",
