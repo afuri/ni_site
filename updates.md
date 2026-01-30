@@ -2102,6 +2102,11 @@ chmod +x /opt/ni_site/monitor.sh
 
   - frontend/apps/main/src/pages/CabinetPage.tsx
 
+1.3.11 verification message
+
+Вернул
+"Подтвердите свою регистрацию. На электронной почте, которую вы указали при регистрации,
+найдите письмо (возможно в спаме) от support@nevsky-integral.ru и пройдите по ссылке, указанной в этом письме."
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....
