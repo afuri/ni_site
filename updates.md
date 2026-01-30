@@ -2092,6 +2092,16 @@ chmod +x /opt/ni_site/monitor.sh
   - URL по умолчанию: https://go1.unisender.ru/ru/transactional/api/v1/email/
     send.json.
 
+1.3.10 small ui fix
+
+Сделал правку: после успешной верификации, когда пользователь попадает в
+  кабинет, мы автоматически обновляем профиль через /auth/me и обновляем
+  сессию. Теперь статус is_email_verified обновится без выхода/входа.
+
+  Изменение в:
+
+  - frontend/apps/main/src/pages/CabinetPage.tsx
+
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
   ассеты искались по /assets/... вместо /admin/assets/....

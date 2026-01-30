@@ -279,7 +279,13 @@ export function CabinetPage() {
     window.localStorage.removeItem(VERIFY_SUCCESS_STORAGE_KEY);
     setHasVerifySuccess(true);
     setIsVerifySuccessOpen(true);
-  }, []);
+    if (tokens) {
+      client.auth
+        .me()
+        .then((me) => setSession(tokens, me))
+        .catch(() => null);
+    }
+  }, [client, setSession, tokens]);
 
   const studentParam = searchParams.get("student");
   const studentIdValue = studentParam ? Number(studentParam) : null;
