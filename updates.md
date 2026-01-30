@@ -2102,7 +2102,7 @@ chmod +x /opt/ni_site/monitor.sh
 
   - frontend/apps/main/src/pages/CabinetPage.tsx
 
-1.3.11 verification message
+1.3.12 verification message
 
 Вернул
 "Подтвердите свою регистрацию. На электронной почте, которую вы указали при регистрации,
