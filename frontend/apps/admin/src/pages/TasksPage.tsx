@@ -259,6 +259,9 @@ export function TasksPage() {
   const [deleteTarget, setDeleteTarget] = useState<TaskItem | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [rawImageDataUrl, setRawImageDataUrl] = useState<string | null>(null);
+  const [rawImageType, setRawImageType] = useState<string | null>(null);
+  const [rawImageName, setRawImageName] = useState<string | null>(null);
   const [imageResizeWidth, setImageResizeWidth] = useState<number | "original">(1200);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<TaskPreview | null>(null);
@@ -651,89 +654,46 @@ export function TasksPage() {
     setIsPreviewOpen(true);
   };
 
-  const handleImageUpload = (file: File | null) => {
-    if (!file) {
-      return;
+  const uploadToStorage = async (dataUrl: string, contentType: string) => {
+    try {
+      const presign = await adminApiClient.request<{
+        key: string;
+        upload_url: string;
+        headers: Record<string, string>;
+        public_url?: string | null;
+      }>({
+        path: "/uploads/presign",
+        method: "POST",
+        body: {
+          prefix: "tasks",
+          content_type: contentType
+        }
+      });
+      const blob = dataUrlToBlob(dataUrl);
+      await fetch(presign.upload_url, {
+        method: "PUT",
+        headers: presign.headers ?? {},
+        body: blob
+      });
+      return presign.key;
+    } catch {
+      return null;
     }
-    const originalType = file.type && file.type.startsWith("image/") ? file.type : "image/png";
-    const uploadToStorage = async (dataUrl: string) => {
-      try {
-        const presign = await adminApiClient.request<{
-          key: string;
-          upload_url: string;
-          headers: Record<string, string>;
-          public_url?: string | null;
-        }>({
-          path: "/uploads/presign",
-          method: "POST",
-          body: {
-            prefix: "tasks",
-            content_type: originalType
-          }
-        });
-        const blob = dataUrlToBlob(dataUrl);
-        await fetch(presign.upload_url, {
-          method: "PUT",
-          headers: presign.headers ?? {},
-          body: blob
-        });
-        return presign.key;
-      } catch {
-        return null;
-      }
-    };
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : null;
-      if (!result) {
-        return;
-      }
-      const image = new Image();
-      image.onload = () => {
-        const targetWidth = imageResizeWidth === "original" ? null : imageResizeWidth;
-        if (!targetWidth || image.width <= targetWidth) {
-          const now = new Date();
-          const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(
-            now.getDate()
-          ).padStart(2, "0")}/${Date.now()}-${file.name}`;
-          void (async () => {
-            const uploadedKey = await uploadToStorage(result);
-            if (uploadedKey) {
-              setForm((prev) => ({ ...prev, imageKey: uploadedKey }));
-            } else {
-              storeMockS3Object(key, result);
-              setForm((prev) => ({ ...prev, imageKey: key }));
-            }
-            setImagePreviewUrl(result);
-          })();
-          return;
-        }
+  };
 
-        const scale = targetWidth / image.width;
-        const outputWidth = Math.round(image.width * scale);
-        const outputHeight = Math.round(image.height * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = outputWidth;
-        canvas.height = outputHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          return;
-        }
-        ctx.drawImage(image, 0, 0, outputWidth, outputHeight);
-        const mime = originalType;
-        let dataUrl =
-          mime === "image/jpeg" || mime === "image/jpg"
-            ? canvas.toDataURL(mime, 0.9)
-            : canvas.toDataURL(mime);
-        if (!dataUrl || dataUrl === "data:") {
-          dataUrl = canvas.toDataURL("image/png");
-        }
-        const now = new Date();
-        const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(
-          now.getDate()
-        ).padStart(2, "0")}/${Date.now()}-${file.name}`;
+  const processAndUploadImage = (dataUrl: string, contentType: string, fileName: string) => {
+    const image = new Image();
+    image.onload = () => {
+      const targetWidth = imageResizeWidth === "original" ? null : imageResizeWidth;
+      const shouldResize = targetWidth && image.width > targetWidth;
+      const now = new Date();
+      const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(
+        now.getDate()
+      ).padStart(2, "0")}/${Date.now()}-${fileName}`;
+
+      if (!shouldResize) {
         void (async () => {
-          const uploadedKey = await uploadToStorage(dataUrl);
+          const uploadedKey = await uploadToStorage(dataUrl, contentType);
           if (uploadedKey) {
             setForm((prev) => ({ ...prev, imageKey: uploadedKey }));
           } else {
@@ -742,15 +702,74 @@ export function TasksPage() {
           }
           setImagePreviewUrl(dataUrl);
         })();
-      };
-      image.src = result;
+        return;
+      }
+
+      const scale = targetWidth / image.width;
+      const outputWidth = Math.round(image.width * scale);
+      const outputHeight = Math.round(image.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return;
+      }
+      ctx.drawImage(image, 0, 0, outputWidth, outputHeight);
+      const mime = contentType;
+      let resizedDataUrl =
+        mime === "image/jpeg" || mime === "image/jpg"
+          ? canvas.toDataURL(mime, 0.9)
+          : canvas.toDataURL(mime);
+      if (!resizedDataUrl || resizedDataUrl === "data:") {
+        resizedDataUrl = canvas.toDataURL("image/png");
+      }
+      void (async () => {
+        const uploadedKey = await uploadToStorage(resizedDataUrl, contentType);
+        if (uploadedKey) {
+          setForm((prev) => ({ ...prev, imageKey: uploadedKey }));
+        } else {
+          storeMockS3Object(key, resizedDataUrl);
+          setForm((prev) => ({ ...prev, imageKey: key }));
+        }
+        setImagePreviewUrl(resizedDataUrl);
+      })();
+    };
+    image.src = dataUrl;
+  };
+
+  const handleImageUpload = (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    const originalType = file.type && file.type.startsWith("image/") ? file.type : "image/png";
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : null;
+      if (!result) {
+        return;
+      }
+      setRawImageDataUrl(result);
+      setRawImageType(originalType);
+      setRawImageName(file.name);
+      processAndUploadImage(result, originalType, file.name);
     };
     reader.readAsDataURL(file);
   };
 
+  useEffect(() => {
+    if (!rawImageDataUrl || !rawImageType || !rawImageName) {
+      return;
+    }
+    processAndUploadImage(rawImageDataUrl, rawImageType, rawImageName);
+  }, [imageResizeWidth]);
+
   const handleImageClear = () => {
     setForm((prev) => ({ ...prev, imageKey: "" }));
     setImagePreviewUrl(null);
+    setRawImageDataUrl(null);
+    setRawImageType(null);
+    setRawImageName(null);
   };
 
   const handleSave = async () => {
