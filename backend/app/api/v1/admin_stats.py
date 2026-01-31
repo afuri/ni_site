@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps_auth import require_role
-from app.db.session import get_db
+from app.core.deps import get_db
 from app.models.attempt import Attempt, AttemptStatus
 from app.models.user import UserRole
 from app.schemas.admin_stats import ActiveAttemptsStats

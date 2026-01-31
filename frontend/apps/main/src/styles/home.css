@@ -1070,9 +1070,13 @@
     padding: var(--space-4);
   }
 
+  .home-schedule-track {
+    padding: var(--space-7) var(--space-2);
+  }
+
   .home-schedule-item {
     min-width: 200px;
-    height: 200px;
+    height: 280px;
   }
 
   .home-schedule-card {
@@ -1100,6 +1104,10 @@
 @media (max-width: 560px) {
   .home-hero-panel-title {
     font-size: 1.2rem;
+  }
+
+  .home-schedule-item {
+    height: 260px;
   }
 
   .home-schedule-card {
