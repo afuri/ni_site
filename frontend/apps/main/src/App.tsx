@@ -1,7 +1,7 @@
 import "@ui/styles/global.css";
 import { AuthProvider } from "@ui";
 import { createApiClient } from "@api";
-import { createAuthStorage } from "@utils";
+import { createMainAuthStorage } from "./utils/authStorage";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { HomePage } from "./pages/HomePage";
@@ -19,10 +19,7 @@ const ResetPasswordPage = lazy(() =>
   import("./pages/ResetPasswordPage").then((module) => ({ default: module.ResetPasswordPage }))
 );
 
-const storage = createAuthStorage({
-  tokensKey: "ni_main_tokens",
-  userKey: "ni_main_user"
-});
+const storage = createMainAuthStorage();
 
 const apiClient = createApiClient({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",

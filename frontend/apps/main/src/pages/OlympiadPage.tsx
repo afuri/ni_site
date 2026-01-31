@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient } from "@api";
-import { createAuthStorage } from "@utils";
+import { createMainAuthStorage } from "../utils/authStorage";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import instructionImage from "../assets/help.png";
@@ -69,14 +69,7 @@ export function OlympiadPage() {
   const { status, user, signOut } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const storage = useMemo(
-    () =>
-      createAuthStorage({
-        tokensKey: "ni_main_tokens",
-        userKey: "ni_main_user"
-      }),
-    []
-  );
+  const storage = useMemo(() => createMainAuthStorage(), []);
   const client = useMemo(
     () =>
       createApiClient({

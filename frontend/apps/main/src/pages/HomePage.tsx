@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient, type ApiError } from "@api";
-import { createAuthStorage } from "@utils";
+import { createMainAuthStorage } from "../utils/authStorage";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -266,10 +266,7 @@ type PublicOlympiad = {
 export function HomePage() {
   const { signIn, signOut, user, status } = useAuth();
   const navigate = useNavigate();
-  const authStorage = useMemo(
-    () => createAuthStorage({ tokensKey: "ni_main_tokens", userKey: "ni_main_user" }),
-    []
-  );
+  const authStorage = useMemo(() => createMainAuthStorage(), []);
   const authedClient = useMemo(
     () =>
       createApiClient({

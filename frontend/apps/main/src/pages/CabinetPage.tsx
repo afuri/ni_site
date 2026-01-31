@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
 import { createApiClient, type ManualTeacher, type UserRead } from "@api";
-import { createAuthStorage } from "@utils";
+import { createMainAuthStorage } from "../utils/authStorage";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import "../styles/cabinet.css";
@@ -177,15 +177,11 @@ export function CabinetPage() {
   const { status, user, tokens, setSession, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const storage = useMemo(
-    () =>
-      createAuthStorage({
-        tokensKey: "ni_main_tokens",
-        userKey: "ni_main_user"
-      }),
-    []
+  const storage = useMemo(() => createMainAuthStorage(), []);
+  const client = useMemo(
+    () => createApiClient({ baseUrl: API_BASE_URL, storage, onAuthError: signOut }),
+    [storage, signOut]
   );
-  const client = useMemo(() => createApiClient({ baseUrl: API_BASE_URL, storage }), [storage]);
 
   const [profileForm, setProfileForm] = useState<ProfileForm>({
     login: "",
