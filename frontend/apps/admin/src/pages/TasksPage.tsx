@@ -259,6 +259,7 @@ export function TasksPage() {
   const [deleteTarget, setDeleteTarget] = useState<TaskItem | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageResizeWidth, setImageResizeWidth] = useState<number | "original">(1200);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<TaskPreview | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -689,8 +690,8 @@ export function TasksPage() {
       }
       const image = new Image();
       image.onload = () => {
-        const targetWidth = 1200;
-        if (image.width <= targetWidth) {
+        const targetWidth = imageResizeWidth === "original" ? null : imageResizeWidth;
+        if (!targetWidth || image.width <= targetWidth) {
           const now = new Date();
           const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(
             now.getDate()
@@ -975,6 +976,28 @@ export function TasksPage() {
                 Очистить
               </Button>
             </div>
+            <label className="field">
+              <span className="field-label">Ширина изображения</span>
+              <select
+                className="field-input"
+                value={imageResizeWidth}
+                onChange={(event) =>
+                  setImageResizeWidth(
+                    event.target.value === "original" ? "original" : Number(event.target.value)
+                  )
+                }
+              >
+                <option value="original">Исходный размер</option>
+                <option value="200">200</option>
+                <option value="400">400</option>
+                <option value="600">600</option>
+                <option value="800">800</option>
+                <option value="1000">1000</option>
+                <option value="1200">1200</option>
+                <option value="1400">1400</option>
+                <option value="1600">1600</option>
+              </select>
+            </label>
             <label className="field">
               <span className="field-label">Расположение изображения</span>
               <select

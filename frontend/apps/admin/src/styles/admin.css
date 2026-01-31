@@ -396,6 +396,32 @@
   flex-wrap: wrap;
 }
 
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-stat-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #f8fafc;
+}
+
+.admin-stat-label {
+  color: rgba(31, 59, 99, 0.7);
+  font-size: 0.95rem;
+}
+
+.admin-stat-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--color-ink-900);
+}
+
 .admin-table-scroll {
   width: 100%;
 }

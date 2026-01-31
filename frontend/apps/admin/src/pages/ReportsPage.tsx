@@ -22,11 +22,37 @@ type Filters = {
   statusCode: string;
 };
 
+type AttemptsStats = {
+  active_attempts: number;
+  active_attempts_open: number;
+  active_users_open: number;
+  updated_at: string;
+};
+
 export function ReportsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({ userId: "", action: "", statusCode: "" });
+  const [stats, setStats] = useState<AttemptsStats | null>(null);
+  const [statsStatus, setStatsStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [statsError, setStatsError] = useState<string | null>(null);
+
+  const loadStats = async () => {
+    setStatsStatus("loading");
+    setStatsError(null);
+    try {
+      const data = await adminApiClient.request<AttemptsStats>({
+        path: "/admin/stats/attempts",
+        method: "GET"
+      });
+      setStats(data ?? null);
+      setStatsStatus("idle");
+    } catch {
+      setStatsStatus("error");
+      setStatsError("Не удалось загрузить статистику.");
+    }
+  };
 
   const loadLogs = async () => {
     setStatus("loading");
@@ -50,85 +76,114 @@ export function ReportsPage() {
 
   useEffect(() => {
     void loadLogs();
+    void loadStats();
   }, []);
 
   return (
     <section className="admin-section">
       <div className="admin-toolbar">
         <div>
-          <h1>Отчеты и журнал действий</h1>
-          <p className="admin-hint">Аудит действий администраторов и модераторов.</p>
+          <h1>Статистика</h1>
+          <p className="admin-hint">Активные попытки и онлайн‑нагрузка олимпиады.</p>
         </div>
         <div className="admin-toolbar-actions">
-          <Button type="button" variant="outline" onClick={loadLogs}>
+          <Button type="button" variant="outline" onClick={loadStats} disabled={statsStatus === "loading"}>
             Обновить
           </Button>
-          <a
-            className="btn btn-outline btn-sm"
-            href={`${import.meta.env.VITE_API_BASE_URL ?? "/api/v1"}/admin/audit-logs/export`}
-          >
-            Скачать CSV
-          </a>
         </div>
       </div>
-      <div className="admin-report-filters">
-        <TextInput
-          label="User ID"
-          name="userId"
-          value={filters.userId}
-          onChange={(event) => setFilters((prev) => ({ ...prev, userId: event.target.value }))}
-        />
-        <TextInput
-          label="Действие"
-          name="action"
-          value={filters.action}
-          onChange={(event) => setFilters((prev) => ({ ...prev, action: event.target.value }))}
-        />
-        <TextInput
-          label="Статус"
-          name="statusCode"
-          value={filters.statusCode}
-          onChange={(event) => setFilters((prev) => ({ ...prev, statusCode: event.target.value }))}
-        />
+      {statsStatus === "error" && statsError ? <div className="admin-alert">{statsError}</div> : null}
+      <div className="admin-stats-grid">
+        <div className="admin-stat-card">
+          <span className="admin-stat-label">Активные попытки</span>
+          <strong className="admin-stat-value">{stats?.active_attempts ?? "—"}</strong>
+        </div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-label">Активные (не истекли)</span>
+          <strong className="admin-stat-value">{stats?.active_attempts_open ?? "—"}</strong>
+        </div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-label">Уникальных пользователей</span>
+          <strong className="admin-stat-value">{stats?.active_users_open ?? "—"}</strong>
+        </div>
       </div>
-      <Button type="button" variant="outline" onClick={loadLogs}>
-        Применить фильтры
-      </Button>
-      {status === "error" && error ? <div className="admin-alert">{error}</div> : null}
-      <Table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>User</th>
-            <th>Action</th>
-            <th>Path</th>
-            <th>Status</th>
-            <th>Дата</th>
-          </tr>
-        </thead>
-        <tbody>
-          {status === "loading" ? (
+      <div className="admin-section" style={{ marginTop: "24px" }}>
+        <div className="admin-toolbar">
+          <div>
+            <h1>Отчеты и журнал действий</h1>
+            <p className="admin-hint">Аудит действий администраторов и модераторов.</p>
+          </div>
+          <div className="admin-toolbar-actions">
+            <Button type="button" variant="outline" onClick={loadLogs}>
+              Обновить
+            </Button>
+            <a
+              className="btn btn-outline btn-sm"
+              href={`${import.meta.env.VITE_API_BASE_URL ?? "/api/v1"}/admin/audit-logs/export`}
+            >
+              Скачать CSV
+            </a>
+          </div>
+        </div>
+        <div className="admin-report-filters">
+          <TextInput
+            label="User ID"
+            name="userId"
+            value={filters.userId}
+            onChange={(event) => setFilters((prev) => ({ ...prev, userId: event.target.value }))}
+          />
+          <TextInput
+            label="Действие"
+            name="action"
+            value={filters.action}
+            onChange={(event) => setFilters((prev) => ({ ...prev, action: event.target.value }))}
+          />
+          <TextInput
+            label="Статус"
+            name="statusCode"
+            value={filters.statusCode}
+            onChange={(event) => setFilters((prev) => ({ ...prev, statusCode: event.target.value }))}
+          />
+        </div>
+        <Button type="button" variant="outline" onClick={loadLogs}>
+          Применить фильтры
+        </Button>
+        {status === "error" && error ? <div className="admin-alert">{error}</div> : null}
+        <Table>
+          <thead>
             <tr>
-              <td colSpan={6}>Загрузка...</td>
+              <th>ID</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Path</th>
+              <th>Status</th>
+              <th>Дата</th>
             </tr>
-          ) : logs.length === 0 ? (
-            <tr>
-              <td colSpan={6}>Записей не найдено.</td>
-            </tr>
-          ) : (
-            logs.map((log) => (
-              <tr key={log.id}>
-                <td>{log.id}</td>
-                <td>{log.user_id ?? "—"}</td>
-                <td>{log.action}</td>
-                <td>{log.path}</td>
-                <td>{log.status_code}</td>
-                <td>{formatDate(log.created_at)}</td>
+          </thead>
+          <tbody>
+            {status === "loading" ? (
+              <tr>
+                <td colSpan={6}>Загрузка...</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </Table>
+            ) : logs.length === 0 ? (
+              <tr>
+                <td colSpan={6}>Записей не найдено.</td>
+              </tr>
+            ) : (
+              logs.map((log) => (
+                <tr key={log.id}>
+                  <td>{log.id}</td>
+                  <td>{log.user_id ?? "—"}</td>
+                  <td>{log.action}</td>
+                  <td>{log.path}</td>
+                  <td>{log.status_code}</td>
+                  <td>{formatDate(log.created_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      </div>
     </section>
   );
 }
