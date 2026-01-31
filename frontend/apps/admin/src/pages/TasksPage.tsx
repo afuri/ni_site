@@ -689,7 +689,7 @@ export function TasksPage() {
       }
       const image = new Image();
       image.onload = () => {
-        const targetWidth = 600;
+        const targetWidth = 1200;
         if (image.width <= targetWidth) {
           const now = new Date();
           const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(

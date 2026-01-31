@@ -1084,6 +1084,17 @@
     width: 100%;
     margin-top: var(--space-3);
   }
+
+  .home-instruction-modal {
+    max-height: 90vh;
+    overflow: hidden;
+  }
+
+  .home-instruction-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @media (max-width: 560px) {
