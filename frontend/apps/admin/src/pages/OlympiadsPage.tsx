@@ -37,6 +37,20 @@ type TaskCatalogItem = {
   task_type: string;
 };
 
+type OlympiadPreviewTask = {
+  task_id: number;
+  sort_order: number;
+  max_score: number;
+  task: {
+    id: number;
+    title: string;
+    content: string;
+    task_type: string;
+    image_key?: string | null;
+    payload: Record<string, unknown>;
+  };
+};
+
 type TaskSelection = {
   checked: boolean;
   sortOrder: string;
@@ -112,6 +126,11 @@ export function OlympiadsPage() {
   const [poolFormError, setPoolFormError] = useState<string | null>(null);
   const [poolSaving, setPoolSaving] = useState(false);
   const [poolActionStatus, setPoolActionStatus] = useState<number | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<OlympiadItem | null>(null);
+  const [previewTasks, setPreviewTasks] = useState<OlympiadPreviewTask[]>([]);
+  const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewImageUrls, setPreviewImageUrls] = useState<Record<string, string>>({});
 
   const parseAgeGroup = (value: string | null) => {
     if (!value) {
@@ -190,6 +209,26 @@ export function OlympiadsPage() {
     } catch {
       setPoolStatus("error");
       setPoolError("Не удалось загрузить пулы олимпиад.");
+    }
+  };
+
+  const openPreview = async (olympiad: OlympiadItem) => {
+    setPreviewTarget(olympiad);
+    setPreviewStatus("loading");
+    setPreviewError(null);
+    setPreviewTasks([]);
+    setPreviewImageUrls({});
+    try {
+      const data = await adminApiClient.request<OlympiadPreviewTask[]>({
+        path: `/admin/olympiads/${olympiad.id}/tasks/full`,
+        method: "GET"
+      });
+      const sorted = [...(data ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+      setPreviewTasks(sorted);
+      setPreviewStatus("idle");
+    } catch {
+      setPreviewStatus("error");
+      setPreviewError("Не удалось загрузить задания олимпиады.");
     }
   };
 
@@ -542,6 +581,55 @@ export function OlympiadsPage() {
     }
   };
 
+  useEffect(() => {
+    if (!previewTarget || previewTasks.length === 0) {
+      return;
+    }
+    const missingKeys = previewTasks
+      .map((item) => item.task.image_key)
+      .filter((key): key is string => Boolean(key))
+      .filter((key) => !previewImageUrls[key]);
+    if (missingKeys.length === 0) {
+      return;
+    }
+    let isMounted = true;
+    const loadImages = async () => {
+      const entries = await Promise.all(
+        missingKeys.map(async (key) => {
+          if (key.startsWith("http") || key.startsWith("data:")) {
+            return [key, key] as const;
+          }
+          try {
+            const safeKey = key.split("/").map(encodeURIComponent).join("/");
+            const payload = await adminApiClient.request<{ url: string; public_url?: string | null }>({
+              path: `/uploads/${safeKey}`,
+              method: "GET"
+            });
+            return [key, payload.public_url ?? payload.url] as const;
+          } catch {
+            return [key, ""] as const;
+          }
+        })
+      );
+      if (!isMounted) {
+        return;
+      }
+      setPreviewImageUrls((prev) => {
+        const next = { ...prev };
+        entries.forEach(([key, url]) => {
+          if (url) {
+            next[key] = url;
+          }
+        });
+        return next;
+      });
+    };
+    void loadImages();
+    return () => {
+      isMounted = false;
+    };
+  }, [previewTarget, previewTasks, previewImageUrls]);
+
   const normalizedFilter = taskFilter.trim().toLowerCase();
   const filteredTaskCatalog = normalizedFilter
     ? taskCatalog.filter((task) => task.title.toLowerCase().includes(normalizedFilter))
@@ -604,6 +692,9 @@ export function OlympiadsPage() {
                   <div className="admin-table-actions">
                     <Button type="button" size="sm" variant="outline" onClick={() => openEdit(item)}>
                       Редактировать
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => openPreview(item)}>
+                      Предпросмотр
                     </Button>
                     <Button
                       type="button"
@@ -978,6 +1069,71 @@ export function OlympiadsPage() {
             Удалить
           </Button>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(previewTarget)}
+        onClose={() => setPreviewTarget(null)}
+        title={previewTarget ? `Предпросмотр: ${previewTarget.title}` : "Предпросмотр"}
+        className="admin-result-modal"
+      >
+        {previewStatus === "loading" ? <p>Загрузка...</p> : null}
+        {previewError ? <p className="admin-error">{previewError}</p> : null}
+        {previewTasks.length === 0 && previewStatus === "idle" ? (
+          <p className="admin-hint">В олимпиаде пока нет заданий.</p>
+        ) : null}
+        {previewTasks.length > 0 ? (
+          <div className="admin-attempt">
+            <div className="admin-attempt-tasks">
+              {previewTasks.map((item, index) => {
+                const task = item.task;
+                const payload = (task.payload ?? {}) as Record<string, unknown>;
+                const imagePosition = payload.image_position === "before" ? "before" : "after";
+                const imageUrl = task.image_key ? previewImageUrls[task.image_key] : null;
+                const options = Array.isArray(payload.options) ? payload.options : [];
+                return (
+                  <div className="admin-attempt-task" key={`${item.task_id}-${index}`}>
+                    <h4>
+                      Задание {index + 1}. {task.title}
+                    </h4>
+                    {imageUrl && imagePosition === "before" ? (
+                      <img src={imageUrl} alt="Иллюстрация" className="admin-attempt-image" />
+                    ) : null}
+                    <div className="admin-attempt-content">{task.content}</div>
+                    {imageUrl && imagePosition !== "before" ? (
+                      <img src={imageUrl} alt="Иллюстрация" className="admin-attempt-image" />
+                    ) : null}
+                    {task.task_type === "single_choice" ? (
+                      <div className="admin-preview-options">
+                        {options.map((option) => (
+                          <label className="admin-preview-option" key={String((option as any).id)}>
+                            <input type="radio" disabled />
+                            <span>{String((option as any).text ?? "")}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
+                    {task.task_type === "multi_choice" ? (
+                      <div className="admin-preview-options">
+                        {options.map((option) => (
+                          <label className="admin-preview-option" key={String((option as any).id)}>
+                            <input type="checkbox" disabled />
+                            <span>{String((option as any).text ?? "")}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
+                    {task.task_type === "short_text" ? (
+                      <div className="admin-preview-short">
+                        <input className="admin-preview-input" placeholder="Ответ" disabled />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </section>
   );

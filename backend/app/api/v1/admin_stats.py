@@ -9,7 +9,7 @@ from app.core.deps_auth import require_role
 from app.core.deps import get_db
 from app.models.attempt import Attempt, AttemptStatus
 from app.models.user import UserRole
-from app.schemas.admin_stats import ActiveAttemptsSeries, ActiveAttemptsSeriesPoint, ActiveAttemptsStats
+from app.schemas.admin_stats import StartedAttemptsSeries, StartedAttemptsSeriesPoint, ActiveAttemptsStats
 
 router = APIRouter(prefix="/admin/stats", dependencies=[Depends(require_role(UserRole.admin))])
 
@@ -40,11 +40,11 @@ async def get_attempts_stats(db: AsyncSession = Depends(get_db)) -> ActiveAttemp
     )
 
 
-@router.get("/attempts/timeseries", response_model=ActiveAttemptsSeries, tags=["admin"])
+@router.get("/attempts/completions", response_model=StartedAttemptsSeries, tags=["admin"])
 async def get_attempts_timeseries(
     db: AsyncSession = Depends(get_db),
-) -> ActiveAttemptsSeries:
-    step_minutes = 10
+) -> StartedAttemptsSeries:
+    step_minutes = 30
     moscow_tz = ZoneInfo("Europe/Moscow")
     now_msk = datetime.now(moscow_tz)
     rounded_minute = (now_msk.minute // step_minutes) * step_minutes
@@ -57,13 +57,11 @@ async def get_attempts_timeseries(
         """
         SELECT
             t.bucket AS bucket,
-            COALESCE(count(a.id), 0) AS active_attempts,
-            COALESCE(count(distinct a.user_id), 0) AS active_users
+            COALESCE(count(a.id), 0) AS started_attempts
         FROM generate_series(:start_time, :end_time, CAST(:step AS interval)) AS t(bucket)
         LEFT JOIN attempts a
-            ON a.status = :status
-            AND a.started_at <= t.bucket
-            AND a.deadline_at > t.bucket
+            ON a.started_at >= t.bucket
+            AND a.started_at < t.bucket + CAST(:step AS interval)
         GROUP BY t.bucket
         ORDER BY t.bucket
         """
@@ -75,17 +73,15 @@ async def get_attempts_timeseries(
             "start_time": start_time,
             "end_time": end_time,
             "step": timedelta(minutes=step_minutes),
-            "status": AttemptStatus.active.value,
         },
     )
 
     points = [
-        ActiveAttemptsSeriesPoint(
+        StartedAttemptsSeriesPoint(
             bucket=row.bucket,
-            active_attempts=int(row.active_attempts or 0),
-            active_users=int(row.active_users or 0),
+            started_attempts=int(row.started_attempts or 0),
         )
         for row in rows
     ]
 
-    return ActiveAttemptsSeries(step_minutes=step_minutes, points=points)
+    return StartedAttemptsSeries(step_minutes=step_minutes, points=points)

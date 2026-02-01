@@ -568,6 +568,35 @@
   white-space: pre-wrap;
 }
 
+.admin-preview-options {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-preview-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.admin-preview-short {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-preview-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
 .admin-attempt-answer {
   font-weight: 600;
   color: rgba(31, 59, 99, 0.9);

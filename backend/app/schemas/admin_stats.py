@@ -9,12 +9,11 @@ class ActiveAttemptsStats(BaseModel):
     updated_at: datetime
 
 
-class ActiveAttemptsSeriesPoint(BaseModel):
+class StartedAttemptsSeriesPoint(BaseModel):
     bucket: datetime
-    active_attempts: int
-    active_users: int
+    started_attempts: int
 
 
-class ActiveAttemptsSeries(BaseModel):
+class StartedAttemptsSeries(BaseModel):
     step_minutes: int
-    points: list[ActiveAttemptsSeriesPoint]
+    points: list[StartedAttemptsSeriesPoint]

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Table, TextInput } from "@ui";
 import { adminApiClient } from "../lib/adminClient";
-import { formatDate } from "../lib/formatters";
 
 type AuditLog = {
   id: number;
@@ -29,15 +28,14 @@ type AttemptsStats = {
   updated_at: string;
 };
 
-type AttemptsSeriesPoint = {
+type StartsSeriesPoint = {
   bucket: string;
-  active_attempts: number;
-  active_users: number;
+  started_attempts: number;
 };
 
-type AttemptsSeries = {
+type StartsSeries = {
   step_minutes: number;
-  points: AttemptsSeriesPoint[];
+  points: StartsSeriesPoint[];
 };
 
 export function ReportsPage() {
@@ -48,7 +46,8 @@ export function ReportsPage() {
   const [stats, setStats] = useState<AttemptsStats | null>(null);
   const [statsStatus, setStatsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [statsError, setStatsError] = useState<string | null>(null);
-  const [series, setSeries] = useState<AttemptsSeriesPoint[]>([]);
+  const [series, setSeries] = useState<StartsSeriesPoint[]>([]);
+  const [seriesStep, setSeriesStep] = useState<number>(30);
   const [seriesStatus, setSeriesStatus] = useState<"idle" | "loading" | "error">("idle");
   const [seriesError, setSeriesError] = useState<string | null>(null);
 
@@ -72,15 +71,16 @@ export function ReportsPage() {
     setSeriesStatus("loading");
     setSeriesError(null);
     try {
-      const data = await adminApiClient.request<AttemptsSeries>({
-        path: "/admin/stats/attempts/timeseries",
+      const data = await adminApiClient.request<StartsSeries>({
+        path: "/admin/stats/attempts/completions",
         method: "GET"
       });
       setSeries(data?.points ?? []);
+      setSeriesStep(data?.step_minutes ?? 30);
       setSeriesStatus("idle");
     } catch {
       setSeriesStatus("error");
-      setSeriesError("Не удалось загрузить график активности.");
+      setSeriesError("Не удалось загрузить статистику запусков.");
     }
   };
 
@@ -115,12 +115,21 @@ export function ReportsPage() {
     void loadSeries();
   };
 
-  const maxAttempts = series.reduce((max, point) => Math.max(max, point.active_attempts), 0);
-  const formatTimeLabel = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    if (date.getMinutes() !== 0) return "";
-    return date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const formatRangeLabel = (value: string) => {
+    const start = new Date(value);
+    if (Number.isNaN(start.getTime())) return value;
+    const end = new Date(start.getTime() + seriesStep * 60 * 1000);
+    const startLabel = start.toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Moscow"
+    });
+    const endLabel = end.toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Moscow"
+    });
+    return `${startLabel}–${endLabel}`;
   };
 
   return (
@@ -159,36 +168,40 @@ export function ReportsPage() {
       <div className="admin-section" style={{ marginTop: "24px" }}>
         <div className="admin-toolbar">
           <div>
-            <h2>Суточная активность попыток</h2>
-            <p className="admin-hint">Шаг 10 минут, последние 24 часа.</p>
+            <h2>Начатые попытки по времени</h2>
+            <p className="admin-hint">
+              Шаг {seriesStep} минут, с 00:00 по Москве до текущего времени.
+            </p>
           </div>
         </div>
         {seriesStatus === "error" && seriesError ? <div className="admin-alert">{seriesError}</div> : null}
-        <div className="admin-activity-chart">
-          <div className="admin-activity-chart-scroll">
-            <div className="admin-activity-chart-bars">
+        <div className="admin-table-scroll">
+          <Table>
+            <thead>
+              <tr>
+                <th>Интервал (МСК)</th>
+                <th>Начато попыток</th>
+              </tr>
+            </thead>
+            <tbody>
               {seriesStatus === "loading" ? (
-                <div className="admin-hint">Загрузка графика...</div>
+                <tr>
+                  <td colSpan={2}>Загрузка статистики...</td>
+                </tr>
               ) : series.length === 0 ? (
-                <div className="admin-hint">Нет данных за сутки.</div>
+                <tr>
+                  <td colSpan={2}>Нет данных за сегодня.</td>
+                </tr>
               ) : (
-                series.map((point) => {
-                  const height = maxAttempts > 0 ? Math.round((point.active_attempts / maxAttempts) * 100) : 0;
-                  const label = formatTimeLabel(point.bucket);
-                  return (
-                    <div key={point.bucket} className="admin-activity-chart-bar">
-                      <div
-                        className="admin-activity-chart-bar-fill"
-                        style={{ height: `${Math.max(height, point.active_attempts > 0 ? 4 : 0)}%` }}
-                        title={`${formatDate(point.bucket)} • ${point.active_attempts} попыток`}
-                      />
-                      <span className="admin-activity-chart-bar-label">{label}</span>
-                    </div>
-                  );
-                })
+                series.map((point) => (
+                  <tr key={point.bucket}>
+                    <td>{formatRangeLabel(point.bucket)}</td>
+                    <td>{point.started_attempts}</td>
+                  </tr>
+                ))
               )}
-            </div>
-          </div>
+            </tbody>
+          </Table>
         </div>
       </div>
       <div className="admin-section" style={{ marginTop: "24px" }}>
