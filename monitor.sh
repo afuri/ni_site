@@ -143,6 +143,18 @@ select count(*) as idle_in_transaction
 from pg_stat_activity
 where state = 'idle in transaction';
 
+-- Кто держит idle in transaction (кратко):
+select now() - xact_start as age,
+       client_addr,
+       application_name,
+       state,
+       left(query, 200) as query
+from pg_stat_activity
+where state = 'idle in transaction'
+order by xact_start asc
+limit 20;
+
+-- Кто держит idle in transaction (подробно):
 select pid,
        usename,
        client_addr,
