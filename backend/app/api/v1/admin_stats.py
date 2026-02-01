@@ -59,7 +59,7 @@ async def get_attempts_timeseries(
             t.bucket AS bucket,
             COALESCE(count(a.id), 0) AS active_attempts,
             COALESCE(count(distinct a.user_id), 0) AS active_users
-        FROM generate_series(:start_time, :end_time, :step::interval) AS t(bucket)
+        FROM generate_series(:start_time, :end_time, CAST(:step AS interval)) AS t(bucket)
         LEFT JOIN attempts a
             ON a.status = :status
             AND a.started_at <= t.bucket
