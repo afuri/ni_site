@@ -68,11 +68,36 @@ for i in $(seq 1 "$ITER"); do
   if [ -f /var/log/nginx/access.log ]; then
     log "[nginx last 50]"
     tail -n 50 /var/log/nginx/access.log >> "$OUT"
+    log "[nginx rps last ${INTERVAL}s]"
+    tail -n 5000 /var/log/nginx/access.log | \
+      python3 - "$INTERVAL" >> "$OUT" 2>&1 <<'PY' || true
+import sys, time, re, datetime
+interval = int(sys.argv[1]) if len(sys.argv) > 1 else 5
+now = time.time()
+count = 0
+rx = re.compile(r"\[(\d{2})/(\w{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})\]")
+for line in sys.stdin:
+    m = rx.search(line)
+    if not m:
+        continue
+    day, mon, year, hh, mm, ss, tz = m.groups()
+    try:
+        dt = datetime.datetime.strptime(
+            f"{day} {mon} {year} {hh}:{mm}:{ss} {tz}",
+            "%d %b %Y %H:%M:%S %z",
+        )
+    except Exception:
+        continue
+    if dt.timestamp() >= now - interval:
+        count += 1
+rate = (count / interval) if interval > 0 else 0
+print(f"rps_last_{interval}s={rate:.2f} (n={count})")
+PY
     log "[nginx rt/urt avg last 200]"
     tail -n 200 /var/log/nginx/access.log | \
       awk -F'rt=| urt=' 'NF>=3 {rt=$2; split($3,a," "); urt=a[1];
         if(rt!="" && rt!="-"){sum+=rt; n++}
-        if(urt!="" && urt!="-"){sumu+=urt; nu++}
+        if(urt!="" && urt!="-"){split(urt,b,","); sumu+=b[1]; nu++}
       } END {
         printf "rt_avg=%.4f urt_avg=%.4f (samples rt=%d urt=%d)\n",
         (n?sum/n:0),(nu?sumu/nu:0),n,nu
@@ -82,6 +107,18 @@ for i in $(seq 1 "$ITER"); do
       awk -F'rt=' 'NF>=2{split($2,a," "); if(a[1]!="-") print a[1]}' | \
       sort -n | \
       awk 'NR==1{min=$1} {vals[NR]=$1} END {if(NR==0){print "rt_p95=0"; exit} idx=int((NR*0.95)+0.5); if(idx<1) idx=1; if(idx>NR) idx=NR; printf "rt_p95=%.4f (n=%d min=%.4f max=%.4f)\n", vals[idx], NR, min, vals[NR] }' >> "$OUT"
+    log "[nginx urt p95 last 2000]"
+    tail -n 2000 /var/log/nginx/access.log | \
+      awk -F'urt=' 'NF>=2{split($2,a," "); if(a[1]!="-"){split(a[1],b,","); print b[1]}}' | \
+      sort -n | \
+      awk 'NR==1{min=$1} {vals[NR]=$1} END {if(NR==0){print "urt_p95=0"; exit} idx=int((NR*0.95)+0.5); if(idx<1) idx=1; if(idx>NR) idx=NR; printf "urt_p95=%.4f (n=%d min=%.4f max=%.4f)\n", vals[idx], NR, min, vals[NR] }' >> "$OUT"
+    log "[nginx status counts last 2000]"
+    tail -n 2000 /var/log/nginx/access.log | \
+      awk -F'"' '{status=$3; split(status,a," "); code=a[1]; if(code ~ /^[0-9]+$/){bucket=int(code/100) "xx"; c[bucket]++}} END {for (b in c) printf "%s %d\n", b, c[b]}' | \
+      sort >> "$OUT"
+    log "[nginx 5xx rate last 2000]"
+    tail -n 2000 /var/log/nginx/access.log | \
+      awk -F'"' '{status=$3; split(status,a," "); code=a[1]; if(code ~ /^[0-9]+$/){total++; if(code >= 500) err++}} END {printf "5xx_rate=%.4f (%d/%d)\n", (total?err/total:0), err, total}' >> "$OUT"
     log "[nginx top paths by bytes last 2000]"
     tail -n 2000 /var/log/nginx/access.log | \
       awk -F'"' '{req=$2; split(req,a," "); path=a[2]; status=$3; split(status,b," "); bytes=b[3]; if(bytes ~ /^[0-9]+$/ && path!=""){sum[path]+=bytes; cnt[path]++}} END {for(p in sum) printf "%s\t%s\t%d\n", p, sum[p], cnt[p]}' | \
@@ -101,6 +138,38 @@ select wait_event_type, wait_event, count(*)
 from pg_stat_activity
 where wait_event_type is not null
 group by 1,2 order by count(*) desc limit 5;
+
+select count(*) as idle_in_transaction
+from pg_stat_activity
+where state = 'idle in transaction';
+
+select pid,
+       usename,
+       client_addr,
+       application_name,
+       now() - xact_start as xact_age,
+       now() - query_start as query_age,
+       wait_event_type,
+       wait_event,
+       left(query, 200) as query
+from pg_stat_activity
+where state = 'idle in transaction'
+order by xact_start asc
+limit 30;
+
+select application_name,
+       count(*) as idle_in_txn
+from pg_stat_activity
+where state = 'idle in transaction'
+group by application_name
+order by idle_in_txn desc;
+
+select client_addr,
+       count(*) as idle_in_txn
+from pg_stat_activity
+where state = 'idle in transaction'
+group by client_addr
+order by idle_in_txn desc;
 
 select pid,
        now() - query_start as age,
