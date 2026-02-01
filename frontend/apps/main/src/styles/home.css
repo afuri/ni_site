@@ -361,7 +361,7 @@
   text-align: center;
   max-width: 720px;
   color: rgba(31, 59, 99, 0.7);
-  margin-bottom: var(--space-6);
+  margin: 0 auto var(--space-6);
 }
 
 .home-about-grid {
