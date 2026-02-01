@@ -314,12 +314,23 @@
 }
 
 .admin-image-preview {
-  width: 100%;
-  max-width: 600px;
+  width: auto;
+  max-width: 100%;
   height: auto;
   margin: 0 auto;
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-1);
+}
+
+.admin-image-preview-scroll {
+  max-width: 100%;
+  overflow: auto;
+  padding: var(--space-2);
+}
+
+.admin-image-preview-raw {
+  display: block;
+  height: auto;
 }
 
 .admin-task-preview {

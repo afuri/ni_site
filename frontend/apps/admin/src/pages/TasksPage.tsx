@@ -1152,7 +1152,9 @@ export function TasksPage() {
 
       <Modal isOpen={isImagePreviewOpen} onClose={() => setIsImagePreviewOpen(false)} title="Предпросмотр изображения">
         {imagePreviewUrl ? (
-          <img src={imagePreviewUrl} alt="Предпросмотр" className="admin-image-preview" />
+          <div className="admin-image-preview-scroll">
+            <img src={imagePreviewUrl} alt="Предпросмотр" className="admin-image-preview admin-image-preview-raw" />
+          </div>
         ) : (
           <p className="admin-hint">Изображение не выбрано.</p>
         )}

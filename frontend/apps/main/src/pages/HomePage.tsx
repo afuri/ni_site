@@ -1045,9 +1045,35 @@ export function HomePage() {
               </h1>
             </div>
             <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Ближайшая олимпиада через</div>
+              <div className="home-hero-panel-title">Математика 1 класс через</div>
               <Countdown targetIso={TARGET_DATE} />
               {/* <Button onClick={() => navigate("/olympiad")}>Принять участие</Button> */}
+            </div>
+          </div>
+        </section>
+
+        <section id="choose" className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h2>Начать олимпиаду</h2>
+              <p className="home-text">Выберите предмет, система назначит вариант автоматически.</p>
+            </div>
+            <div className="home-olympiad-select">
+              <div className="home-subject-actions">
+                {SUBJECT_OPTIONS.map((subject) => (
+                  <Button
+                    key={subject.value}
+                    type="button"
+                    onClick={() => handleStartSubject(subject.value)}
+                    isLoading={assignStatus === "loading"}
+                    disabled={assignStatus === "loading"}
+                  >
+                    {subject.label}
+                  </Button>
+                ))}
+              </div>
+              {assignStatus === "loading" ? <p className="home-text">Подбираем олимпиаду...</p> : null}
+              {startError ? <p className="home-error">{startError}</p> : null}
             </div>
           </div>
         </section>
@@ -1148,44 +1174,6 @@ export function HomePage() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="choose" className="home-section-alt">
-          <div className="container">
-            <div className="home-section-heading">
-              <h3>Начать олимпиаду</h3>
-              <p className="home-text">Выберите предмет, система назначит вариант автоматически.</p>
-            </div>
-            <div className="home-olympiad-select">
-              <div className="home-subject-actions">
-                {SUBJECT_OPTIONS.map((subject) => (
-                  <Button
-                    key={subject.value}
-                    type="button"
-                    onClick={() => handleStartSubject(subject.value)}
-                    isLoading={assignStatus === "loading"}
-                    disabled={assignStatus === "loading"}
-                  >
-                    {subject.label}
-                  </Button>
-                ))}
-              </div>
-              {assignStatus === "loading" ? <p className="home-text">Подбираем олимпиаду...</p> : null}
-              {pendingOlympiad ? (
-                <div className="home-olympiad-meta">
-                  <div>
-                    <strong>Классы:</strong> {pendingOlympiad.age_group}
-                  </div>
-                  <div>
-                    <strong>Доступно:</strong>{" "}
-                    {formatDateShort(pendingOlympiad.available_from)} —{" "}
-                    {formatDateShort(pendingOlympiad.available_to)}
-                  </div>
-                </div>
-              ) : null}
-              {startError ? <p className="home-error">{startError}</p> : null}
             </div>
           </div>
         </section>

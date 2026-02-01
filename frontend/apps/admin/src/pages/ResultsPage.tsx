@@ -255,6 +255,7 @@ export function ResultsPage() {
       "№",
       "ID попытки",
       "Дата выполнения",
+      "Время начала",
       "Время завершения",
       "Длительность (мин)",
       "Логин пользователя",
@@ -271,6 +272,7 @@ export function ResultsPage() {
       index + 1,
       item.id,
       formatDateOnly(item.started_at),
+      formatTime(item.started_at),
       formatTime(item.completed_at),
       Math.round(item.duration_sec / 60),
       item.user_login,
@@ -335,6 +337,7 @@ export function ResultsPage() {
                 <th>№</th>
                 <th>ID попытки</th>
                 <th>Дата выполнения</th>
+                <th>Время начала</th>
                 <th>Время завершения</th>
                 <th>Длительность попытки</th>
                 <th>Логин пользователя</th>
@@ -351,11 +354,11 @@ export function ResultsPage() {
             <tbody>
               {attemptsStatus === "loading" ? (
                 <tr>
-                  <td colSpan={14}>Загрузка...</td>
+                  <td colSpan={15}>Загрузка...</td>
                 </tr>
               ) : attempts.length === 0 ? (
                 <tr>
-                  <td colSpan={14}>Нет попыток.</td>
+                  <td colSpan={15}>Нет попыток.</td>
                 </tr>
               ) : (
                 attempts.map((item, index) => (
@@ -371,6 +374,7 @@ export function ResultsPage() {
                       </button>
                     </td>
                     <td>{formatDateOnly(item.started_at)}</td>
+                    <td>{formatTime(item.started_at)}</td>
                     <td>{formatTime(item.completed_at)}</td>
                     <td>{Math.round(item.duration_sec / 60)} мин</td>
                     <td>{item.user_login}</td>

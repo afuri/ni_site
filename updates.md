@@ -2257,6 +2257,37 @@ chmod +x /opt/ni_site/monitor.sh
   - backend/app/schemas/admin_stats.py
   - frontend/apps/admin/src/pages/ReportsPage.tsx
   - frontend/apps/admin/src/styles/admin.css
+
+
+1.5.2 picture task size fix, start time attepts
+Что сделал:
+
+  - Убрал жёсткий max-width: 600px, теперь превью показывает реальную ширину
+    (но не растягивает маленькие).
+  - Добавил горизонтальный скролл в модалке предпросмотра, чтобы большие
+    изображения не “сжимались”.
+
+  Изменения:
+
+  - frontend/apps/admin/src/styles/admin.css
+  - frontend/apps/admin/src/pages/TasksPage.tsx
+
+  Что проверить:
+
+  1. Открыть создание/редактирование задания.
+  2. Загрузить изображение.
+  3. Менять ширину в селекте — в модалке “Предпросмотр изображения” должна
+     меняться фактическая ширина.
+
+  Обновил таблицу результатов: добавил колонку “Время начала” и включил её в
+  CSV‑экспорт.
+
+  Изменения
+
+  - frontend/apps/admin/src/pages/ResultsPage.tsx — добавлена колонка “Время
+    начала” (таблица + CSV), обновлены colSpan.
+
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
