@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Table, TextInput } from "@ui";
 import { adminApiClient } from "../lib/adminClient";
+import { formatDate } from "../lib/formatters";
 
 type AuditLog = {
   id: number;
@@ -119,17 +120,18 @@ export function ReportsPage() {
     const start = new Date(value);
     if (Number.isNaN(start.getTime())) return value;
     const end = new Date(start.getTime() + seriesStep * 60 * 1000);
-    const startLabel = start.toLocaleTimeString("ru-RU", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Europe/Moscow"
-    });
-    const endLabel = end.toLocaleTimeString("ru-RU", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "Europe/Moscow"
-    });
-    return `${startLabel}–${endLabel}`;
+    const formatTime = (date: Date) => {
+      try {
+        return date.toLocaleTimeString("ru-RU", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/Moscow"
+        });
+      } catch {
+        return date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+      }
+    };
+    return `${formatTime(start)}–${formatTime(end)}`;
   };
 
   return (

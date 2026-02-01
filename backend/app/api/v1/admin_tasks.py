@@ -63,6 +63,27 @@ async def list_tasks(
 
 
 @router.get(
+    "/count",
+    response_model=int,
+    tags=["admin"],
+    description="Количество заданий банка",
+    responses={
+        200: {"content": {"application/json": {"example": 0}}},
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+    },
+)
+async def count_tasks(
+    subject: Subject | None = Query(default=None),
+    task_type: TaskType | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_admin_or_moderator()),
+):
+    repo = TasksRepo(db)
+    return await repo.count(subject=subject, task_type=task_type)
+
+
+@router.get(
     "/{task_id}",
     response_model=TaskRead,
     tags=["admin"],

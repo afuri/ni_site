@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.olympiad_task import OlympiadTask
@@ -30,6 +30,15 @@ class TasksRepo:
         stmt = stmt.order_by(Task.id.desc()).limit(limit).offset(offset)
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
+
+    async def count(self, subject: Subject | None, task_type: TaskType | None) -> int:
+        stmt = select(func.count()).select_from(Task)
+        if subject:
+            stmt = stmt.where(Task.subject == subject)
+        if task_type:
+            stmt = stmt.where(Task.task_type == task_type)
+        res = await self.db.execute(stmt)
+        return int(res.scalar_one())
 
     async def update(self, task: Task) -> Task:
         await self.db.commit()

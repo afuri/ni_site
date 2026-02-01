@@ -4,6 +4,7 @@ import type { UserRead } from "@api";
 import { adminApiClient } from "../lib/adminClient";
 
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
+const PAGE_SIZE = 200;
 
 type TaskItem = {
   id: number;
@@ -267,14 +268,36 @@ export function TasksPage() {
   const [previewData, setPreviewData] = useState<TaskPreview | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
+  const [totalTasks, setTotalTasks] = useState(0);
 
-  const loadTasks = async () => {
+  const totalPages = Math.max(1, Math.ceil(totalTasks / PAGE_SIZE));
+
+  const loadTasks = async (targetPage: number = page) => {
     setStatus("loading");
     setError(null);
     try {
-      const data = await adminApiClient.request<TaskItem[]>({ path: "/admin/tasks", method: "GET" });
-      const nextTasks = data ?? [];
+      const safePage = Math.max(1, targetPage);
+      const offset = (safePage - 1) * PAGE_SIZE;
+      const [list, count] = await Promise.all([
+        adminApiClient.request<TaskItem[]>({
+          path: `/admin/tasks?limit=${PAGE_SIZE}&offset=${offset}`,
+          method: "GET"
+        }),
+        adminApiClient.request<number>({ path: "/admin/tasks/count", method: "GET" })
+      ]);
+      const nextTasks = list ?? [];
+      const nextTotal = count ?? 0;
+      const nextTotalPages = Math.max(1, Math.ceil(nextTotal / PAGE_SIZE));
+      if (safePage > nextTotalPages) {
+        await loadTasks(nextTotalPages);
+        return;
+      }
       setTasks(nextTasks);
+      setTotalTasks(nextTotal);
+      setPage(safePage);
+      setPageInput(String(safePage));
       await loadAuthors(nextTasks);
       setStatus("idle");
     } catch {
@@ -314,6 +337,48 @@ export function TasksPage() {
   useEffect(() => {
     void loadTasks();
   }, []);
+
+  const handleFirstPage = () => {
+    if (page <= 1) {
+      return;
+    }
+    void loadTasks(1);
+  };
+
+  const handlePrevPage = () => {
+    if (page <= 1) {
+      return;
+    }
+    void loadTasks(page - 1);
+  };
+
+  const handleNextPage = () => {
+    if (page >= totalPages) {
+      return;
+    }
+    void loadTasks(page + 1);
+  };
+
+  const handleLastPage = () => {
+    if (page >= totalPages) {
+      return;
+    }
+    void loadTasks(totalPages);
+  };
+
+  const handlePageJump = () => {
+    const parsed = Number.parseInt(pageInput, 10);
+    if (Number.isNaN(parsed)) {
+      setPageInput(String(page));
+      return;
+    }
+    const target = Math.min(Math.max(1, parsed), totalPages);
+    if (target === page) {
+      setPageInput(String(target));
+      return;
+    }
+    void loadTasks(target);
+  };
 
   useEffect(() => {
     if (tasks.length === 0) {
@@ -865,6 +930,44 @@ export function TasksPage() {
         </div>
       </div>
       {status === "error" && error ? <div className="admin-alert">{error}</div> : null}
+      <div className="admin-toolbar-actions">
+        <span className="admin-hint">
+          Показано {tasks.length} из {totalTasks}.
+        </span>
+        <span className="admin-hint">Страница {page} из {totalPages}.</span>
+        <div className="admin-page-jump">
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={pageInput}
+            onChange={(event) => setPageInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                handlePageJump();
+              }
+            }}
+            className="admin-page-input"
+            aria-label="Номер страницы"
+          />
+          <Button type="button" variant="outline" onClick={handlePageJump}>
+            Перейти
+          </Button>
+        </div>
+        <Button type="button" variant="outline" onClick={handleFirstPage} disabled={page <= 1}>
+          В начало
+        </Button>
+        <Button type="button" variant="outline" onClick={handlePrevPage} disabled={page <= 1}>
+          Назад
+        </Button>
+        <Button type="button" variant="outline" onClick={handleNextPage} disabled={page >= totalPages}>
+          Вперед
+        </Button>
+        <Button type="button" variant="outline" onClick={handleLastPage} disabled={page >= totalPages}>
+          В конец
+        </Button>
+      </div>
       <Table>
         <thead>
           <tr>
