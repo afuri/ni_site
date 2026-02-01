@@ -44,12 +44,12 @@ async def get_attempts_stats(db: AsyncSession = Depends(get_db)) -> ActiveAttemp
 async def get_attempts_timeseries(
     db: AsyncSession = Depends(get_db),
 ) -> ActiveAttemptsSeries:
+    step_minutes = 10
     moscow_tz = ZoneInfo("Europe/Moscow")
     now_msk = datetime.now(moscow_tz)
     rounded_minute = (now_msk.minute // step_minutes) * step_minutes
     now_msk = now_msk.replace(minute=rounded_minute, second=0, microsecond=0)
     now = now_msk.astimezone(timezone.utc)
-    step_minutes = 10
     end_time = now
     start_time = now_msk.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
