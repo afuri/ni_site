@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     OTEL_SAMPLE_RATIO: float = 1.0
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:changethis@localhost:5432/ni_site"
-    DB_POOL_SIZE: int = 5
-    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_SIZE: int = 4
+    DB_MAX_OVERFLOW: int = 4
     DB_POOL_TIMEOUT_SEC: int = 30
     DB_POOL_RECYCLE_SEC: int = 1800
     DB_CONNECT_TIMEOUT_SEC: int = 5
@@ -114,8 +114,8 @@ class Settings(BaseSettings):
     STORAGE_ALLOWED_CONTENT_TYPES: str = "image/jpeg,image/png,image/webp"
 
     READ_DATABASE_URL: str | None = None
-    READ_DB_POOL_SIZE: int = 5
-    READ_DB_MAX_OVERFLOW: int = 10
+    READ_DB_POOL_SIZE: int = 2
+    READ_DB_MAX_OVERFLOW: int = 2
 
 
 settings = Settings()
