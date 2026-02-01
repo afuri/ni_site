@@ -46,6 +46,9 @@ ERROR_EXAMPLES = {
     codes.NEWS_IMAGES_FORBIDDEN: {"error": {"code": codes.NEWS_IMAGES_FORBIDDEN, "message": codes.NEWS_IMAGES_FORBIDDEN}},
     codes.NEWS_BODY_TOO_LONG: {"error": {"code": codes.NEWS_BODY_TOO_LONG, "message": codes.NEWS_BODY_TOO_LONG}},
     codes.ARTICLE_BODY_TOO_SHORT: {"error": {"code": codes.ARTICLE_BODY_TOO_SHORT, "message": codes.ARTICLE_BODY_TOO_SHORT}},
+    codes.OLYMPIAD_POOL_NOT_FOUND: {"error": {"code": codes.OLYMPIAD_POOL_NOT_FOUND, "message": codes.OLYMPIAD_POOL_NOT_FOUND}},
+    codes.OLYMPIAD_POOL_NOT_ACTIVE: {"error": {"code": codes.OLYMPIAD_POOL_NOT_ACTIVE, "message": codes.OLYMPIAD_POOL_NOT_ACTIVE}},
+    codes.OLYMPIAD_POOL_EMPTY: {"error": {"code": codes.OLYMPIAD_POOL_EMPTY, "message": codes.OLYMPIAD_POOL_EMPTY}},
     codes.CLASS_GRADE_REQUIRED: {"error": {"code": codes.CLASS_GRADE_REQUIRED, "message": codes.CLASS_GRADE_REQUIRED}},
     codes.SUBJECT_REQUIRED: {"error": {"code": codes.SUBJECT_REQUIRED, "message": codes.SUBJECT_REQUIRED}},
     codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT: {
