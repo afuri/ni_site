@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select, text
@@ -43,10 +44,14 @@ async def get_attempts_stats(db: AsyncSession = Depends(get_db)) -> ActiveAttemp
 async def get_attempts_timeseries(
     db: AsyncSession = Depends(get_db),
 ) -> ActiveAttemptsSeries:
-    now = datetime.now(timezone.utc)
+    moscow_tz = ZoneInfo("Europe/Moscow")
+    now_msk = datetime.now(moscow_tz)
+    rounded_minute = (now_msk.minute // step_minutes) * step_minutes
+    now_msk = now_msk.replace(minute=rounded_minute, second=0, microsecond=0)
+    now = now_msk.astimezone(timezone.utc)
     step_minutes = 10
     end_time = now
-    start_time = now - timedelta(hours=24)
+    start_time = now_msk.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
     stmt = text(
         """
@@ -54,7 +59,7 @@ async def get_attempts_timeseries(
             t.bucket AS bucket,
             COALESCE(count(a.id), 0) AS active_attempts,
             COALESCE(count(distinct a.user_id), 0) AS active_users
-        FROM generate_series(:start_time, :end_time, :step) AS t(bucket)
+        FROM generate_series(:start_time, :end_time, :step::interval) AS t(bucket)
         LEFT JOIN attempts a
             ON a.status = :status
             AND a.started_at <= t.bucket

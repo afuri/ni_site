@@ -86,6 +86,21 @@ const formatDateOnly = (value?: string | null) => {
   return date.toLocaleDateString("ru-RU");
 };
 
+const getDurationMinutes = (startedAt?: string | null, completedAt?: string | null, fallbackSec?: number | null) => {
+  if (startedAt && completedAt) {
+    const start = new Date(startedAt);
+    const end = new Date(completedAt);
+    const diffMs = end.getTime() - start.getTime();
+    if (!Number.isNaN(diffMs) && diffMs >= 0) {
+      return Math.round(diffMs / 60000);
+    }
+  }
+  if (typeof fallbackSec === "number" && Number.isFinite(fallbackSec)) {
+    return Math.round(fallbackSec / 60);
+  }
+  return null;
+};
+
 const formatAnswer = (answer?: Record<string, unknown> | null) => {
   if (!answer) {
     return "Нет ответа";
@@ -274,7 +289,7 @@ export function ResultsPage() {
       formatDateOnly(item.started_at),
       formatTime(item.started_at),
       formatTime(item.completed_at),
-      Math.round(item.duration_sec / 60),
+      getDurationMinutes(item.started_at, item.completed_at, item.duration_sec) ?? "—",
       item.user_login,
       item.user_full_name ?? "—",
       item.class_grade ?? "—",
@@ -376,7 +391,12 @@ export function ResultsPage() {
                     <td>{formatDateOnly(item.started_at)}</td>
                     <td>{formatTime(item.started_at)}</td>
                     <td>{formatTime(item.completed_at)}</td>
-                    <td>{Math.round(item.duration_sec / 60)} мин</td>
+                    <td>
+                      {(() => {
+                        const minutes = getDurationMinutes(item.started_at, item.completed_at, item.duration_sec);
+                        return minutes === null ? "—" : `${minutes} мин`;
+                      })()}
+                    </td>
                     <td>{item.user_login}</td>
                     <td>{item.user_full_name ?? "—"}</td>
                     <td>{item.class_grade ?? "—"}</td>

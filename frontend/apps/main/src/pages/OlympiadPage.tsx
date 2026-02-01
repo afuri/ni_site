@@ -146,6 +146,22 @@ export function OlympiadPage() {
         initializeAnswers(data);
         setActiveIndex(0);
         setViewStatus("idle");
+        if (data.attempt.status !== "active") {
+          try {
+            const resultData = await client.request<AttemptResult>({
+              path: `/attempts/${attemptIdNumber}/result`,
+              method: "GET"
+            });
+            if (isMounted) {
+              setResult(resultData);
+              setIsResultOpen(true);
+            }
+          } catch {
+            if (isMounted) {
+              setIsResultOpen(true);
+            }
+          }
+        }
       } catch {
         if (!isMounted) {
           return;
@@ -428,6 +444,55 @@ export function OlympiadPage() {
         }
       >
         <div className="olympiad-empty">Загрузка олимпиады...</div>
+      </LayoutShell>
+    );
+  }
+
+  const isAttemptClosed = attemptView.attempt.status !== "active";
+
+  if (isAttemptClosed) {
+    return (
+      <LayoutShell
+        logo={
+          <div className="olympiad-logo">
+            <span className="olympiad-title">{attemptView.olympiad_title}</span>
+          </div>
+        }
+        nav={null}
+        actions={null}
+      >
+        <Modal
+          isOpen
+          onClose={() => navigate("/cabinet")}
+          title="Олимпиада завершена"
+          className="olympiad-result-modal"
+        >
+          <div className="olympiad-result">
+            <div className="olympiad-modal-body">
+              {result?.results_released ? (
+                <p>
+                  Олимпиада завершена. Ваш результат:{" "}
+                  <strong>{result ? `${result.percent}%` : "--"}</strong>.
+                </p>
+              ) : (
+                <p>
+                  Прохождение «{attemptView.olympiad_title}» завершено. Результаты будут позже в личном
+                  кабинете.
+                </p>
+              )}
+            </div>
+            {result?.results_released ? (
+              <div className="olympiad-modal-body">
+                <p>
+                  Баллы: {result.score_total} / {result.score_max}
+                </p>
+              </div>
+            ) : null}
+            <div className="olympiad-modal-actions olympiad-result-actions">
+              <Button onClick={() => navigate("/cabinet")}>В личный кабинет</Button>
+            </div>
+          </div>
+        </Modal>
       </LayoutShell>
     );
   }
