@@ -1,14 +1,14 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps_auth import require_role
 from app.core.deps import get_db
 from app.models.attempt import Attempt, AttemptStatus
 from app.models.user import UserRole
-from app.schemas.admin_stats import ActiveAttemptsStats
+from app.schemas.admin_stats import ActiveAttemptsSeries, ActiveAttemptsSeriesPoint, ActiveAttemptsStats
 
 router = APIRouter(prefix="/admin/stats", dependencies=[Depends(require_role(UserRole.admin))])
 
@@ -37,3 +37,50 @@ async def get_attempts_stats(db: AsyncSession = Depends(get_db)) -> ActiveAttemp
         active_users_open=int(active_users_open or 0),
         updated_at=now,
     )
+
+
+@router.get("/attempts/timeseries", response_model=ActiveAttemptsSeries, tags=["admin"])
+async def get_attempts_timeseries(
+    db: AsyncSession = Depends(get_db),
+) -> ActiveAttemptsSeries:
+    now = datetime.now(timezone.utc)
+    step_minutes = 10
+    end_time = now
+    start_time = now - timedelta(hours=24)
+
+    stmt = text(
+        """
+        SELECT
+            t.bucket AS bucket,
+            COALESCE(count(a.id), 0) AS active_attempts,
+            COALESCE(count(distinct a.user_id), 0) AS active_users
+        FROM generate_series(:start_time, :end_time, :step) AS t(bucket)
+        LEFT JOIN attempts a
+            ON a.status = :status
+            AND a.started_at <= t.bucket
+            AND a.deadline_at > t.bucket
+        GROUP BY t.bucket
+        ORDER BY t.bucket
+        """
+    )
+
+    rows = await db.execute(
+        stmt,
+        {
+            "start_time": start_time,
+            "end_time": end_time,
+            "step": f"{step_minutes} minutes",
+            "status": AttemptStatus.active.value,
+        },
+    )
+
+    points = [
+        ActiveAttemptsSeriesPoint(
+            bucket=row.bucket,
+            active_attempts=int(row.active_attempts or 0),
+            active_users=int(row.active_users or 0),
+        )
+        for row in rows
+    ]
+
+    return ActiveAttemptsSeries(step_minutes=step_minutes, points=points)

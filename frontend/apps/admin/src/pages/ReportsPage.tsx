@@ -29,6 +29,17 @@ type AttemptsStats = {
   updated_at: string;
 };
 
+type AttemptsSeriesPoint = {
+  bucket: string;
+  active_attempts: number;
+  active_users: number;
+};
+
+type AttemptsSeries = {
+  step_minutes: number;
+  points: AttemptsSeriesPoint[];
+};
+
 export function ReportsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -37,6 +48,9 @@ export function ReportsPage() {
   const [stats, setStats] = useState<AttemptsStats | null>(null);
   const [statsStatus, setStatsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [series, setSeries] = useState<AttemptsSeriesPoint[]>([]);
+  const [seriesStatus, setSeriesStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [seriesError, setSeriesError] = useState<string | null>(null);
 
   const loadStats = async () => {
     setStatsStatus("loading");
@@ -51,6 +65,22 @@ export function ReportsPage() {
     } catch {
       setStatsStatus("error");
       setStatsError("Не удалось загрузить статистику.");
+    }
+  };
+
+  const loadSeries = async () => {
+    setSeriesStatus("loading");
+    setSeriesError(null);
+    try {
+      const data = await adminApiClient.request<AttemptsSeries>({
+        path: "/admin/stats/attempts/timeseries",
+        method: "GET"
+      });
+      setSeries(data?.points ?? []);
+      setSeriesStatus("idle");
+    } catch {
+      setSeriesStatus("error");
+      setSeriesError("Не удалось загрузить график активности.");
     }
   };
 
@@ -77,7 +107,21 @@ export function ReportsPage() {
   useEffect(() => {
     void loadLogs();
     void loadStats();
+    void loadSeries();
   }, []);
+
+  const reloadStats = () => {
+    void loadStats();
+    void loadSeries();
+  };
+
+  const maxAttempts = series.reduce((max, point) => Math.max(max, point.active_attempts), 0);
+  const formatTimeLabel = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    if (date.getMinutes() !== 0) return "";
+    return date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  };
 
   return (
     <section className="admin-section">
@@ -87,7 +131,12 @@ export function ReportsPage() {
           <p className="admin-hint">Активные попытки и онлайн‑нагрузка олимпиады.</p>
         </div>
         <div className="admin-toolbar-actions">
-          <Button type="button" variant="outline" onClick={loadStats} disabled={statsStatus === "loading"}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={reloadStats}
+            disabled={statsStatus === "loading" || seriesStatus === "loading"}
+          >
             Обновить
           </Button>
         </div>
@@ -105,6 +154,41 @@ export function ReportsPage() {
         <div className="admin-stat-card">
           <span className="admin-stat-label">Уникальных пользователей</span>
           <strong className="admin-stat-value">{stats?.active_users_open ?? "—"}</strong>
+        </div>
+      </div>
+      <div className="admin-section" style={{ marginTop: "24px" }}>
+        <div className="admin-toolbar">
+          <div>
+            <h2>Суточная активность попыток</h2>
+            <p className="admin-hint">Шаг 10 минут, последние 24 часа.</p>
+          </div>
+        </div>
+        {seriesStatus === "error" && seriesError ? <div className="admin-alert">{seriesError}</div> : null}
+        <div className="admin-activity-chart">
+          <div className="admin-activity-chart-scroll">
+            <div className="admin-activity-chart-bars">
+              {seriesStatus === "loading" ? (
+                <div className="admin-hint">Загрузка графика...</div>
+              ) : series.length === 0 ? (
+                <div className="admin-hint">Нет данных за сутки.</div>
+              ) : (
+                series.map((point) => {
+                  const height = maxAttempts > 0 ? Math.round((point.active_attempts / maxAttempts) * 100) : 0;
+                  const label = formatTimeLabel(point.bucket);
+                  return (
+                    <div key={point.bucket} className="admin-activity-chart-bar">
+                      <div
+                        className="admin-activity-chart-bar-fill"
+                        style={{ height: `${Math.max(height, point.active_attempts > 0 ? 4 : 0)}%` }}
+                        title={`${formatDate(point.bucket)} • ${point.active_attempts} попыток`}
+                      />
+                      <span className="admin-activity-chart-bar-label">{label}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       </div>
       <div className="admin-section" style={{ marginTop: "24px" }}>

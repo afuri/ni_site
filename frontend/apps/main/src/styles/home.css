@@ -428,6 +428,17 @@
   justify-content: center;
 }
 
+.home-subject-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.home-subject-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
 .home-error {
   color: #b91c1c;
   margin: 0;

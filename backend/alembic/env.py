@@ -23,6 +23,7 @@ from app.core.config import settings
 from app.models.social_account import SocialAccount  # noqa
 from app.models.content import ContentItem  # noqa
 from app.models.school import School  # noqa
+from app.models.olympiad_pool import OlympiadPool, OlympiadPoolItem, OlympiadAssignment  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

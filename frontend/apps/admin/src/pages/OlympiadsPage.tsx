@@ -44,6 +44,23 @@ type TaskSelection = {
   existing: boolean;
 };
 
+type PoolItem = {
+  id: number;
+  subject: string;
+  grade_group: string;
+  is_active: boolean;
+  created_by_user_id: number;
+  created_at: string;
+  olympiad_ids: number[];
+};
+
+type PoolForm = {
+  subject: string;
+  gradeGroup: string;
+  olympiadIds: string;
+  activate: boolean;
+};
+
 const emptyForm: OlympiadForm = {
   title: "",
   description: "",
@@ -56,6 +73,11 @@ const emptyForm: OlympiadForm = {
 };
 
 const CLASS_GRADE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+const SUBJECT_OPTIONS = [
+  { value: "math", label: "Математика", gradeGroups: ["1", "2", "3", "4", "5-6", "7"] },
+  { value: "cs", label: "Информатика", gradeGroups: ["3-4", "5-6", "7"] },
+  { value: "trial", label: "Пробная олимпиада", gradeGroups: ["1-8"] }
+];
 
 export function OlympiadsPage() {
   const [olympiads, setOlympiads] = useState<OlympiadItem[]>([]);
@@ -78,6 +100,18 @@ export function OlympiadsPage() {
   const [taskAttachError, setTaskAttachError] = useState<string | null>(null);
   const [taskFilter, setTaskFilter] = useState("");
   const [randomOrder, setRandomOrder] = useState(false);
+  const [pools, setPools] = useState<PoolItem[]>([]);
+  const [poolStatus, setPoolStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [poolError, setPoolError] = useState<string | null>(null);
+  const [poolForm, setPoolForm] = useState<PoolForm>({
+    subject: "math",
+    gradeGroup: "1",
+    olympiadIds: "",
+    activate: true
+  });
+  const [poolFormError, setPoolFormError] = useState<string | null>(null);
+  const [poolSaving, setPoolSaving] = useState(false);
+  const [poolActionStatus, setPoolActionStatus] = useState<number | null>(null);
 
   const parseAgeGroup = (value: string | null) => {
     if (!value) {
@@ -106,6 +140,24 @@ export function OlympiadsPage() {
     return Number.isFinite(single) ? [single] : [];
   };
 
+  const formatSubject = (value: string) => {
+    const match = SUBJECT_OPTIONS.find((item) => item.value === value);
+    return match ? match.label : value;
+  };
+
+  const parsePoolIds = (value: string) => {
+    const raw = value
+      .split(/[,\s]+/g)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item));
+    return Array.from(new Set(raw));
+  };
+
+  const gradeGroupOptions =
+    SUBJECT_OPTIONS.find((item) => item.value === poolForm.subject)?.gradeGroups ?? [];
+
   const loadOlympiads = async () => {
     setStatus("loading");
     setError(null);
@@ -122,9 +174,41 @@ export function OlympiadsPage() {
     }
   };
 
+  const loadPools = async () => {
+    if (poolStatus === "loading") {
+      return;
+    }
+    setPoolStatus("loading");
+    setPoolError(null);
+    try {
+      const data = await adminApiClient.request<PoolItem[]>({
+        path: "/admin/olympiad-pools",
+        method: "GET"
+      });
+      setPools(data ?? []);
+      setPoolStatus("idle");
+    } catch {
+      setPoolStatus("error");
+      setPoolError("Не удалось загрузить пулы олимпиад.");
+    }
+  };
+
   useEffect(() => {
     void loadOlympiads();
+    void loadPools();
   }, []);
+
+  useEffect(() => {
+    if (gradeGroupOptions.length === 0) {
+      return;
+    }
+    if (!gradeGroupOptions.includes(poolForm.gradeGroup)) {
+      setPoolForm((prev) => ({
+        ...prev,
+        gradeGroup: gradeGroupOptions[0]
+      }));
+    }
+  }, [gradeGroupOptions, poolForm.gradeGroup]);
 
   const openCreate = () => {
     setFormMode("create");
@@ -416,6 +500,48 @@ export function OlympiadsPage() {
     }
   };
 
+  const handlePoolSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPoolFormError(null);
+    const olympiadIds = parsePoolIds(poolForm.olympiadIds);
+    if (olympiadIds.length === 0) {
+      setPoolFormError("Укажите ID олимпиад через запятую.");
+      return;
+    }
+    setPoolSaving(true);
+    try {
+      await adminApiClient.request<PoolItem>({
+        path: "/admin/olympiad-pools",
+        method: "POST",
+        body: {
+          subject: poolForm.subject,
+          grade_group: poolForm.gradeGroup,
+          olympiad_ids: olympiadIds,
+          activate: poolForm.activate
+        }
+      });
+      setPoolForm((prev) => ({ ...prev, olympiadIds: "" }));
+      await loadPools();
+    } catch {
+      setPoolFormError("Не удалось создать пул.");
+    } finally {
+      setPoolSaving(false);
+    }
+  };
+
+  const handleActivatePool = async (poolId: number) => {
+    setPoolActionStatus(poolId);
+    try {
+      await adminApiClient.request<PoolItem>({
+        path: `/admin/olympiad-pools/${poolId}/activate`,
+        method: "POST"
+      });
+      await loadPools();
+    } finally {
+      setPoolActionStatus(null);
+    }
+  };
+
   const normalizedFilter = taskFilter.trim().toLowerCase();
   const filteredTaskCatalog = normalizedFilter
     ? taskCatalog.filter((task) => task.title.toLowerCase().includes(normalizedFilter))
@@ -507,6 +633,141 @@ export function OlympiadsPage() {
           )}
         </tbody>
       </Table>
+
+      <div className="admin-section" style={{ marginTop: "24px" }}>
+        <div className="admin-toolbar">
+          <div>
+            <h2>Пулы олимпиад</h2>
+            <p className="admin-hint">
+              Один активный пул на предмет. Пользователи получают вариант по формуле (user_id - 1) % n.
+            </p>
+          </div>
+        </div>
+
+        <form className="admin-form" onSubmit={handlePoolSubmit}>
+          <div className="admin-form-grid">
+            <label className="field">
+              <span className="field-label">Предмет</span>
+              <select
+                className="field-input"
+                value={poolForm.subject}
+                onChange={(event) =>
+                  setPoolForm((prev) => ({ ...prev, subject: event.target.value }))
+                }
+              >
+                {SUBJECT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span className="field-label">Класс</span>
+              <select
+                className="field-input"
+                value={poolForm.gradeGroup}
+                onChange={(event) =>
+                  setPoolForm((prev) => ({ ...prev, gradeGroup: event.target.value }))
+                }
+              >
+                {gradeGroupOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <TextInput
+              label="ID олимпиад"
+              value={poolForm.olympiadIds}
+              onChange={(event) =>
+                setPoolForm((prev) => ({ ...prev, olympiadIds: event.target.value }))
+              }
+              placeholder="например: 12, 15, 18"
+            />
+
+            <label className="field">
+              <span className="field-label">Активировать сразу</span>
+              <select
+                className="field-input"
+                value={poolForm.activate ? "true" : "false"}
+                onChange={(event) =>
+                  setPoolForm((prev) => ({ ...prev, activate: event.target.value === "true" }))
+                }
+              >
+                <option value="true">Да</option>
+                <option value="false">Нет</option>
+              </select>
+            </label>
+          </div>
+          <div className="admin-toolbar-actions">
+            <Button type="submit" isLoading={poolSaving}>
+              Создать пул
+            </Button>
+          </div>
+          {poolFormError ? <div className="admin-alert">{poolFormError}</div> : null}
+        </form>
+
+        {poolError ? <div className="admin-alert">{poolError}</div> : null}
+
+        <Table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Предмет</th>
+              <th>Класс</th>
+              <th>Олимпиады</th>
+              <th>Статус</th>
+              <th>Создан</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {poolStatus === "loading" ? (
+              <tr>
+                <td colSpan={7}>Загрузка...</td>
+              </tr>
+            ) : pools.length === 0 ? (
+              <tr>
+                <td colSpan={7}>Пулы пока не созданы.</td>
+              </tr>
+            ) : (
+              pools.map((pool) => (
+                <tr key={pool.id}>
+                  <td>{pool.id}</td>
+                  <td>{formatSubject(pool.subject)}</td>
+                  <td>{pool.grade_group}</td>
+                  <td>{pool.olympiad_ids.join(", ") || "—"}</td>
+                  <td>
+                    <span className={`admin-tag ${pool.is_active ? "admin-tag-success" : "admin-tag-muted"}`}>
+                      {pool.is_active ? "Активен" : "Неактивен"}
+                    </span>
+                  </td>
+                  <td>{formatDate(pool.created_at)}</td>
+                  <td>
+                    {!pool.is_active ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleActivatePool(pool.id)}
+                        disabled={poolActionStatus === pool.id}
+                      >
+                        Активировать
+                      </Button>
+                    ) : (
+                      <span className="admin-hint">Активен</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      </div>
 
       <Modal
         isOpen={isFormOpen}

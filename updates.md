@@ -2194,7 +2194,69 @@ chmod +x /opt/ni_site/monitor.sh
   3. imageKey обновляется автоматически.
 
 
+1.5.0
 
+Готово: добавил “пулы олимпиад” и распределение вариантов по формуле (user_id
+  - 1) % n, плюс старт теперь идет через назначение из активного пула. Админка
+  получила форму создания пула и таблицу с активацией — без редактирования
+  пулов, как ты просил.
+
+  Что сделано
+
+  - Backend: новые таблицы olympiad_pools, olympiad_pool_items,
+    olympiad_assignments и сервис распределения с фиксацией назначения. Попытка
+    старта теперь проверяет, что пользователь стартует “свою” олимпиаду из
+    активного пула. Файлы: backend/app/models/olympiad_pool.py, backend/app/
+    services/olympiad_pools.py, backend/app/repos/olympiad_pools.py, backend/
+    app/repos/olympiad_assignments.py, backend/app/api/v1/
+    admin_olympiad_pools.py, backend/app/api/v1/olympiads.py, backend/app/
+    services/attempts.py, backend/app/api/v1/attempts.py, backend/app/core/
+    olympiad_pools.py, backend/app/core/error_codes.py, backend/alembic/
+    versions/c9f1e2d3a4b5_add_olympiad_pools.py, backend/alembic/env.py.
+  - Frontend main: “Начать олимпиаду” теперь выбирает предмет, делает /
+    olympiads/assign и запускает попытку по назначенному варианту. Файлы:
+    frontend/apps/main/src/pages/HomePage.tsx, frontend/apps/main/src/styles/
+    home.css.
+  - Frontend admin: добавлен блок “Пулы олимпиад” с созданием пула, выбором
+    предмета/класса, ID олимпиад и активацией; список пулов с кнопкой
+    “Активировать”. Файл: frontend/apps/admin/src/pages/OlympiadsPage.tsx.
+  - Документация: updates.md.
+
+  Что нужно сделать при деплое
+
+  1. Миграция: alembic upgrade head (новые таблицы пулов).
+  2. Собрать фронт (main/admin) и задеплоить статику.
+  3. В админке создать пулы по предметам/классам и активировать нужные.
+
+  Замечания по логике
+
+  - Активный пул по предмету всегда один: при активации остальные по предмету
+    деактивируются.
+  - Назначение фиксируется и не сбрасывается.
+  - Проверка по классу в пуле включена (ошибка “недоступно для вашего класса”).
+
+
+
+Сделал суточный график активных попыток с шагом 10 минут, горизонтальный
+  скролл, и новый endpoint для тайм‑серии.
+
+  Что изменено
+
+  - Добавил endpoint /admin/stats/attempts/timeseries, который возвращает 24
+    часа с шагом 10 минут и количество активных попыток в каждой точке.
+    backend/app/api/v1/admin_stats.py
+  - Добавил схемы для тайм‑серии. backend/app/schemas/admin_stats.py
+  - В админке: блок графика “Суточная активность попыток”, данные берутся с
+    нового endpoint, график прокручивается по горизонтали. frontend/apps/admin/
+    src/pages/ReportsPage.tsx
+  - Стили графика. frontend/apps/admin/src/styles/admin.css
+
+  Файлы
+
+  - backend/app/api/v1/admin_stats.py
+  - backend/app/schemas/admin_stats.py
+  - frontend/apps/admin/src/pages/ReportsPage.tsx
+  - frontend/apps/admin/src/styles/admin.css
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
@@ -2295,3 +2357,33 @@ Backup БД
 
 
   log_format timed '$remote_addr - $remote_user [$time_local] "$request" ' '$status $body_bytes_sent "$http_referer" "$http_user_agent"' 'rt=$request_time urt=$upstream_response_time'; access_log /var/log/nginx/access.log timed;
+## Олимпиады: пулы и распределение
+
+- Добавлены пулы олимпиад с привязкой к предмету и возрастной группе.
+- Назначение пользователю: индекс = (user_id - 1) % n, выбор закрепляется в БД.
+- Админка: создание пула (subject + grade_group + список ID олимпиад) и активация пула.
+- Главная страница: кнопки предметов вызывают назначение олимпиады из активного пула.
+
+Миграции:
+
+  docker compose exec api alembic -c /app/alembic.ini upgrade head
+
+
+cd /opt/ni_site
+
+  # 1) миграции
+  docker compose exec api alembic -c /app/alembic.ini upgrade head
+
+  # 2) пересборка и перезапуск api/worker
+  docker compose up -d --build api worker
+
+  Если обновлялся фронт:
+
+  cd /opt/ni_site/frontend
+  npm ci
+  npm run build:app
+  npm run build:admin
+  rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-
+  integral/
+  rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-
+  integral/admin/

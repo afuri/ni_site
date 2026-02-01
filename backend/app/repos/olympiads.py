@@ -39,6 +39,12 @@ class OlympiadsRepo:
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
 
+    async def list_by_ids(self, olympiad_ids: list[int]) -> list[Olympiad]:
+        if not olympiad_ids:
+            return []
+        res = await self.db.execute(select(Olympiad).where(Olympiad.id.in_(olympiad_ids)))
+        return list(res.scalars().all())
+
     async def save(self, obj: Olympiad) -> Olympiad:
         await self.db.commit()
         await self.db.refresh(obj)
