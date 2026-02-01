@@ -74,7 +74,7 @@ async def get_attempts_timeseries(
         {
             "start_time": start_time,
             "end_time": end_time,
-            "step": f"{step_minutes} minutes",
+            "step": timedelta(minutes=step_minutes),
             "status": AttemptStatus.active.value,
         },
     )
