@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     DB_POOL_RECYCLE_SEC: int = 1800
     DB_CONNECT_TIMEOUT_SEC: int = 5
     DB_STATEMENT_TIMEOUT_MS: int = 15000
+    DB_APPLICATION_NAME: str | None = None
 
     JWT_SECRET: str = "change_me"
     JWT_SECRETS: str = ""

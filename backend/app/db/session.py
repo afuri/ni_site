@@ -29,8 +29,13 @@ def _setup_engine_metrics(engine, role: str) -> None:
         DB_QUERY_TOTAL.labels(role=role, outcome="error").inc()
 
 connect_args = {"timeout": settings.DB_CONNECT_TIMEOUT_SEC}
+server_settings: dict[str, str] = {}
 if settings.DB_STATEMENT_TIMEOUT_MS > 0:
-    connect_args["server_settings"] = {"statement_timeout": str(settings.DB_STATEMENT_TIMEOUT_MS)}
+    server_settings["statement_timeout"] = str(settings.DB_STATEMENT_TIMEOUT_MS)
+if settings.DB_APPLICATION_NAME:
+    server_settings["application_name"] = settings.DB_APPLICATION_NAME
+if server_settings:
+    connect_args["server_settings"] = server_settings
 
 engine = create_async_engine(
     settings.DATABASE_URL,
