@@ -49,6 +49,8 @@ ERROR_EXAMPLES = {
     codes.OLYMPIAD_POOL_NOT_FOUND: {"error": {"code": codes.OLYMPIAD_POOL_NOT_FOUND, "message": codes.OLYMPIAD_POOL_NOT_FOUND}},
     codes.OLYMPIAD_POOL_NOT_ACTIVE: {"error": {"code": codes.OLYMPIAD_POOL_NOT_ACTIVE, "message": codes.OLYMPIAD_POOL_NOT_ACTIVE}},
     codes.OLYMPIAD_POOL_EMPTY: {"error": {"code": codes.OLYMPIAD_POOL_EMPTY, "message": codes.OLYMPIAD_POOL_EMPTY}},
+    codes.INVALID_SUBJECT: {"error": {"code": codes.INVALID_SUBJECT, "message": codes.INVALID_SUBJECT}},
+    codes.INVALID_AGE_GROUP: {"error": {"code": codes.INVALID_AGE_GROUP, "message": codes.INVALID_AGE_GROUP}},
     codes.CLASS_GRADE_REQUIRED: {"error": {"code": codes.CLASS_GRADE_REQUIRED, "message": codes.CLASS_GRADE_REQUIRED}},
     codes.SUBJECT_REQUIRED: {"error": {"code": codes.SUBJECT_REQUIRED, "message": codes.SUBJECT_REQUIRED}},
     codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT: {
