@@ -2327,6 +2327,10 @@ chmod +x /opt/ni_site/monitor.sh
   - frontend/apps/admin/src/pages/OlympiadsPage.tsx
   - frontend/apps/admin/src/styles/admin.css
  
+
+1.5.5 expired task -> inactive button
+
+Кнопка в админке - статистика, которая expired задачи переводит из статуса active в закрытые. Появилась кнопка Принять участие, которая перенаправляет на математику из активного пулла
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому

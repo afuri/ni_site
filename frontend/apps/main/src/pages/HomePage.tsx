@@ -18,7 +18,7 @@ import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
 
-const TARGET_DATE = "2026-02-02T00:00:00+03:00";
+const TARGET_DATE = "2026-02-02T07:00:00+03:00";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
@@ -1047,7 +1047,7 @@ export function HomePage() {
             <div className="home-hero-panel">
               <div className="home-hero-panel-title">Математика 1 класс через</div>
               <Countdown targetIso={TARGET_DATE} />
-              {/* <Button onClick={() => navigate("/olympiad")}>Принять участие</Button> */}
+              { <Button onClick={() => handleStartSubject("math")}>Принять участие</Button> }
             </div>
           </div>
         </section>
@@ -1056,7 +1056,7 @@ export function HomePage() {
           <div className="container">
             <div className="home-section-heading">
               <h2>Начать олимпиаду</h2>
-              <p className="home-text">Выберите предмет, система назначит вариант автоматически.</p>
+              <p className="home-text-2">Выберите предмет, система назначит вариант автоматически.</p>
             </div>
             <div className="home-olympiad-select">
               <div className="home-subject-actions">

@@ -51,6 +51,9 @@ export function ReportsPage() {
   const [seriesStep, setSeriesStep] = useState<number>(30);
   const [seriesStatus, setSeriesStatus] = useState<"idle" | "loading" | "error">("idle");
   const [seriesError, setSeriesError] = useState<string | null>(null);
+  const [expireStatus, setExpireStatus] = useState<"idle" | "loading" | "error" | "done">("idle");
+  const [expireError, setExpireError] = useState<string | null>(null);
+  const [expireCount, setExpireCount] = useState<number | null>(null);
 
   const loadStats = async () => {
     setStatsStatus("loading");
@@ -116,6 +119,24 @@ export function ReportsPage() {
     void loadSeries();
   };
 
+  const handleExpireAttempts = async () => {
+    setExpireStatus("loading");
+    setExpireError(null);
+    setExpireCount(null);
+    try {
+      const count = await adminApiClient.request<number>({
+        path: "/admin/stats/attempts/expire",
+        method: "POST"
+      });
+      setExpireCount(count ?? 0);
+      setExpireStatus("done");
+      void loadStats();
+    } catch {
+      setExpireStatus("error");
+      setExpireError("Не удалось закрыть просроченные попытки.");
+    }
+  };
+
   const formatRangeLabel = (value: string) => {
     const start = new Date(value);
     if (Number.isNaN(start.getTime())) return value;
@@ -150,8 +171,20 @@ export function ReportsPage() {
           >
             Обновить
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExpireAttempts}
+            disabled={expireStatus === "loading"}
+          >
+            Закрыть просроченные
+          </Button>
         </div>
       </div>
+      {expireStatus === "error" && expireError ? <div className="admin-alert">{expireError}</div> : null}
+      {expireStatus === "done" && expireCount !== null ? (
+        <div className="admin-hint">Закрыто попыток: {expireCount}.</div>
+      ) : null}
       {statsStatus === "error" && statsError ? <div className="admin-alert">{statsError}</div> : null}
       <div className="admin-stats-grid">
         <div className="admin-stat-card">

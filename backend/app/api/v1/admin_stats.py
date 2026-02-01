@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import update
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,3 +86,19 @@ async def get_attempts_timeseries(
     ]
 
     return StartedAttemptsSeries(step_minutes=step_minutes, points=points)
+
+
+@router.post("/attempts/expire", response_model=int, tags=["admin"])
+async def expire_overdue_attempts(db: AsyncSession = Depends(get_db)) -> int:
+    now = datetime.now(timezone.utc)
+    buffer_window = timedelta(minutes=1)
+    res = await db.execute(
+        update(Attempt)
+        .where(
+            Attempt.status == AttemptStatus.active,
+            Attempt.deadline_at < (now - buffer_window),
+        )
+        .values(status=AttemptStatus.expired)
+    )
+    await db.commit()
+    return int(res.rowcount or 0)
