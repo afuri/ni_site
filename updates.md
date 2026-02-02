@@ -2400,6 +2400,20 @@ chmod +x /opt/ni_site/monitor.sh
       - дальше постранично тянет все задания limit=200&offset=...
       - складывает в один список
 
+1.6.6.1 
+
+Сделал:
+
+  1. Плановый silent‑refresh на странице олимпиады (каждые 20 минут).
+  2. На 401 логика остаётся: сначала refresh, и только если он не удался —
+     signOut + остановка autosave (через isAuthInvalid).
+
+  Изменения в коде:
+
+  - frontend/packages/api/src/client.ts — добавил флаг clearOnFail для refresh,
+    чтобы silent‑refresh не выбрасывал пользователя при временной ошибке.
+  - frontend/apps/main/src/pages/OlympiadPage.tsx — добавил таймер refresh
+    каждые 20 минут.
 
 ---
 

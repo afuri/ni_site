@@ -105,6 +105,7 @@ export function OlympiadPage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
+  const refreshTimer = useRef<number | null>(null);
 
   const sortedTasks = useMemo(
     () => (attemptView ? [...attemptView.tasks].sort((a, b) => a.sort_order - b.sort_order) : []),
@@ -205,6 +206,25 @@ export function OlympiadPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (refreshTimer.current) {
+      window.clearInterval(refreshTimer.current);
+      refreshTimer.current = null;
+    }
+    if (status !== "authenticated" || isAuthInvalid) {
+      return;
+    }
+    refreshTimer.current = window.setInterval(() => {
+      void client.auth.refresh({ clearOnFail: false });
+    }, 30 * 60 * 1000);
+    return () => {
+      if (refreshTimer.current) {
+        window.clearInterval(refreshTimer.current);
+        refreshTimer.current = null;
+      }
+    };
+  }, [client, status, isAuthInvalid]);
 
   const triggerSaveFeedback = (taskId: number) => {
     setSavedTaskId(taskId);

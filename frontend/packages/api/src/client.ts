@@ -27,7 +27,8 @@ type LoginPayload = {
 };
 
 type RefreshPayload = {
-  refresh_token: string;
+  refresh_token?: string;
+  clearOnFail?: boolean;
 };
 
 type RegisterPayload = {
@@ -169,10 +170,9 @@ export function createApiClient(options: ClientOptions): ApiClient {
     return (payload ?? (undefined as T));
   };
 
-  const refreshTokens = async (
-    payload?: RefreshPayload
-  ): Promise<TokenPair | null> => {
+  const refreshTokens = async (payload?: RefreshPayload): Promise<TokenPair | null> => {
     const refreshToken = payload?.refresh_token ?? storage?.getTokens()?.refresh_token;
+    const clearOnFail = payload?.clearOnFail ?? true;
     if (!refreshToken) {
       return null;
     }
@@ -183,7 +183,9 @@ export function createApiClient(options: ClientOptions): ApiClient {
     });
 
     if (!response.ok) {
-      storage?.setTokens(null);
+      if (clearOnFail) {
+        storage?.setTokens(null);
+      }
       return null;
     }
 
