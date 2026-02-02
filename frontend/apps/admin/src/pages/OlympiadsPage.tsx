@@ -290,11 +290,27 @@ export function OlympiadsPage() {
     setTaskCatalogStatus("loading");
     setTaskCatalogError(null);
     try {
-      const data = await adminApiClient.request<TaskCatalogItem[]>({
-        path: "/admin/tasks",
+      const total = await adminApiClient.request<number>({
+        path: "/admin/tasks/count",
         method: "GET"
       });
-      setTaskCatalog(data ?? []);
+      const pageSize = 200;
+      const items: TaskCatalogItem[] = [];
+      if (total && total > 0) {
+        for (let offset = 0; offset < total; offset += pageSize) {
+          const page = await adminApiClient.request<TaskCatalogItem[]>({
+            path: `/admin/tasks?limit=${pageSize}&offset=${offset}`,
+            method: "GET"
+          });
+          if (page && page.length > 0) {
+            items.push(...page);
+          }
+          if (!page || page.length < pageSize) {
+            break;
+          }
+        }
+      }
+      setTaskCatalog(items);
       setTaskCatalogStatus("idle");
     } catch {
       setTaskCatalogStatus("error");
