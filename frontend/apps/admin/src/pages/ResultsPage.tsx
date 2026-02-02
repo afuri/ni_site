@@ -341,6 +341,11 @@ export function ResultsPage() {
           </select>
         </label>
       </div>
+      {selectedId ? (
+        <p className="admin-hint">
+          Всего попыток: {attemptsStatus === "loading" ? "..." : attempts.length}
+        </p>
+      ) : null}
 
       {attemptsStatus === "error" && attemptsError ? <div className="admin-alert">{attemptsError}</div> : null}
 
