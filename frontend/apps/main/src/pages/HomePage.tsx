@@ -18,7 +18,7 @@ import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
 
-const TARGET_DATE = "2026-03-02T07:00:00+03:00";
+const TARGET_DATE = "2026-02-03T07:00:00+03:00";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
