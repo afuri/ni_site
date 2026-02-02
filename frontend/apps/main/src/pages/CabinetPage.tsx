@@ -200,6 +200,8 @@ export function CabinetPage() {
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
   const [profileStatus, setProfileStatus] = useState<"idle" | "saving" | "error">("idle");
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [cityLookupEnabled, setCityLookupEnabled] = useState(false);
+  const [schoolLookupEnabled, setSchoolLookupEnabled] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -312,9 +314,15 @@ export function CabinetPage() {
     const nextProfile = buildProfileFromUser(user);
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
+    setCityLookupEnabled(false);
+    setSchoolLookupEnabled(false);
   }, [client, user, viewingStudentId]);
 
   useEffect(() => {
+    if (!cityLookupEnabled) {
+      setCitySuggestions([]);
+      return;
+    }
     const query = profileForm.city.trim();
     if (cityLookupTimer.current !== null) {
       window.clearTimeout(cityLookupTimer.current);
@@ -337,9 +345,13 @@ export function CabinetPage() {
         window.clearTimeout(cityLookupTimer.current);
       }
     };
-  }, [client, profileForm.city]);
+  }, [client, profileForm.city, cityLookupEnabled]);
 
   useEffect(() => {
+    if (!schoolLookupEnabled) {
+      setSchoolSuggestions([]);
+      return;
+    }
     const cityValue = profileForm.city.trim();
     const query = profileForm.school.trim();
     if (schoolLookupTimer.current !== null) {
@@ -362,7 +374,7 @@ export function CabinetPage() {
         window.clearTimeout(schoolLookupTimer.current);
       }
     };
-  }, [client, profileForm.city, profileForm.school]);
+  }, [client, profileForm.city, profileForm.school, schoolLookupEnabled]);
 
   useEffect(() => {
     if (!attemptView) {
@@ -484,6 +496,8 @@ export function CabinetPage() {
     const nextProfile = buildProfileFromUser(viewedStudent);
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
+    setCityLookupEnabled(false);
+    setSchoolLookupEnabled(false);
   }, [viewedStudent]);
 
   useEffect(() => {
@@ -628,6 +642,12 @@ export function CabinetPage() {
       ...prev,
       [field]: value
     }));
+    if (field === "city") {
+      setCityLookupEnabled(true);
+    }
+    if (field === "school") {
+      setSchoolLookupEnabled(true);
+    }
     if (profileErrors[field]) {
       setProfileErrors((prev) => ({
         ...prev,
@@ -672,6 +692,8 @@ export function CabinetPage() {
       const nextProfile = buildProfileFromUser(updated);
       setProfileForm(nextProfile);
       setSavedProfile(nextProfile);
+      setCityLookupEnabled(false);
+      setSchoolLookupEnabled(false);
       setProfileStatus("idle");
       setProfileMessage("Данные сохранены.");
     } catch {
@@ -687,6 +709,8 @@ export function CabinetPage() {
     setProfileForm(savedProfile);
     setProfileErrors({});
     setProfileMessage(null);
+    setCityLookupEnabled(false);
+    setSchoolLookupEnabled(false);
   };
 
   const handleUserMenuToggle = () => {
