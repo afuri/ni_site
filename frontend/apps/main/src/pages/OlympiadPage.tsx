@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
@@ -70,14 +70,19 @@ export function OlympiadPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const storage = useMemo(() => createMainAuthStorage(), []);
+  const [isAuthInvalid, setIsAuthInvalid] = useState(false);
+  const handleAuthError = useCallback(() => {
+    setIsAuthInvalid(true);
+    signOut();
+  }, [signOut]);
   const client = useMemo(
     () =>
       createApiClient({
         baseUrl: API_BASE_URL,
         storage,
-        onAuthError: signOut
+        onAuthError: handleAuthError
       }),
-    [storage, signOut]
+    [storage, handleAuthError]
   );
 
   const attemptId = searchParams.get("attemptId");
@@ -265,7 +270,7 @@ export function OlympiadPage() {
   }, [attemptView, client, imageUrls]);
 
   useEffect(() => {
-    if (remainingSeconds === null) {
+    if (remainingSeconds === null || isAuthInvalid) {
       return;
     }
     if (remainingSeconds <= 300 && remainingSeconds > 0 && !hasWarned) {
@@ -302,7 +307,7 @@ export function OlympiadPage() {
   };
 
   const saveAnswer = async (taskId: number, payload: AnswerPayload | null) => {
-    if (!payload) {
+    if (!payload || isAuthInvalid) {
       return;
     }
     setAnswerError(null);
@@ -377,7 +382,7 @@ export function OlympiadPage() {
   };
 
   const submitAttempt = async () => {
-    if (!attemptIdNumber) {
+    if (!attemptIdNumber || isAuthInvalid) {
       return;
     }
     setIsSubmitting(true);
