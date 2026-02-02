@@ -1327,6 +1327,7 @@ export function CabinetPage() {
                     className={`field-input ${profileErrors.classGrade ? "field-input-error" : ""}`.trim()}
                     value={profileForm.classGrade}
                     onChange={(event) => handleProfileChange("classGrade", event.target.value)}
+                    disabled
                   >
                     <option value="">Выберите класс</option>
                     {Array.from({ length: 12 }, (_, index) => String(index)).map((grade) => (
