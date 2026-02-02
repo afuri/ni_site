@@ -124,7 +124,7 @@ type SubjectValue = "math" | "cs" | "trial";
 const SUBJECT_OPTIONS: { value: SubjectValue; label: string }[] = [
   { value: "math", label: "Математика" },
   { value: "cs", label: "Информатика" },
-  { value: "trial", label: "Пробная олимпиада" }
+  //{ value: "trial", label: "Пробная олимпиада" }
 ];
 
 const getStartErrorMessage = (error: unknown): string => {
