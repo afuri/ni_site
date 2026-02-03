@@ -18,7 +18,7 @@ import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
 
-const TARGET_DATE = "2026-02-03T07:00:00+03:00";
+const TARGET_DATE = "2026-02-04T07:00:00+03:00";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
@@ -1045,8 +1045,8 @@ export function HomePage() {
               </h1>
             </div>
             <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Математика 2 класс <br /> через <br /></div>
-              {<Countdown targetIso={TARGET_DATE} /> }
+              <div className="home-hero-panel-title">Математика 2 класс <br /> доступна для прохождения <br /></div>
+              {/*<Countdown targetIso={TARGET_DATE} /> */}
               { <Button onClick={() => handleStartSubject("math")}>Принять участие</Button> }
             </div>
           </div>
