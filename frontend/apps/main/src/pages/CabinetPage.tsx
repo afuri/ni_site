@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
 import { createApiClient, type ManualTeacher, type UserRead } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
+import { renderMarkdown } from "../utils/markdown";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import "../styles/cabinet.css";
@@ -1726,7 +1727,10 @@ export function CabinetPage() {
                     {imageUrl && imagePosition === "before" ? (
                       <img src={imageUrl} alt="Иллюстрация" className="cabinet-attempt-image" />
                     ) : null}
-                    <div className="cabinet-attempt-content">{task.content}</div>
+                    <div
+                      className="cabinet-attempt-content"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(task.content) }}
+                    />
                     {imageUrl && imagePosition !== "before" ? (
                       <img src={imageUrl} alt="Иллюстрация" className="cabinet-attempt-image" />
                     ) : null}

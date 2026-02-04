@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
+import { renderMarkdown } from "../utils/markdown";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import instructionImage from "../assets/help.png";
@@ -66,7 +67,7 @@ const loadMockS3 = (): Record<string, string> => {
 };
 
 export function OlympiadPage() {
-  const { status, user, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const storage = useMemo(() => createMainAuthStorage(), []);
@@ -105,7 +106,6 @@ export function OlympiadPage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
-  const refreshTimer = useRef<number | null>(null);
 
   const sortedTasks = useMemo(
     () => (attemptView ? [...attemptView.tasks].sort((a, b) => a.sort_order - b.sort_order) : []),
@@ -206,25 +206,6 @@ export function OlympiadPage() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (refreshTimer.current) {
-      window.clearInterval(refreshTimer.current);
-      refreshTimer.current = null;
-    }
-    if (status !== "authenticated" || isAuthInvalid) {
-      return;
-    }
-    refreshTimer.current = window.setInterval(() => {
-      void client.auth.refresh({ clearOnFail: false });
-    }, 30 * 60 * 1000);
-    return () => {
-      if (refreshTimer.current) {
-        window.clearInterval(refreshTimer.current);
-        refreshTimer.current = null;
-      }
-    };
-  }, [client, status, isAuthInvalid]);
 
   const triggerSaveFeedback = (taskId: number) => {
     setSavedTaskId(taskId);
@@ -588,7 +569,10 @@ export function OlympiadPage() {
                 onClick={() => setFullscreenImage(imageUrls[activeTask.image_key])}
               />
             ) : null}
-            <div className="olympiad-task-content">{activeTask.content}</div>
+            <div
+              className="olympiad-task-content"
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(activeTask.content) }}
+            />
             {activeTask.image_key &&
             activeTask.payload.image_position !== "before" &&
             imageUrls[activeTask.image_key] ? (

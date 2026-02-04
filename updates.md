@@ -2415,6 +2415,23 @@ chmod +x /opt/ni_site/monitor.sh
   - frontend/apps/main/src/pages/OlympiadPage.tsx — добавил таймер refresh
     каждые 20 минут.
 
+1.6.7 markdown-render для условий задач
+
+ - Добавил общий безопасный markdown‑рендер в frontend/apps/main/src/utils/
+    markdown.ts.
+  - Подключил его для условий в прохождении олимпиады и в просмотре попыток в
+    кабинете:
+      - frontend/apps/main/src/pages/OlympiadPage.tsx
+      - frontend/apps/main/src/pages/CabinetPage.tsx
+  - В админке добавил markdown‑рендер условий в:
+      - предпросмотре олимпиады frontend/apps/admin/src/pages/OlympiadsPage.tsx
+      - просмотре попытки в результатах frontend/apps/admin/src/pages/
+        ResultsPage.tsx
+  - В предпросмотре олимпиады добавил:
+      - количество заданий,
+      - сумму баллов,
+      - баллы по каждому заданию (в заголовке задания).
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
