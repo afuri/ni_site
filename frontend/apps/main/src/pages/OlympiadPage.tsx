@@ -22,7 +22,11 @@ type AttemptTask = {
   title: string;
   content: string;
   task_type: "single_choice" | "multi_choice" | "short_text";
-  payload: { options?: { id: string; text: string }[]; image_position?: "before" | "after" };
+  payload: {
+    options?: { id: string; text: string }[];
+    image_position?: "before" | "after";
+    subtype?: "int" | "float" | "text";
+  };
   sort_order: number;
   max_score: number;
   current_answer?: { answer_payload: AnswerPayload };
@@ -94,6 +98,7 @@ export function OlympiadPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, AnswerPayload | null>>({});
   const [answerError, setAnswerError] = useState<string | null>(null);
+  const [shortTextErrors, setShortTextErrors] = useState<Record<number, string | null>>({});
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [hasWarned, setHasWarned] = useState(false);
@@ -307,6 +312,31 @@ export function OlympiadPage() {
     setAnswers((prev) => ({ ...prev, [taskId]: payload }));
   };
 
+  const getShortTextError = useCallback(
+    (taskId: number, value: string) => {
+      const task = sortedTasks.find((item) => item.task_id === taskId);
+      if (!task || task.task_type !== "short_text") {
+        return null;
+      }
+      if (task.payload?.subtype !== "int") {
+        return null;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+      if (!/^-?\d+$/.test(trimmed)) {
+        return "Можно вводить только целое число без пробелов и других символов.";
+      }
+      return null;
+    },
+    [sortedTasks]
+  );
+
+  const setShortTextError = (taskId: number, message: string | null) => {
+    setShortTextErrors((prev) => ({ ...prev, [taskId]: message }));
+  };
+
   const saveAnswer = async (taskId: number, payload: AnswerPayload | null) => {
     if (!payload || isAuthInvalid) {
       return;
@@ -345,6 +375,7 @@ export function OlympiadPage() {
   };
 
   const handleShortTextChange = (taskId: number, text: string) => {
+    setShortTextError(taskId, getShortTextError(taskId, text));
     updateAnswer(taskId, { text });
   };
 
@@ -352,6 +383,7 @@ export function OlympiadPage() {
     const payload = answers[taskId];
     if (payload && "text" in payload) {
       const trimmed = payload.text.trim();
+      setShortTextError(taskId, getShortTextError(taskId, trimmed));
       if (trimmed) {
         triggerSaveFeedback(taskId);
         void saveAnswer(taskId, { text: trimmed });
@@ -363,6 +395,7 @@ export function OlympiadPage() {
     const payload = answers[taskId];
     if (payload && "text" in payload) {
       const trimmed = payload.text.trim();
+      setShortTextError(taskId, getShortTextError(taskId, trimmed));
       if (trimmed) {
         void saveAnswer(taskId, { text: trimmed });
       }
@@ -374,6 +407,7 @@ export function OlympiadPage() {
       const payload = answers[activeTask.task_id];
       if (payload && "text" in payload) {
         const trimmed = payload.text.trim();
+        setShortTextError(activeTask.task_id, getShortTextError(activeTask.task_id, trimmed));
         if (trimmed) {
           await saveAnswer(activeTask.task_id, { text: trimmed });
         }
@@ -395,6 +429,7 @@ export function OlympiadPage() {
       for (const item of pending) {
         if (item.payload && "text" in item.payload) {
           const trimmed = item.payload.text.trim();
+          setShortTextError(item.taskId, getShortTextError(item.taskId, trimmed));
           if (!trimmed) {
             continue;
           }
@@ -647,6 +682,9 @@ export function OlympiadPage() {
                     onChange={(event) => handleShortTextChange(activeTask.task_id, event.target.value)}
                     onBlur={() => handleShortTextBlur(activeTask.task_id)}
                   />
+                  {shortTextErrors[activeTask.task_id] ? (
+                    <p className="olympiad-error">{shortTextErrors[activeTask.task_id]}</p>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
