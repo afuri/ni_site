@@ -696,6 +696,13 @@ export function OlympiadPage() {
                   <TextInput
                     label="Ответ"
                     name={`answer-${activeTask.task_id}`}
+                    placeholder={
+                      activeTask.payload?.subtype === "int"
+                        ? "только целое число"
+                        : activeTask.payload?.subtype === "float"
+                          ? "только число"
+                          : "ответ"
+                    }
                     value={
                       answers[activeTask.task_id] && "text" in (answers[activeTask.task_id] ?? {})
                         ? (answers[activeTask.task_id] as { text: string }).text
