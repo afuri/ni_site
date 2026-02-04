@@ -318,15 +318,21 @@ export function OlympiadPage() {
       if (!task || task.task_type !== "short_text") {
         return null;
       }
-      if (task.payload?.subtype !== "int") {
-        return null;
-      }
       const trimmed = value.trim();
       if (!trimmed) {
         return null;
       }
-      if (!/^-?\d+$/.test(trimmed)) {
-        return "Можно вводить только целое число без пробелов и других символов.";
+      if (task.payload?.subtype === "int") {
+        if (!/^-?\d+$/.test(trimmed)) {
+          return "В ответ можно указать только целое число.";
+        }
+        return null;
+      }
+      if (task.payload?.subtype === "float") {
+        if (!/^-?\d+(?:[.,]\d+)?$/.test(trimmed)) {
+          return "В ответ можно указать только целое число или десятичную дробь.";
+        }
+        return null;
       }
       return null;
     },
@@ -383,7 +389,11 @@ export function OlympiadPage() {
     const payload = answers[taskId];
     if (payload && "text" in payload) {
       const trimmed = payload.text.trim();
-      setShortTextError(taskId, getShortTextError(taskId, trimmed));
+      const validationError = getShortTextError(taskId, trimmed);
+      setShortTextError(taskId, validationError);
+      if (validationError) {
+        return;
+      }
       if (trimmed) {
         triggerSaveFeedback(taskId);
         void saveAnswer(taskId, { text: trimmed });
@@ -395,7 +405,11 @@ export function OlympiadPage() {
     const payload = answers[taskId];
     if (payload && "text" in payload) {
       const trimmed = payload.text.trim();
-      setShortTextError(taskId, getShortTextError(taskId, trimmed));
+      const validationError = getShortTextError(taskId, trimmed);
+      setShortTextError(taskId, validationError);
+      if (validationError) {
+        return;
+      }
       if (trimmed) {
         void saveAnswer(taskId, { text: trimmed });
       }
@@ -407,7 +421,11 @@ export function OlympiadPage() {
       const payload = answers[activeTask.task_id];
       if (payload && "text" in payload) {
         const trimmed = payload.text.trim();
-        setShortTextError(activeTask.task_id, getShortTextError(activeTask.task_id, trimmed));
+        const validationError = getShortTextError(activeTask.task_id, trimmed);
+        setShortTextError(activeTask.task_id, validationError);
+        if (validationError) {
+          return;
+        }
         if (trimmed) {
           await saveAnswer(activeTask.task_id, { text: trimmed });
         }
@@ -429,7 +447,11 @@ export function OlympiadPage() {
       for (const item of pending) {
         if (item.payload && "text" in item.payload) {
           const trimmed = item.payload.text.trim();
-          setShortTextError(item.taskId, getShortTextError(item.taskId, trimmed));
+          const validationError = getShortTextError(item.taskId, trimmed);
+          setShortTextError(item.taskId, validationError);
+          if (validationError) {
+            continue;
+          }
           if (!trimmed) {
             continue;
           }
