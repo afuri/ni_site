@@ -388,7 +388,39 @@ class AttemptsService:
         # авто-expire при чтении, если дедлайн прошёл
         now = self._now_utc()
         if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
-            await self.repo.mark_expired(attempt.id)
+            score_total = 0
+            score_max = 0
+            now_ts = self._now_utc()
+
+            await self.repo.delete_grades(attempt.id)
+            for olymp_task, task in tasks:
+                score_max += int(olymp_task.max_score)
+                answer = answers_by_task.get(task.id)
+                answer_payload = None if answer is None else answer.answer_payload
+                is_correct = self._grade_task(task.task_type, task.payload, answer_payload)
+                score = int(olymp_task.max_score) if is_correct else 0
+                score_total += score
+
+                await self.repo.add_grade(
+                    attempt_id=attempt.id,
+                    task_id=task.id,
+                    is_correct=is_correct,
+                    score=score,
+                    max_score=int(olymp_task.max_score),
+                    graded_at=now_ts,
+                )
+
+            pass_score = math.ceil(score_max * int(olympiad.pass_percent) / 100) if score_max > 0 else 0
+            passed = score_total >= pass_score
+
+            await self.repo.mark_expired_with_grade(
+                attempt_id=attempt.id,
+                score_total=score_total,
+                score_max=score_max,
+                passed=passed,
+                graded_at=now_ts,
+            )
+            ATTEMPTS_SUBMITTED_TOTAL.labels(status="expired").inc()
             attempt = await self.repo.get_attempt(attempt.id)  # refresh
 
         return attempt, olympiad, tasks, answers_by_task
@@ -449,7 +481,47 @@ class AttemptsService:
         now = self._now_utc()
         try:
             if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
-                await self.repo.mark_expired(attempt.id)
+                olympiad = await self._get_olympiad_cached(attempt.olympiad_id)
+                if not olympiad:
+                    raise ValueError(codes.OLYMPIAD_NOT_FOUND)
+
+                cached = await self._get_tasks_cached(attempt.olympiad_id)
+                tasks = self._inflate_tasks(cached)
+                answers = await self.repo.list_answers(attempt.id)
+                answers_by_task = {a.task_id: a for a in answers}
+
+                score_total = 0
+                score_max = 0
+                now_ts = self._now_utc()
+
+                await self.repo.delete_grades(attempt.id)
+                for olymp_task, task in tasks:
+                    score_max += int(olymp_task.max_score)
+                    answer = answers_by_task.get(task.id)
+                    answer_payload = None if answer is None else answer.answer_payload
+                    is_correct = self._grade_task(task.task_type, task.payload, answer_payload)
+                    score = int(olymp_task.max_score) if is_correct else 0
+                    score_total += score
+
+                    await self.repo.add_grade(
+                        attempt_id=attempt.id,
+                        task_id=task.id,
+                        is_correct=is_correct,
+                        score=score,
+                        max_score=int(olymp_task.max_score),
+                        graded_at=now_ts,
+                    )
+
+                pass_score = math.ceil(score_max * int(olympiad.pass_percent) / 100) if score_max > 0 else 0
+                passed = score_total >= pass_score
+
+                await self.repo.mark_expired_with_grade(
+                    attempt_id=attempt.id,
+                    score_total=score_total,
+                    score_max=score_max,
+                    passed=passed,
+                    graded_at=now_ts,
+                )
                 ATTEMPTS_SUBMITTED_TOTAL.labels(status="expired").inc()
                 return AttemptStatus.expired
 

@@ -2510,6 +2510,35 @@ chmod +x /opt/ni_site/monitor.sh
       - иначе 422 (INVALID_ANSWER_PAYLOAD)
   - Добавлен import re.
 
+1.6.11 estimate expired attepmts
+
+Сделал.
+
+  Что изменилось:
+
+  - backend/app/repos/attempts.py — добавлен метод
+    mark_expired_with_grade(...), который записывает score_total, score_max,
+    passed, graded_at и ставит status=expired.
+  - backend/app/services/attempts.py — в submit() при now > deadline_at теперь
+    идёт полный пересчёт, как в submitted, и данные сохраняются через
+    mark_expired_with_grade.
+
+  Теперь при истечении времени попытка получает оценку, graded_at заполняется,
+  и результаты корректно отображаются в кабинете.
+
+Сделал. Теперь при авто‑expire в get_attempt_view() выполняется такой же
+  пересчёт, как в submit():
+
+  - считает баллы по сохранённым ответам
+  - пишет score_total, score_max, passed, graded_at
+  - сохраняет grades
+  - ставит статус expired
+  - инкрементирует метрику
+
+  Изменён файл:
+
+  - backend/app/services/attempts.py
+
 
 ---
 
@@ -2677,7 +2706,7 @@ cd /opt/ni_site
   - покажет корректное сообщение.
 
 
-Причина — в backend‑логике. Сейчас при истечении дедлайна попытка помечается
+Реши проблему — в backend‑логике. Сейчас при истечении дедлайна попытка помечается
   как expired без пересчёта баллов.
   Из‑за этого:
 
@@ -2690,16 +2719,9 @@ cd /opt/ni_site
   - submit() при истечении времени просто ставит expired и не запускает
     оценивание.
 
-  ### Как правильно (нужно менять backend)
+  Сделай, чтобы при expired происходила оценка по сохранённым ответам:
 
-  Сделать, чтобы при expired происходила оценка по сохранённым ответам:
-
-  - либо в submit() при expired вместо просто mark_expired — выполнить тот же
+  - в submit() при expired вместо просто mark_expired — выполнить тот же
     блок оценки, что для submitted, и заполнить score_total, score_max,
     graded_at;
-  - либо отдельной задачей/эндпоинтом «закрыть просроченные попытки с оценкой».
 
-  После этого:
-
-  - graded_at заполнится ⇒ дата появится;
-  - проценты будут корректны.

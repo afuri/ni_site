@@ -95,6 +95,28 @@ class AttemptsRepo:
         )
         await self.db.commit()
 
+    async def mark_expired_with_grade(
+        self,
+        *,
+        attempt_id: int,
+        score_total: int,
+        score_max: int,
+        passed: bool,
+        graded_at: datetime,
+    ) -> None:
+        await self.db.execute(
+            update(Attempt)
+            .where(Attempt.id == attempt_id)
+            .values(
+                status=AttemptStatus.expired,
+                score_total=score_total,
+                score_max=score_max,
+                passed=passed,
+                graded_at=graded_at,
+            )
+        )
+        await self.db.commit()
+
     async def list_answers(self, attempt_id: int) -> list[AttemptAnswer]:
         res = await self.db.execute(select(AttemptAnswer).where(AttemptAnswer.attempt_id == attempt_id))
         return list(res.scalars().all())
