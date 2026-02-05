@@ -2539,6 +2539,36 @@ chmod +x /opt/ni_site/monitor.sh
 
   - backend/app/services/attempts.py
 
+1.6.11.1 estimate past attempts
+
+Скрипт готов.
+
+  Файл:
+  backend/app/scripts/grade_expired_attempts.py
+
+  Что делает:
+
+  - находит expired попытки без оценок (graded_at IS NULL или score_max = 0)
+  - пересчитывает баллы по сохранённым ответам
+  - выставляет score_total, score_max, passed, graded_at
+  - обновляет attempt_task_grades
+
+  ### Как запускать (на сервере)
+
+  Сначала тестово:
+
+  docker compose exec -T api python -m app.scripts.grade_expired_attempts
+  --dry-run
+
+  Потом реально:
+
+  docker compose exec -T api python -m app.scripts.grade_expired_attempts
+
+  Опции:
+
+  - --limit 100 — обработать только N попыток
+  - --use-now — вместо deadline_at писать текущую дату в graded_at
+
 
 ---
 
