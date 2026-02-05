@@ -352,6 +352,22 @@
   margin-top: var(--space-4);
 }
 
+.cabinet-active-attempt-modal .modal-header {
+  position: relative;
+  justify-content: center;
+  text-align: center;
+}
+
+.cabinet-active-attempt-modal .modal-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.cabinet-active-attempt {
+  text-align: center;
+}
+
 .cabinet-verify-modal .modal-header {
   position: relative;
   justify-content: center;

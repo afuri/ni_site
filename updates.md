@@ -2613,7 +2613,23 @@ chmod +x /opt/ni_site/monitor.sh
   Requests.
 
 
+1.6.13 modal window active attempt
 
+Готово: добавил всплывающее окно для активной попытки в личном кабинете и
+  центрировал элементы.
+
+  Что сделано
+
+  - При загрузке результатов студенту автоматически показывается модалка, если
+    есть активная попытка.
+  - Кнопка «Продолжить» ведёт на /olympiad?attemptId=....
+  - Кнопка «Отмена» просто закрывает окно.
+  - Окно центрировано.
+
+  Файлы
+
+  - frontend/apps/main/src/pages/CabinetPage.tsx
+  - frontend/apps/main/src/styles/cabinet.css
 
 ---
 

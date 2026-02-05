@@ -220,6 +220,9 @@ export function CabinetPage() {
   const [attemptImageUrls, setAttemptImageUrls] = useState<Record<string, string>>({});
   const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [activeAttemptPrompt, setActiveAttemptPrompt] = useState<AttemptResult | null>(null);
+  const [isActiveAttemptPromptOpen, setIsActiveAttemptPromptOpen] = useState(false);
+  const activeAttemptPromptShown = useRef(false);
 
   const [emailRequestStatus, setEmailRequestStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle"
@@ -285,6 +288,12 @@ export function CabinetPage() {
         .catch(() => null);
     }
   }, [client, setSession, tokens]);
+
+  useEffect(() => {
+    activeAttemptPromptShown.current = false;
+    setActiveAttemptPrompt(null);
+    setIsActiveAttemptPromptOpen(false);
+  }, [user?.id]);
 
   const studentParam = searchParams.get("student");
   const studentIdValue = studentParam ? Number(studentParam) : null;
@@ -470,6 +479,25 @@ export function CabinetPage() {
         setAttemptsStatus("error");
       });
   }, [client, user, viewingStudentId]);
+
+  useEffect(() => {
+    if (!user || user.role !== "student" || viewingStudentId) {
+      return;
+    }
+    if (attemptsStatus !== "idle") {
+      return;
+    }
+    if (activeAttemptPromptShown.current) {
+      return;
+    }
+    const activeAttempt = attemptResults.find((attempt) => attempt.status === "active");
+    if (!activeAttempt) {
+      return;
+    }
+    activeAttemptPromptShown.current = true;
+    setActiveAttemptPrompt(activeAttempt);
+    setIsActiveAttemptPromptOpen(true);
+  }, [attemptResults, attemptsStatus, user, viewingStudentId]);
 
   useEffect(() => {
     if (!user) {
@@ -1700,6 +1728,35 @@ export function CabinetPage() {
           <Button type="button" variant="outline" onClick={closeDeletePrompt}>
             Нет
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isActiveAttemptPromptOpen}
+        onClose={() => setIsActiveAttemptPromptOpen(false)}
+        title="Олимпиада в процессе"
+        className="cabinet-active-attempt-modal"
+      >
+        <div className="cabinet-active-attempt">
+          <p>
+            Вы можете продолжить выполнение олимпиады{" "}
+            {activeAttemptPrompt?.olympiad_title ?? `#${activeAttemptPrompt?.olympiad_id ?? ""}`}.
+          </p>
+          <div className="cabinet-modal-actions">
+            <Button
+              type="button"
+              onClick={() => {
+                if (activeAttemptPrompt) {
+                  navigate(`/olympiad?attemptId=${activeAttemptPrompt.attempt_id}`);
+                }
+              }}
+            >
+              Продолжить
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setIsActiveAttemptPromptOpen(false)}>
+              Отмена
+            </Button>
+          </div>
         </div>
       </Modal>
 
