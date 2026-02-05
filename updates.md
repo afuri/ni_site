@@ -2557,8 +2557,7 @@ chmod +x /opt/ni_site/monitor.sh
 
   Сначала тестово:
 
-  docker compose exec -T api python -m app.scripts.grade_expired_attempts
-  --dry-run
+  docker compose exec -T api python -m app.scripts.grade_expired_attempts --dry-run
 
   Потом реально:
 
@@ -2568,6 +2567,52 @@ chmod +x /opt/ni_site/monitor.sh
 
   - --limit 100 — обработать только N попыток
   - --use-now — вместо deadline_at писать текущую дату в graded_at
+
+
+1.6.12 Изменил лимиты Redis
+
+в backend/app/core/config.py:
+
+# rate limit for saving answers
+    ANSWERS_RL_LIMIT: int = 100
+    ANSWERS_RL_WINDOW_SEC: int = 10
+    SUBMIT_LOCK_TTL_SEC: int = 15
+
+    AUTH_LOGIN_RL_LIMIT: int = 10
+    AUTH_LOGIN_RL_WINDOW_SEC: int = 60
+    AUTH_REGISTER_RL_LIMIT: int = 2
+    AUTH_REGISTER_RL_WINDOW_SEC: int = 60
+    AUTH_VERIFY_RL_LIMIT: int = 2
+    AUTH_VERIFY_RL_WINDOW_SEC: int = 60
+    AUTH_RESET_RL_LIMIT: int = 2
+    AUTH_RESET_RL_WINDOW_SEC: int = 60
+    AUTH_PASSWORD_CHANGE_RL_LIMIT: int = 5
+    AUTH_PASSWORD_CHANGE_RL_WINDOW_SEC: int = 60
+
+Было 
+
+- ANSWERS_RL_LIMIT = 20, ANSWERS_RL_WINDOW_SEC = 10
+    Для сохранения ответов (POST /attempts/{id}/answers) — не больше 20
+    запросов за 10 секунд на одного пользователя и попытку.
+    То есть примерно 2 запроса/сек. При превышении → 429.
+  - SUBMIT_LOCK_TTL_SEC = 15
+    Блокировка «завершить попытку» на 15 секунд, чтобы защититься от двойных
+    сабмитов.
+  - AUTH_LOGIN_RL_LIMIT = 10, AUTH_LOGIN_RL_WINDOW_SEC = 60
+    Логин — не больше 10 запросов за 60 секунд на пользователя/ключ.
+  - AUTH_REGISTER_RL_LIMIT = 5, AUTH_REGISTER_RL_WINDOW_SEC = 60
+    Регистрация — 5 запросов за 60 секунд.
+  - AUTH_VERIFY_RL_LIMIT = 5, AUTH_VERIFY_RL_WINDOW_SEC = 60
+    Подтверждение email — 5 запросов за 60 секунд.
+  - AUTH_RESET_RL_LIMIT = 5, AUTH_RESET_RL_WINDOW_SEC = 60
+    Сброс пароля — 5 запросов за 60 секунд.
+  - AUTH_PASSWORD_CHANGE_RL_LIMIT = 5, AUTH_PASSWORD_CHANGE_RL_WINDOW_SEC = 60
+    Смена пароля — 5 запросов за 60 секунд.
+
+  Все это защита от спама/брута. При превышении сервер вернёт 429 Too Many
+  Requests.
+
+
 
 
 ---

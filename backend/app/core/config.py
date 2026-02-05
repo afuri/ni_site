@@ -70,17 +70,17 @@ class Settings(BaseSettings):
     HTTP_CLIENT_TIMEOUT_SEC: int = 10
 
     # rate limit for saving answers
-    ANSWERS_RL_LIMIT: int = 20
+    ANSWERS_RL_LIMIT: int = 100
     ANSWERS_RL_WINDOW_SEC: int = 10
     SUBMIT_LOCK_TTL_SEC: int = 15
 
     AUTH_LOGIN_RL_LIMIT: int = 10
     AUTH_LOGIN_RL_WINDOW_SEC: int = 60
-    AUTH_REGISTER_RL_LIMIT: int = 5
+    AUTH_REGISTER_RL_LIMIT: int = 2
     AUTH_REGISTER_RL_WINDOW_SEC: int = 60
-    AUTH_VERIFY_RL_LIMIT: int = 5
+    AUTH_VERIFY_RL_LIMIT: int = 2
     AUTH_VERIFY_RL_WINDOW_SEC: int = 60
-    AUTH_RESET_RL_LIMIT: int = 5
+    AUTH_RESET_RL_LIMIT: int = 2
     AUTH_RESET_RL_WINDOW_SEC: int = 60
     AUTH_PASSWORD_CHANGE_RL_LIMIT: int = 5
     AUTH_PASSWORD_CHANGE_RL_WINDOW_SEC: int = 60
