@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import math
 import json
 import time
+import re
 from types import SimpleNamespace
 
 from app.core.config import settings
@@ -46,6 +47,9 @@ class AttemptsService:
             options = payload.get("options") if isinstance(payload, dict) else None
             return {**image_payload, "options": options or []}
         if task_type == TaskType.short_text:
+            subtype = payload.get("subtype") if isinstance(payload, dict) else None
+            if subtype in ("int", "float", "text"):
+                return {**image_payload, "subtype": subtype}
             return image_payload
         return image_payload
 
@@ -255,6 +259,11 @@ class AttemptsService:
                 raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             trimmed = text.strip()
             if trimmed == "":
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
+            subtype = task_payload.get("subtype")
+            if subtype == "int" and not re.fullmatch(r"-?\d+", trimmed):
+                raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
+            if subtype == "float" and not re.fullmatch(r"-?\d+(?:[.,]\d+)?", trimmed):
                 raise ValueError(codes.INVALID_ANSWER_PAYLOAD)
             return {"text": trimmed}
 

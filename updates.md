@@ -2495,6 +2495,22 @@ chmod +x /opt/ni_site/monitor.sh
   - Таймер на фронте автоматически будет показывать корректное время (по
     deadline_at), без правок фронта.
 
+
+1.6.10 answer validation
+
+Готово. Внес правки в backend/app/services/attempts.py:
+
+  Что сделано:
+
+  - AttemptView теперь передаёт subtype для short_text в payload (через
+    _sanitize_task_payload).
+  - upsert_answer теперь делает строгую валидацию формата:
+      - int → только -?\d+
+      - float → -?\d+([.,]\d+)?
+      - иначе 422 (INVALID_ANSWER_PAYLOAD)
+  - Добавлен import re.
+
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
