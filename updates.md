@@ -2658,6 +2658,25 @@ chmod +x /opt/ni_site/monitor.sh
       - .admin-users-wide .admin-form-grid и .admin-users-wide .admin-report-
         filters → repeat(auto-fill, 300px) + justify-content: start
       - На мобилке ≤720px остаётся 1 колонка.
+
+
+1.6.13.3 admin ui fix
+
+Готово. Формы в Users теперь располагаются в 4 ряда, ширина поля 300px, и на
+  1920px должны умещаться без горизонтального скролла. Таблицу пользователей не
+  трогал.
+
+  Изменения:
+
+  - frontend/apps/admin/src/styles/admin.css
+      - .admin-users-wide .admin-form-grid и .admin-users-wide .admin-report-
+        filters:
+          - grid-auto-flow: column;
+          - grid-template-rows: repeat(4, auto);
+          - grid-auto-columns: 300px;
+      - На экранах ≤1280px — 2 ряда.
+      - На ≤720px — 1 колонка.
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
