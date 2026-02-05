@@ -385,9 +385,15 @@ class AttemptsService:
         answers = await self.repo.list_answers(attempt.id)
         answers_by_task = {a.task_id: a for a in answers}
 
-        # авто-expire при чтении, если дедлайн прошёл
+        # авто-expire при чтении, если дедлайн прошёл или попытка expired без оценки
         now = self._now_utc()
+        needs_expire_grade = False
         if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
+            needs_expire_grade = True
+        elif attempt.status == AttemptStatus.expired and (attempt.graded_at is None or attempt.score_max == 0):
+            needs_expire_grade = True
+
+        if needs_expire_grade:
             score_total = 0
             score_max = 0
             now_ts = self._now_utc()
@@ -613,7 +619,18 @@ class AttemptsService:
             raise ValueError(codes.FORBIDDEN)
         attempts = await self.repo.list_attempts_with_olympiads_for_user(user.id)
         results = []
+        now = self._now_utc()
         for attempt, olympiad in attempts:
+            needs_grade = False
+            if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
+                needs_grade = True
+            elif attempt.status == AttemptStatus.expired and (attempt.graded_at is None or attempt.score_max == 0):
+                needs_grade = True
+            if needs_grade:
+                attempt, olympiad, _tasks, _answers = await self.get_attempt_view(
+                    user=user,
+                    attempt_id=attempt.id,
+                )
             results.append(
                 {
                     "attempt_id": attempt.id,
