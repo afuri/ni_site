@@ -489,17 +489,19 @@
 }
 
 .admin-users-wide .admin-form-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, 300px);
+  justify-content: start;
 }
 
 .admin-users-wide .admin-report-filters {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, 300px);
+  justify-content: start;
 }
 
 @media (max-width: 1280px) {
   .admin-users-wide .admin-form-grid,
   .admin-users-wide .admin-report-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 300px);
   }
 }
 

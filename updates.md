@@ -2648,7 +2648,16 @@ chmod +x /opt/ni_site/monitor.sh
       - у таблицы в Users вернул горизонтальный скролл: .admin-users-
         wide .table-wrap { overflow-x: auto; }
 
+1.6.13.2 admin ui fix
 
+ Сделал: в Users‑форме и в фильтрах поля теперь фиксированной ширины 300px.
+
+  Изменения в CSS:
+
+  - frontend/apps/admin/src/styles/admin.css
+      - .admin-users-wide .admin-form-grid и .admin-users-wide .admin-report-
+        filters → repeat(auto-fill, 300px) + justify-content: start
+      - На мобилке ≤720px остаётся 1 колонка.
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
