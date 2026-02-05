@@ -340,6 +340,8 @@ class AttemptsService:
             raise ValueError(codes.OLYMPIAD_HAS_NO_TASKS)
 
         deadline = now + timedelta(seconds=int(olympiad.duration_sec))
+        if olympiad.available_to and deadline > olympiad.available_to:
+            deadline = olympiad.available_to
         attempt = await self.repo.create_attempt(
             user_id=user.id,
             olympiad_id=olympiad_id,

@@ -2480,6 +2480,21 @@ chmod +x /opt/ni_site/monitor.sh
   - float → «только число»
   - text → «ответ»
 
+
+1.6.9 fix timer
+
+Сделал жёсткое ограничение на backend.
+
+  Изменение:
+
+  - backend/app/services/attempts.py — в start_attempt теперь:
+    deadline_at = min(started_at + duration_sec, olympiad.available_to)
+
+  Что это даёт:
+
+  - Таймер на фронте автоматически будет показывать корректное время (по
+    deadline_at), без правок фронта.
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
@@ -2616,19 +2631,19 @@ cd /opt/ni_site
 
 Поставить вечером
 
-Проблема была в двух местах:
+Проблема  в двух местах:
 
   1. API не передавал subtype для short_text в попытке (в AttemptView payload
      «чистился» и subtype выкидывался).
   2. Backend принимал любой текст для short_text (валидация была только “не
      пусто”).
 
-  Сделал исправления:
+  Сделай исправления:
 
   Backend
 
   - backend/app/services/attempts.py
-      - AttemptView: теперь передаёт subtype для short_text в payload.
+      - AttemptView: должен передавать subtype для short_text в payload.
       - upsert_answer: строгая валидация для int и float по regex. Неверный
         формат ⇒ 422.
 
