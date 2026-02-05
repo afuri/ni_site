@@ -2631,6 +2631,24 @@ chmod +x /opt/ni_site/monitor.sh
   - frontend/apps/main/src/pages/CabinetPage.tsx
   - frontend/apps/main/src/styles/cabinet.css
 
+
+1.6.13.1 admin ui fix
+
+Сделал так, чтобы формы в Users не растягивали страницу по ширине и
+  раскладывались в 4 колонки (с переходом на 2 и 1 на узких экранах). Таблица
+  пользователей по‑прежнему может горизонтально скроллиться.
+
+  Изменения:
+
+  - frontend/apps/admin/src/styles/admin.css
+      - убран min-width: 2400px у .admin-users-wide, теперь width: 100%
+      - для .admin-users-wide .admin-form-grid и .admin-users-wide .admin-
+        report-filters — 4 колонки
+      - медиа‑адаптив: 2 колонки ≤1280px, 1 колонка ≤720px
+      - у таблицы в Users вернул горизонтальный скролл: .admin-users-
+        wide .table-wrap { overflow-x: auto; }
+
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
