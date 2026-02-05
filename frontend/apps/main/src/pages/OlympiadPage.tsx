@@ -100,7 +100,6 @@ export function OlympiadPage() {
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [shortTextErrors, setShortTextErrors] = useState<Record<number, string | null>>({});
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
-  const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [hasWarned, setHasWarned] = useState(false);
   const [isFinishOpen, setIsFinishOpen] = useState(false);
@@ -112,33 +111,6 @@ export function OlympiadPage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadServerTime = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/health/ready`, { method: "HEAD" });
-        const dateHeader = response.headers.get("date");
-        if (!dateHeader) {
-          return;
-        }
-        const serverNow = new Date(dateHeader).getTime();
-        if (Number.isNaN(serverNow)) {
-          return;
-        }
-        const offset = serverNow - Date.now();
-        if (isMounted) {
-          setServerOffsetMs(offset);
-        }
-      } catch {
-        // ignore time sync errors
-      }
-    };
-    void loadServerTime();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const sortedTasks = useMemo(
     () => (attemptView ? [...attemptView.tasks].sort((a, b) => a.sort_order - b.sort_order) : []),
@@ -224,14 +196,13 @@ export function OlympiadPage() {
       return;
     }
     const tick = () => {
-      const now = Date.now() + serverOffsetMs;
-      const remaining = Math.max(Math.ceil((deadline - now) / 1000), 0);
+      const remaining = Math.max(Math.ceil((deadline - Date.now()) / 1000), 0);
       setRemainingSeconds(remaining);
     };
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [attemptView, serverOffsetMs]);
+  }, [attemptView]);
 
   useEffect(() => {
     return () => {
