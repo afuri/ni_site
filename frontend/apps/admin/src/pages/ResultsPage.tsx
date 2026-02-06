@@ -411,7 +411,8 @@ export function ResultsPage() {
       `${item.percent}%`,
       `${API_BASE_URL}/attempts/${item.id}/diploma`
     ]);
-    const csv = [header, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\n");
+    const csvBody = [header, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+    const csv = `\ufeff${csvBody}`;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

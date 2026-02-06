@@ -2839,6 +2839,16 @@ chmod +x /opt/ni_site/monitor.sh
         делается переход туда (и ключ удаляется), иначе — как раньше в /
         cabinet.
 
+
+1.8.4 admin csv fix
+
+Сделал:
+
+  - frontend/apps/admin/src/pages/ResultsPage.tsx — добавлен BOM \ufeff + \r\n,
+    чтобы Excel корректно понимал UTF‑8.
+  - backend/app/api/v1/admin_audit.py — добавлен BOM и charset=utf-8 для CSV
+    выгрузки аудита.
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому

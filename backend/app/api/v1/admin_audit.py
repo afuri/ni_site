@@ -115,6 +115,6 @@ async def export_audit_logs(
             ]
         )
 
-    content = buf.getvalue()
+    content = "\ufeff" + buf.getvalue()
     headers = {"Content-Disposition": "attachment; filename=audit_logs.csv"}
-    return Response(content=content, media_type="text/csv", headers=headers)
+    return Response(content=content, media_type="text/csv; charset=utf-8", headers=headers)
