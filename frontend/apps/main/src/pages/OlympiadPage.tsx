@@ -56,7 +56,6 @@ type AnswerPayload =
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 const LOGIN_REDIRECT_KEY = "ni_login_redirect";
-const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 
 const loadMockS3 = (): Record<string, string> => {
   if (typeof window === "undefined") {
