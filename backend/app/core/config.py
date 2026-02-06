@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change_me"
     JWT_SECRETS: str = ""
     JWT_ALG: str = "HS256"
-    JWT_ACCESS_TTL_MIN: int = 30
+    JWT_ACCESS_TTL_MIN: int = 60
     JWT_REFRESH_TTL_DAYS: int = 30
 
     EMAIL_BASE_URL: str = "http://localhost:3000"

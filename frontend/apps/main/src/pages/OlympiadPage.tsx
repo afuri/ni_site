@@ -71,7 +71,7 @@ const loadMockS3 = (): Record<string, string> => {
 };
 
 export function OlympiadPage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, setSession } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const storage = useMemo(() => createMainAuthStorage(), []);
@@ -111,6 +111,7 @@ export function OlympiadPage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
+  const refreshTimerRef = useRef<number | null>(null);
 
   const sortedTasks = useMemo(
     () => (attemptView ? [...attemptView.tasks].sort((a, b) => a.sort_order - b.sort_order) : []),
@@ -203,6 +204,40 @@ export function OlympiadPage() {
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [attemptView]);
+
+  useEffect(() => {
+    if (refreshTimerRef.current) {
+      window.clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    if (!attemptView || attemptView.attempt.status !== "active" || isAuthInvalid) {
+      return;
+    }
+    let isMounted = true;
+    const refreshTokens = async () => {
+      try {
+        if (typeof document !== "undefined" && document.hidden) {
+          return;
+        }
+        const refreshed = await client.auth.refresh({ clearOnFail: false });
+        if (!isMounted || !refreshed) {
+          return;
+        }
+        setSession(refreshed, user ?? null);
+      } catch {
+        // ignore refresh errors; 401 will be handled by request flow
+      }
+    };
+    void refreshTokens();
+    refreshTimerRef.current = window.setInterval(refreshTokens, 45 * 60 * 1000);
+    return () => {
+      isMounted = false;
+      if (refreshTimerRef.current) {
+        window.clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, [attemptView, client, isAuthInvalid, setSession, user]);
 
   useEffect(() => {
     return () => {
