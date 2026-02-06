@@ -13,6 +13,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 type AttemptInfo = {
   id: number;
   deadline_at: string;
+  started_at?: string | null;
   duration_sec: number;
   status: string;
 };
@@ -104,6 +105,8 @@ export function OlympiadPage() {
   const [hasWarned, setHasWarned] = useState(false);
   const [isFinishOpen, setIsFinishOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFinishLocked, setIsFinishLocked] = useState(false);
+  const [isDeadlineWarningOpen, setIsDeadlineWarningOpen] = useState(false);
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
@@ -111,13 +114,32 @@ export function OlympiadPage() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
+  const finishLockTimerRef = useRef<number | null>(null);
   const refreshTimerRef = useRef<number | null>(null);
+  const deadlineWarningShown = useRef(false);
 
   const sortedTasks = useMemo(
     () => (attemptView ? [...attemptView.tasks].sort((a, b) => a.sort_order - b.sort_order) : []),
     [attemptView]
   );
   const activeTask = sortedTasks[activeIndex];
+  const deadlineWarningLabel = useMemo(() => {
+    const deadlineRaw = attemptView?.attempt.deadline_at;
+    if (!deadlineRaw) {
+      return "";
+    }
+    const deadline = new Date(deadlineRaw);
+    if (Number.isNaN(deadline.getTime())) {
+      return deadlineRaw;
+    }
+    return deadline.toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }, [attemptView]);
 
   const timeLabel = useMemo(() => {
     if (remainingSeconds === null) {
@@ -206,6 +228,30 @@ export function OlympiadPage() {
   }, [attemptView]);
 
   useEffect(() => {
+    if (!attemptView || deadlineWarningShown.current) {
+      return;
+    }
+    if (attemptView.attempt.status !== "active") {
+      return;
+    }
+    const startedAt = attemptView.attempt.started_at;
+    const deadlineAt = attemptView.attempt.deadline_at;
+    if (!startedAt || !deadlineAt) {
+      return;
+    }
+    const startedMs = new Date(startedAt).getTime();
+    const deadlineMs = new Date(deadlineAt).getTime();
+    if (Number.isNaN(startedMs) || Number.isNaN(deadlineMs)) {
+      return;
+    }
+    const plannedEndMs = startedMs + attemptView.attempt.duration_sec * 1000;
+    if (plannedEndMs > deadlineMs) {
+      deadlineWarningShown.current = true;
+      setIsDeadlineWarningOpen(true);
+    }
+  }, [attemptView]);
+
+  useEffect(() => {
     if (refreshTimerRef.current) {
       window.clearInterval(refreshTimerRef.current);
       refreshTimerRef.current = null;
@@ -243,6 +289,9 @@ export function OlympiadPage() {
     return () => {
       if (saveFeedbackTimer.current) {
         window.clearTimeout(saveFeedbackTimer.current);
+      }
+      if (finishLockTimerRef.current) {
+        window.clearTimeout(finishLockTimerRef.current);
       }
     };
   }, []);
@@ -510,6 +559,29 @@ export function OlympiadPage() {
     } finally {
       setIsSubmitting(false);
       setIsFinishOpen(false);
+    }
+  };
+
+  const handleFinishConfirm = async () => {
+    if (isFinishLocked || isSubmitting) {
+      return;
+    }
+    setIsFinishLocked(true);
+    if (finishLockTimerRef.current) {
+      window.clearTimeout(finishLockTimerRef.current);
+    }
+    finishLockTimerRef.current = window.setTimeout(() => {
+      setIsFinishLocked(false);
+      finishLockTimerRef.current = null;
+    }, 3000);
+    try {
+      await submitAttempt();
+    } finally {
+      if (finishLockTimerRef.current) {
+        window.clearTimeout(finishLockTimerRef.current);
+        finishLockTimerRef.current = null;
+      }
+      setIsFinishLocked(false);
     }
   };
 
@@ -812,9 +884,15 @@ export function OlympiadPage() {
 
       <Modal
         isOpen={isFinishOpen}
-        onClose={() => setIsFinishOpen(false)}
+        onClose={() => {
+          if (isFinishLocked) {
+            return;
+          }
+          setIsFinishOpen(false);
+        }}
         title="Завершить олимпиаду"
         className="olympiad-finish-modal"
+        closeOnBackdrop={!isFinishLocked}
       >
         <div className="olympiad-modal-body">
           {hasUnanswered ? (
@@ -825,8 +903,9 @@ export function OlympiadPage() {
         </div>
         <div className="olympiad-modal-actions olympiad-finish-actions">
           <Button
-            onClick={() => void submitAttempt()}
+            onClick={() => void handleFinishConfirm()}
             isLoading={isSubmitting}
+            disabled={isFinishLocked}
             className="olympiad-finish-danger"
           >
             Завершить
@@ -834,10 +913,28 @@ export function OlympiadPage() {
           <Button
             variant="outline"
             onClick={() => setIsFinishOpen(false)}
+            disabled={isFinishLocked}
             className="olympiad-finish-back"
           >
             Вернуться
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isDeadlineWarningOpen}
+        onClose={() => setIsDeadlineWarningOpen(false)}
+        title="Предупреждение"
+        className="olympiad-warning-modal"
+      >
+        <div className="olympiad-modal-body olympiad-warning-body">
+          <p>
+            Уважаемый участник, окончание олимпиады в {deadlineWarningLabel || "—"}. Ответы, которые
+            внесены после {deadlineWarningLabel || "—"} не сохраняются.
+          </p>
+        </div>
+        <div className="olympiad-modal-actions olympiad-warning-actions">
+          <Button onClick={() => setIsDeadlineWarningOpen(false)}>Ок</Button>
         </div>
       </Modal>
 

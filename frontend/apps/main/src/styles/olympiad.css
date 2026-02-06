@@ -313,6 +313,14 @@
   justify-content: center;
 }
 
+.olympiad-warning-body {
+  text-align: center;
+}
+
+.olympiad-warning-actions {
+  justify-content: center;
+}
+
 @media (max-width: 720px) {
   .olympiad-page .layout-header {
     position: static;
