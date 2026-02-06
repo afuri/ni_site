@@ -2736,6 +2736,109 @@ chmod +x /opt/ni_site/monitor.sh
       - завершения запроса или
       - истечения 3 секунд.
 
+Сделал предупреждение и центрирование.
+
+  Что добавлено:
+
+  - В frontend/apps/main/src/pages/OlympiadPage.tsx появился warning‑modal,
+    который открывается один раз при входе в активную попытку, если started_at
+    + duration_sec > deadline_at.
+  - В тексте подставляется deadline_at в формате ДД.ММ.ГГГГ, ЧЧ:ММ.
+  - Кнопка “Ок”.
+  - Центрирование добавлено через CSS.
+
+
+1.8.3
+
+Если цель — максимально исключить ситуацию “401 → 422 → гость”, то нужна
+  комбинация мер на клиенте и сервере. Вот наиболее надёжный набор (по
+  приоритету):
+
+## ✅ 3) Single‑flight refresh (самое важное!)
+
+  Один refresh‑запрос на все параллельные 401.
+  Без этого будет гонка токенов и сброс сессии.
+
+  ———
+
+  ## ✅ 4) Жёсткая проверка refresh_token
+
+  Перед /auth/refresh:
+
+  - refresh_token должен быть строкой и достаточно длинной
+  - если его нет → не отправлять запрос, а сразу показывать “нужно войти”
+
+  Это полностью устраняет 422.
+
+  ———
+
+  ## ✅ 5) Refresh‑cooldown
+
+  Если refresh неуспешен — на 30–60 секунд блокировать повторные попытки, иначе
+  будет спам логов и лишняя нагрузка.
+
+  ———
+
+  ## ✅ 6) Хранение refresh‑token в localStorage
+
+  Если refresh в sessionStorage, он исчезает при закрытии вкладки/перезагрузке.
+  Лучше:
+
+  - access → sessionStorage
+  - refresh → localStorage
+
+  ———
+
+  ## ✅ 7) UI‑поведение при auth‑сбое
+
+  Если авторизация пропала:
+
+  - остановить автосохранение
+  - показать модалку “Сессия истекла, войдите снова”
+  - не продолжать отправку запросов с 401
+
+  ———
+
+  ## Итог: максимальная защита
+
+  Комбо:
+  Access TTL 60–90 + silent-refresh + single-flight + валидация refresh +
+  cooldown
+
+
+Сделал пункты 3–7:
+
+  - Усилил refresh‑логика (single‑flight, cooldown, проверка refresh‑токена) в
+    frontend/packages/api/src/client.ts.
+  - Разнёс хранение токенов: access в sessionStorage, refresh в localStorage,
+    плюс миграция со старого ключа ni_main_tokens в frontend/apps/main/src/
+    utils/authStorage.ts.
+  - Добавил модалку “Сессия истекла” с кнопкой “Войти” и безопасным переходом
+    на главную в frontend/apps/main/src/pages/OlympiadPage.tsx.
+
+  Где смотреть:
+
+  - frontend/apps/main/src/utils/authStorage.ts
+  - frontend/apps/main/src/pages/OlympiadPage.tsx
+  - frontend/packages/api/src/client.ts
+
+
+Готово. Убрал модалку, теперь при истечении сессии сразу открывается логин, а
+  после входа пользователь возвращается в активную попытку.
+
+  Что изменил:
+
+  - frontend/apps/main/src/pages/OlympiadPage.tsx
+      - при 401 сразу ставится флаг, очищаются токены, выставляется
+        ni_open_login=1,
+        и если попытка активна — сохраняется редирект ni_login_redirect=/
+        olympiad?attemptId=...,
+        затем переход на /.
+  - frontend/apps/main/src/pages/HomePage.tsx
+      - после успешного логина проверяется ni_login_redirect и, если есть,
+        делается переход туда (и ключ удаляется), иначе — как раньше в /
+        cabinet.
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому

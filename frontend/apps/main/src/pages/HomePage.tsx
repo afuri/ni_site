@@ -29,6 +29,7 @@ const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
+const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
 const RESET_TOKEN_STORAGE_KEY = "ni_password_reset_token";
 
@@ -869,6 +870,14 @@ export function HomePage() {
       await signIn({ login: loginForm.login, password: loginForm.password });
       setLoginStatus("idle");
       setIsLoginOpen(false);
+      if (typeof window !== "undefined") {
+        const redirectPath = window.localStorage.getItem(LOGIN_REDIRECT_KEY);
+        if (redirectPath) {
+          window.localStorage.removeItem(LOGIN_REDIRECT_KEY);
+          navigate(redirectPath, { replace: true });
+          return;
+        }
+      }
       navigate("/cabinet");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Ошибка входа.";

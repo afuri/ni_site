@@ -116,6 +116,10 @@ function buildApiError(
 
 export function createApiClient(options: ClientOptions): ApiClient {
   const { baseUrl, storage, onAuthError } = options;
+  const MIN_REFRESH_TOKEN_LENGTH = 20;
+  const REFRESH_COOLDOWN_MS = 30000;
+  let refreshPromise: Promise<TokenPair | null> | null = null;
+  let refreshBlockedUntil = 0;
 
   const request = async <T>(
     requestOptions: RequestOptions,
@@ -171,30 +175,60 @@ export function createApiClient(options: ClientOptions): ApiClient {
   };
 
   const refreshTokens = async (payload?: RefreshPayload): Promise<TokenPair | null> => {
-    const refreshToken = payload?.refresh_token ?? storage?.getTokens()?.refresh_token;
-    const clearOnFail = payload?.clearOnFail ?? true;
-    if (!refreshToken) {
+    const now = Date.now();
+    if (now < refreshBlockedUntil) {
       return null;
     }
-    const response = await fetch(`${baseUrl}/auth/refresh`, {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ refresh_token: refreshToken })
-    });
+    if (refreshPromise) {
+      return refreshPromise;
+    }
 
-    if (!response.ok) {
+    const clearOnFail = payload?.clearOnFail ?? true;
+    const rawRefresh = payload?.refresh_token ?? storage?.getTokens()?.refresh_token;
+    const refreshToken =
+      typeof rawRefresh === "string" && rawRefresh.trim().length >= MIN_REFRESH_TOKEN_LENGTH
+        ? rawRefresh.trim()
+        : null;
+    if (!refreshToken) {
       if (clearOnFail) {
         storage?.setTokens(null);
       }
       return null;
     }
 
-    const tokens = await parseJson<TokenPair>(response);
-    if (!tokens) {
-      return null;
+    refreshPromise = (async () => {
+      const response = await fetch(`${baseUrl}/auth/refresh`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+
+      if (!response.ok) {
+        if (clearOnFail) {
+          storage?.setTokens(null);
+        }
+        refreshBlockedUntil = Date.now() + REFRESH_COOLDOWN_MS;
+        return null;
+      }
+
+      const tokens = await parseJson<TokenPair>(response);
+      if (!tokens?.access_token || !tokens.refresh_token) {
+        if (clearOnFail) {
+          storage?.setTokens(null);
+        }
+        refreshBlockedUntil = Date.now() + REFRESH_COOLDOWN_MS;
+        return null;
+      }
+      refreshBlockedUntil = 0;
+      storage?.setTokens(tokens);
+      return tokens;
+    })();
+
+    try {
+      return await refreshPromise;
+    } finally {
+      refreshPromise = null;
     }
-    storage?.setTokens(tokens);
-    return tokens;
   };
 
   return {

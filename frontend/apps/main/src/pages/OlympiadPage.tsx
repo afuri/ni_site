@@ -54,6 +54,9 @@ type AnswerPayload =
   | { text: string };
 
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
+const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
+const LOGIN_REDIRECT_KEY = "ni_login_redirect";
+const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 
 const loadMockS3 = (): Record<string, string> => {
   if (typeof window === "undefined") {
@@ -77,10 +80,26 @@ export function OlympiadPage() {
   const navigate = useNavigate();
   const storage = useMemo(() => createMainAuthStorage(), []);
   const [isAuthInvalid, setIsAuthInvalid] = useState(false);
+  const authInvalidRef = useRef(false);
   const handleAuthError = useCallback(() => {
-    setIsAuthInvalid(true);
-    signOut();
-  }, [signOut]);
+    if (!authInvalidRef.current) {
+      authInvalidRef.current = true;
+      setIsAuthInvalid(true);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(OPEN_LOGIN_STORAGE_KEY, "1");
+        if (attemptView?.attempt.status === "active" && attemptIdNumber) {
+          window.localStorage.setItem(
+            LOGIN_REDIRECT_KEY,
+            `/olympiad?attemptId=${attemptIdNumber}`
+          );
+        }
+      }
+      void signOut();
+      navigate("/", { replace: true });
+    } else {
+      setIsAuthInvalid(true);
+    }
+  }, [attemptIdNumber, attemptView?.attempt.status, navigate, signOut]);
   const client = useMemo(
     () =>
       createApiClient({
@@ -584,6 +603,7 @@ export function OlympiadPage() {
       setIsFinishLocked(false);
     }
   };
+
 
   if (viewStatus === "error") {
     return (
