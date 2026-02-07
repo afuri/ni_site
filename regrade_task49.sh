@@ -80,19 +80,21 @@ WITH target AS (
 ),
 scores AS (
   SELECT a.id AS attempt_id,
+         a.olympiad_id,
          COALESCE(SUM(g.score), 0) AS score_total
   FROM attempts a
   JOIN target t ON t.attempt_id = a.id
   LEFT JOIN attempt_task_grades g ON g.attempt_id = a.id
-  GROUP BY a.id
+  GROUP BY a.id, a.olympiad_id
 ),
 maxes AS (
   SELECT a.id AS attempt_id,
+         a.olympiad_id,
          COALESCE(SUM(ot.max_score), 0) AS score_max
   FROM attempts a
   JOIN target t ON t.attempt_id = a.id
   JOIN olympiad_tasks ot ON ot.olympiad_id = a.olympiad_id
-  GROUP BY a.id
+  GROUP BY a.id, a.olympiad_id
 )
 UPDATE attempts a
 SET score_total = s.score_total,
@@ -104,7 +106,7 @@ SET score_total = s.score_total,
     graded_at = COALESCE(a.graded_at, now())
 FROM scores s
 JOIN maxes m ON m.attempt_id = s.attempt_id
-JOIN olympiads o ON o.id = a.olympiad_id
+JOIN olympiads o ON o.id = s.olympiad_id
 WHERE a.id = s.attempt_id;
 
 COMMIT;
