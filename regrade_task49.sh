@@ -87,9 +87,9 @@ SET score_total = s.score_total,
       ELSE s.score_total >= CEIL(s.score_max * o.pass_percent / 100.0)
     END,
     graded_at = COALESCE(a.graded_at, now())
-FROM sums s
-JOIN olympiads o ON o.id = a.olympiad_id
-WHERE a.id = s.attempt_id;
+FROM sums s, olympiads o
+WHERE a.id = s.attempt_id
+  AND o.id = a.olympiad_id;
 
 COMMIT;
 SQL

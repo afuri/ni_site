@@ -2863,7 +2863,13 @@ chmod +x /opt/ni_site/monitor.sh
 
 Добавил dry‑run режим в regrade_task49.sh.
 
+
+Даем права на запуск
+
+chmod +x /opt/ni_site/regrade_task49.sh
+
   Запуск:
+  
 
   - Dry‑run (только подсчёты, без изменений):
 
