@@ -78,15 +78,19 @@ export function OlympiadPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const storage = useMemo(() => createMainAuthStorage(), []);
+  const attemptId = searchParams.get("attemptId");
+  const attemptIdNumber = attemptId ? Number(attemptId) : null;
+  const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
   const [isAuthInvalid, setIsAuthInvalid] = useState(false);
   const authInvalidRef = useRef(false);
+  const attemptStatusRef = useRef<AttemptInfo | null>(null);
   const handleAuthError = useCallback(() => {
     if (!authInvalidRef.current) {
       authInvalidRef.current = true;
       setIsAuthInvalid(true);
       if (typeof window !== "undefined") {
         window.localStorage.setItem(OPEN_LOGIN_STORAGE_KEY, "1");
-        if (attemptView?.attempt.status === "active" && attemptIdNumber) {
+        if (attemptStatusRef.current?.status === "active" && attemptIdNumber) {
           window.localStorage.setItem(
             LOGIN_REDIRECT_KEY,
             `/olympiad?attemptId=${attemptIdNumber}`
@@ -98,7 +102,7 @@ export function OlympiadPage() {
     } else {
       setIsAuthInvalid(true);
     }
-  }, [attemptIdNumber, attemptView?.attempt.status, navigate, signOut]);
+  }, [attemptIdNumber, navigate, signOut]);
   const client = useMemo(
     () =>
       createApiClient({
@@ -108,10 +112,6 @@ export function OlympiadPage() {
       }),
     [storage, handleAuthError]
   );
-
-  const attemptId = searchParams.get("attemptId");
-  const attemptIdNumber = attemptId ? Number(attemptId) : null;
-  const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
   const [viewStatus, setViewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [viewError, setViewError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -227,6 +227,10 @@ export function OlympiadPage() {
       isMounted = false;
     };
   }, [attemptIdNumber, client]);
+
+  useEffect(() => {
+    attemptStatusRef.current = attemptView?.attempt ?? null;
+  }, [attemptView]);
 
   useEffect(() => {
     if (!attemptView?.attempt.deadline_at) {
