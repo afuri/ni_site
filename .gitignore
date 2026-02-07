@@ -1,3 +1,4 @@
+.env
 .cursor/rules.md
 .venv312
 ./backend/.venv
