@@ -5,3 +5,4 @@
 ./frontend/apps/admin/node_modules
 ./frontend/apps/main/node_modules
 ./frontend/apps/main/src/assets/old
+./regrade_task49.sh
