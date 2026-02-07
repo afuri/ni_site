@@ -1054,8 +1054,8 @@ export function HomePage() {
               </h1>
             </div>
             <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Математика 7 класс <br /> через<br /></div>
-              {<Countdown targetIso={TARGET_DATE} /> }
+              <div className="home-hero-panel-title">Математика 7 класс <br /> доступна для прохождения <br /> с 8:00 по 21:00 (МСК)</div>
+              {/*<Countdown targetIso={TARGET_DATE} /> */}
               { <Button onClick={() => handleStartSubject("math")}>Принять участие</Button> }
             </div>
           </div>
