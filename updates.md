@@ -2883,6 +2883,11 @@ chmod +x /opt/ni_site/regrade_task49.sh
 
 
 
+1.8.6.6 invalid olymp start solving
+
+Получаем отчет о принудительном завершении олимпиады у пользователя через скрипт
+attempt_forensics.sh
+
 
 
 
