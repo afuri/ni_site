@@ -22,6 +22,7 @@ const TARGET_DATE = "2026-02-07T08:00:00+03:00";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
+const TESTING_CODE_OFFSET = 1_000_000;
 
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]{4,}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -307,6 +308,48 @@ type PublicOlympiad = {
   results_released?: boolean;
 };
 
+const parseOlympiadIdFromTestingCode = (value: string): number | null => {
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+  const code = Number(normalized);
+  if (!Number.isSafeInteger(code)) {
+    return null;
+  }
+  const olympiadId = code - TESTING_CODE_OFFSET;
+  if (!Number.isSafeInteger(olympiadId) || olympiadId <= 0) {
+    return null;
+  }
+  return olympiadId;
+};
+
+const isOlympiadAvailableNow = (olympiad: PublicOlympiad): boolean => {
+  const from = Date.parse(olympiad.available_from);
+  const to = Date.parse(olympiad.available_to);
+  if (Number.isNaN(from) || Number.isNaN(to)) {
+    return false;
+  }
+  const now = Date.now();
+  return now >= from && now <= to;
+};
+
+const formatOlympiadDateRange = (olympiad: PublicOlympiad): string => {
+  const from = new Date(olympiad.available_from);
+  const to = new Date(olympiad.available_to);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return "Дата не указана";
+  }
+  const format: Intl.DateTimeFormatOptions = {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  };
+  const fromDate = from.toLocaleDateString("ru-RU", format);
+  const toDate = to.toLocaleDateString("ru-RU", format);
+  return fromDate === toDate ? fromDate : `${fromDate} — ${toDate}`;
+};
+
 export function HomePage() {
   const { signIn, signOut, user, status } = useAuth();
   const navigate = useNavigate();
@@ -326,6 +369,9 @@ export function HomePage() {
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const cityLookupTimer = useRef<number | null>(null);
   const schoolLookupTimer = useRef<number | null>(null);
+  const testingCodeLookupTimer = useRef<number | null>(null);
+  const testingCodeLookupRequestId = useRef(0);
+  const cachedPublishedOlympiads = useRef<PublicOlympiad[] | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterSuccessOpen, setIsRegisterSuccessOpen] = useState(false);
@@ -385,6 +431,11 @@ export function HomePage() {
   const [pendingOlympiad, setPendingOlympiad] = useState<PublicOlympiad | null>(null);
   const [startStatus, setStartStatus] = useState<"idle" | "loading" | "error">("idle");
   const [assignStatus, setAssignStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [testingCode, setTestingCode] = useState("");
+  const [testingCodeOlympiad, setTestingCodeOlympiad] = useState<PublicOlympiad | null>(null);
+  const [testingCodeStatus, setTestingCodeStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [testingCodeStartStatus, setTestingCodeStartStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [testingCodeError, setTestingCodeError] = useState<string | null>(null);
 
   const formatDateShort = (value: string) =>
     new Date(value).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -519,6 +570,78 @@ export function HomePage() {
       }
     };
   }, [isRegisterOpen, registerForm.city, registerForm.school]);
+
+  useEffect(() => {
+    if (testingCodeLookupTimer.current !== null) {
+      window.clearTimeout(testingCodeLookupTimer.current);
+      testingCodeLookupTimer.current = null;
+    }
+    testingCodeLookupRequestId.current += 1;
+    const requestId = testingCodeLookupRequestId.current;
+    const normalizedCode = testingCode.trim();
+
+    setTestingCodeError(null);
+    setTestingCodeOlympiad(null);
+
+    if (!normalizedCode) {
+      setTestingCodeStatus("idle");
+      return;
+    }
+
+    const olympiadId = parseOlympiadIdFromTestingCode(normalizedCode);
+    if (olympiadId === null) {
+      setTestingCodeStatus("error");
+      setTestingCodeError("Введите корректный код тестирования.");
+      return;
+    }
+
+    setTestingCodeStatus("loading");
+    testingCodeLookupTimer.current = window.setTimeout(async () => {
+      try {
+        if (cachedPublishedOlympiads.current === null) {
+          const olympiads = await publicClient.request<PublicOlympiad[]>({
+            path: "/olympiads?limit=500&offset=0",
+            method: "GET",
+            auth: false
+          });
+          cachedPublishedOlympiads.current = olympiads ?? [];
+        }
+
+        if (requestId !== testingCodeLookupRequestId.current) {
+          return;
+        }
+
+        const publishedOlympiads = cachedPublishedOlympiads.current ?? [];
+        const candidate = publishedOlympiads.find((item) => item.id === olympiadId);
+        if (!candidate) {
+          setTestingCodeStatus("error");
+          setTestingCodeError("Олимпиада по этому коду не найдена.");
+          return;
+        }
+        if (!isOlympiadAvailableNow(candidate)) {
+          setTestingCodeStatus("error");
+          setTestingCodeError("Олимпиада по этому коду сейчас недоступна.");
+          return;
+        }
+
+        setTestingCodeOlympiad(candidate);
+        setTestingCodeStatus("idle");
+      } catch {
+        if (requestId !== testingCodeLookupRequestId.current) {
+          return;
+        }
+        setTestingCodeStatus("error");
+        setTestingCodeError("Не удалось проверить код тестирования.");
+      }
+    }, 250);
+
+    return () => {
+      if (testingCodeLookupTimer.current !== null) {
+        window.clearTimeout(testingCodeLookupTimer.current);
+        testingCodeLookupTimer.current = null;
+      }
+    };
+  }, [testingCode]);
 
   const updateRegisterField = <K extends keyof RegisterFormState>(field: K, value: RegisterFormState[K]) => {
     setRegisterForm((prev) => ({
@@ -940,6 +1063,40 @@ export function HomePage() {
     }
   };
 
+  const handleTestingCodeStart = async () => {
+    setTestingCodeError(null);
+    if (status !== "authenticated" || !user) {
+      openLogin();
+      return;
+    }
+    if (user.role !== "student") {
+      setTestingCodeError("Начать олимпиаду могут только ученики.");
+      return;
+    }
+    if (!user.is_email_verified) {
+      setTestingCodeError("Подтвердите email, чтобы участвовать в олимпиаде.");
+      return;
+    }
+    if (!testingCodeOlympiad) {
+      setTestingCodeError("Введите корректный код тестирования.");
+      return;
+    }
+
+    setTestingCodeStartStatus("loading");
+    try {
+      const attempt = await authedClient.request<{ id: number }>({
+        path: "/attempts/start",
+        method: "POST",
+        body: { olympiad_id: testingCodeOlympiad.id }
+      });
+      setTestingCodeStartStatus("idle");
+      navigate(`/olympiad?attemptId=${attempt.id}`);
+    } catch (error) {
+      setTestingCodeError(getStartErrorMessage(error));
+      setTestingCodeStartStatus("error");
+    }
+  };
+
   const hasNews = newsItems.length > 0;
   const hasArticles = articleItems.length > 0;
   const navItems = [
@@ -1250,6 +1407,51 @@ export function HomePage() {
               <a href="http://www.spass-sci.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={spassSciLogo} alt="СПб АППО" />
               </a>
+            </div>
+          </div>
+        </section>
+
+        <section className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h2>Тестирование по коду</h2>
+            </div>
+            <div className="home-code-testing">
+              <div className="home-code-controls">
+                <input
+                  type="text"
+                  name="testing-code"
+                  className="home-code-input"
+                  placeholder="код тестирования"
+                  value={testingCode}
+                  onChange={(event) => setTestingCode(event.target.value)}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  aria-label="Код тестирования"
+                />
+                <Button
+                  type="button"
+                  onClick={handleTestingCodeStart}
+                  isLoading={testingCodeStartStatus === "loading"}
+                  disabled={
+                    testingCodeStatus === "loading" ||
+                    testingCodeStartStatus === "loading" ||
+                    !testingCodeOlympiad
+                  }
+                >
+                  Начать
+                </Button>
+              </div>
+              {testingCodeStatus === "loading" ? <p className="home-text">Проверяем код...</p> : null}
+              {testingCodeOlympiad ? (
+                <div className="home-code-meta">
+                  <p className="home-code-title">{testingCodeOlympiad.title}</p>
+                  <p>Класс: {testingCodeOlympiad.age_group}</p>
+                  <p>Дата проведения: {formatOlympiadDateRange(testingCodeOlympiad)}</p>
+                  <p>Длительность: {Math.round(testingCodeOlympiad.duration_sec / 60)} минут</p>
+                </div>
+              ) : null}
+              {testingCodeError ? <p className="home-error">{testingCodeError}</p> : null}
             </div>
           </div>
         </section>
