@@ -73,6 +73,30 @@ const loadMockS3 = (): Record<string, string> => {
   }
 };
 
+const parseServerDateToMs = (value?: string | null): number | null => {
+  if (!value) {
+    return null;
+  }
+  let normalized = value.trim().replace(" ", "T");
+  // Postgres can return offsets like +00 or +0000; normalize to +00:00.
+  normalized = normalized.replace(
+    /(T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?)([+-]\d{2})(\d{2})$/,
+    "$1$2:$3"
+  );
+  normalized = normalized.replace(
+    /(T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?)([+-]\d{2})$/,
+    "$1$2:00"
+  );
+  const hasTimezone = /(Z|[+-]\d{2}:\d{2})$/i.test(normalized);
+  if (hasTimezone) {
+    const timestamp = Date.parse(normalized);
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+  // Backend stores timestamps in UTC; treat naive strings as UTC too.
+  const utcTimestamp = Date.parse(`${normalized}Z`);
+  return Number.isNaN(utcTimestamp) ? null : utcTimestamp;
+};
+
 export function OlympiadPage() {
   const { user, signOut, setSession } = useAuth();
   const [searchParams] = useSearchParams();
@@ -134,7 +158,9 @@ export function OlympiadPage() {
   const saveFeedbackTimer = useRef<number | null>(null);
   const finishLockTimerRef = useRef<number | null>(null);
   const refreshTimerRef = useRef<number | null>(null);
+  const delayedAutoSubmitTimerRef = useRef<number | null>(null);
   const deadlineWarningShown = useRef(false);
+  const hadPositiveRemainingRef = useRef(false);
 
   const sortedTasks = useMemo(
     () => (attemptView ? [...attemptView.tasks].sort((a, b) => a.sort_order - b.sort_order) : []),
@@ -146,10 +172,11 @@ export function OlympiadPage() {
     if (!deadlineRaw) {
       return "";
     }
-    const deadline = new Date(deadlineRaw);
-    if (Number.isNaN(deadline.getTime())) {
+    const deadlineMs = parseServerDateToMs(deadlineRaw);
+    if (deadlineMs === null) {
       return deadlineRaw;
     }
+    const deadline = new Date(deadlineMs);
     return deadline.toLocaleString("ru-RU", {
       day: "2-digit",
       month: "2-digit",
@@ -233,15 +260,34 @@ export function OlympiadPage() {
   }, [attemptView]);
 
   useEffect(() => {
+    hadPositiveRemainingRef.current = false;
+    if (delayedAutoSubmitTimerRef.current) {
+      window.clearTimeout(delayedAutoSubmitTimerRef.current);
+      delayedAutoSubmitTimerRef.current = null;
+    }
+    setHasWarned(false);
+    setRemainingSeconds(null);
+  }, [attemptView?.attempt.id]);
+
+  useEffect(() => {
     if (!attemptView?.attempt.deadline_at) {
+      setRemainingSeconds(null);
       return;
     }
-    const deadline = new Date(attemptView.attempt.deadline_at).getTime();
-    if (Number.isNaN(deadline)) {
+    const deadline = parseServerDateToMs(attemptView.attempt.deadline_at);
+    if (deadline === null) {
+      setRemainingSeconds(null);
       return;
     }
     const tick = () => {
       const remaining = Math.max(Math.ceil((deadline - Date.now()) / 1000), 0);
+      if (remaining > 0) {
+        hadPositiveRemainingRef.current = true;
+        if (delayedAutoSubmitTimerRef.current) {
+          window.clearTimeout(delayedAutoSubmitTimerRef.current);
+          delayedAutoSubmitTimerRef.current = null;
+        }
+      }
       setRemainingSeconds(remaining);
     };
     tick();
@@ -261,9 +307,9 @@ export function OlympiadPage() {
     if (!startedAt || !deadlineAt) {
       return;
     }
-    const startedMs = new Date(startedAt).getTime();
-    const deadlineMs = new Date(deadlineAt).getTime();
-    if (Number.isNaN(startedMs) || Number.isNaN(deadlineMs)) {
+    const startedMs = parseServerDateToMs(startedAt);
+    const deadlineMs = parseServerDateToMs(deadlineAt);
+    if (startedMs === null || deadlineMs === null) {
       return;
     }
     const plannedEndMs = startedMs + attemptView.attempt.duration_sec * 1000;
@@ -314,6 +360,9 @@ export function OlympiadPage() {
       }
       if (finishLockTimerRef.current) {
         window.clearTimeout(finishLockTimerRef.current);
+      }
+      if (delayedAutoSubmitTimerRef.current) {
+        window.clearTimeout(delayedAutoSubmitTimerRef.current);
       }
     };
   }, []);
@@ -382,17 +431,54 @@ export function OlympiadPage() {
   }, [attemptView, client, imageUrls]);
 
   useEffect(() => {
-    if (remainingSeconds === null || isAuthInvalid) {
+    if (remainingSeconds === null || isAuthInvalid || !attemptView) {
+      if (delayedAutoSubmitTimerRef.current) {
+        window.clearTimeout(delayedAutoSubmitTimerRef.current);
+        delayedAutoSubmitTimerRef.current = null;
+      }
       return;
     }
     if (remainingSeconds <= 300 && remainingSeconds > 0 && !hasWarned) {
       setIsWarningOpen(true);
       setHasWarned(true);
     }
-    if (remainingSeconds === 0 && !isSubmitting && !result) {
-      void submitAttempt();
+    if (attemptView.attempt.status !== "active") {
+      if (delayedAutoSubmitTimerRef.current) {
+        window.clearTimeout(delayedAutoSubmitTimerRef.current);
+        delayedAutoSubmitTimerRef.current = null;
+      }
+      return;
     }
-  }, [remainingSeconds, hasWarned, isSubmitting, result]);
+    if (remainingSeconds !== 0) {
+      if (delayedAutoSubmitTimerRef.current) {
+        window.clearTimeout(delayedAutoSubmitTimerRef.current);
+        delayedAutoSubmitTimerRef.current = null;
+      }
+      return;
+    }
+    if (isSubmitting || result) {
+      if (delayedAutoSubmitTimerRef.current) {
+        window.clearTimeout(delayedAutoSubmitTimerRef.current);
+        delayedAutoSubmitTimerRef.current = null;
+      }
+      return;
+    }
+    if (hadPositiveRemainingRef.current) {
+      void submitAttempt();
+      return;
+    }
+    if (delayedAutoSubmitTimerRef.current) {
+      return;
+    }
+    delayedAutoSubmitTimerRef.current = window.setTimeout(() => {
+      delayedAutoSubmitTimerRef.current = null;
+      const currentAttempt = attemptStatusRef.current;
+      if (!currentAttempt || currentAttempt.status !== "active") {
+        return;
+      }
+      void submitAttempt();
+    }, 5000);
+  }, [remainingSeconds, hasWarned, isSubmitting, result, attemptView, isAuthInvalid]);
 
   const isAnswered = (taskId: number) => {
     const payload = answers[taskId];
@@ -541,7 +627,7 @@ export function OlympiadPage() {
   };
 
   const submitAttempt = async () => {
-    if (!attemptIdNumber || isAuthInvalid) {
+    if (!attemptIdNumber || isAuthInvalid || !attemptView || attemptView.attempt.status !== "active") {
       return;
     }
     setIsSubmitting(true);
