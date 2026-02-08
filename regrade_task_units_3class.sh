@@ -14,7 +14,7 @@ set -euo pipefail
 
 ID_FROM=4184
 ID_TO=6066
-TASK_IDS="63,66,67,68,71"
+TASK_IDS="63,66,67,68,71,118,119,120,121 "
 DRY_RUN="${DRY_RUN:-0}"
 
 if [[ "${DRY_RUN}" == "1" ]]; then
