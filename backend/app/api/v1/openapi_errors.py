@@ -29,6 +29,9 @@ ERROR_EXAMPLES = {
     codes.ATTEMPT_NOT_FOUND: {"error": {"code": codes.ATTEMPT_NOT_FOUND, "message": codes.ATTEMPT_NOT_FOUND}},
     codes.ATTEMPT_EXPIRED: {"error": {"code": codes.ATTEMPT_EXPIRED, "message": codes.ATTEMPT_EXPIRED}},
     codes.ATTEMPT_NOT_ACTIVE: {"error": {"code": codes.ATTEMPT_NOT_ACTIVE, "message": codes.ATTEMPT_NOT_ACTIVE}},
+    codes.ATTEMPT_SUBMIT_TOO_EARLY: {
+        "error": {"code": codes.ATTEMPT_SUBMIT_TOO_EARLY, "message": codes.ATTEMPT_SUBMIT_TOO_EARLY}
+    },
     codes.OLYMPIAD_NOT_AVAILABLE: {"error": {"code": codes.OLYMPIAD_NOT_AVAILABLE, "message": codes.OLYMPIAD_NOT_AVAILABLE}},
     codes.OLYMPIAD_AGE_GROUP_MISMATCH: {
         "error": {"code": codes.OLYMPIAD_AGE_GROUP_MISMATCH, "message": codes.OLYMPIAD_AGE_GROUP_MISMATCH}
