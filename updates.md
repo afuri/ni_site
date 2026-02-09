@@ -2962,6 +2962,23 @@ home.css
 vitest для HomePage падает из-за существующей в проекте проблемы тестового окружения (window.localStorage.getItem is not a function), не из-за новых правок.
 typecheck также падает на уже существующих ошибках в проекте; новых ошибок, связанных с этой доработкой, не появилось в выводе.
 
+
+1.8.8
+
+Backend: защита от слишком раннего пустого submit (409)
+Добавлен код ошибки attempt_submit_too_early в error_codes.py (line 32).
+Добавлен порог в конфиг ATTEMPT_MIN_SUBMIT_AGE_SEC=15 в config.py (line 76).
+В submit добавлен guard: если попытка active, прошло меньше порога и ответов нет — бросается attempt_submit_too_early в attempts.py (line 487).
+Эндпоинт submit теперь маппит это в 409 в attempts.py (line 218) и attempts.py (line 236).
+Frontend: убран fallback-автосабмит при первом remaining=0, добавлено предупреждение о времени
+Удален 5-секундный delayed auto-submit fallback.
+Если remainingSeconds===0 и ранее не было положительного остатка, попытка больше не отправляется автоматически; вместо этого открывается предупреждение с кнопкой обновления страницы.
+Ключевые места:
+состояние предупреждения: OlympiadPage.tsx (line 152)
+обновленная логика авто-submit: OlympiadPage.tsx (line 423)
+обработка backend-ошибки attempt_submit_too_early: OlympiadPage.tsx (line 629)
+модалка “Проверьте время на устройстве” + кнопка “Обновить страницу”: OlympiadPage.tsx (line 1034)
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому

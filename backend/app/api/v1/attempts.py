@@ -215,6 +215,7 @@ async def upsert_answer(
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.ATTEMPT_NOT_FOUND),
+        409: response_example(codes.ATTEMPT_SUBMIT_TOO_EARLY),
     },
 )
 async def submit_attempt(
@@ -232,6 +233,8 @@ async def submit_attempt(
             raise http_error(404, codes.ATTEMPT_NOT_FOUND)
         if code == codes.FORBIDDEN:
             raise http_error(403, codes.FORBIDDEN)
+        if code == codes.ATTEMPT_SUBMIT_TOO_EARLY:
+            raise http_error(409, codes.ATTEMPT_SUBMIT_TOO_EARLY)
         raise
 
 

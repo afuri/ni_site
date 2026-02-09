@@ -149,6 +149,7 @@ export function OlympiadPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinishLocked, setIsFinishLocked] = useState(false);
   const [isDeadlineWarningOpen, setIsDeadlineWarningOpen] = useState(false);
+  const [isTimeSyncWarningOpen, setIsTimeSyncWarningOpen] = useState(false);
   const [result, setResult] = useState<AttemptResult | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
@@ -158,7 +159,6 @@ export function OlympiadPage() {
   const saveFeedbackTimer = useRef<number | null>(null);
   const finishLockTimerRef = useRef<number | null>(null);
   const refreshTimerRef = useRef<number | null>(null);
-  const delayedAutoSubmitTimerRef = useRef<number | null>(null);
   const deadlineWarningShown = useRef(false);
   const hadPositiveRemainingRef = useRef(false);
 
@@ -261,12 +261,9 @@ export function OlympiadPage() {
 
   useEffect(() => {
     hadPositiveRemainingRef.current = false;
-    if (delayedAutoSubmitTimerRef.current) {
-      window.clearTimeout(delayedAutoSubmitTimerRef.current);
-      delayedAutoSubmitTimerRef.current = null;
-    }
     setHasWarned(false);
     setRemainingSeconds(null);
+    setIsTimeSyncWarningOpen(false);
   }, [attemptView?.attempt.id]);
 
   useEffect(() => {
@@ -283,10 +280,6 @@ export function OlympiadPage() {
       const remaining = Math.max(Math.ceil((deadline - Date.now()) / 1000), 0);
       if (remaining > 0) {
         hadPositiveRemainingRef.current = true;
-        if (delayedAutoSubmitTimerRef.current) {
-          window.clearTimeout(delayedAutoSubmitTimerRef.current);
-          delayedAutoSubmitTimerRef.current = null;
-        }
       }
       setRemainingSeconds(remaining);
     };
@@ -361,9 +354,6 @@ export function OlympiadPage() {
       if (finishLockTimerRef.current) {
         window.clearTimeout(finishLockTimerRef.current);
       }
-      if (delayedAutoSubmitTimerRef.current) {
-        window.clearTimeout(delayedAutoSubmitTimerRef.current);
-      }
     };
   }, []);
 
@@ -432,10 +422,7 @@ export function OlympiadPage() {
 
   useEffect(() => {
     if (remainingSeconds === null || isAuthInvalid || !attemptView) {
-      if (delayedAutoSubmitTimerRef.current) {
-        window.clearTimeout(delayedAutoSubmitTimerRef.current);
-        delayedAutoSubmitTimerRef.current = null;
-      }
+      setIsTimeSyncWarningOpen(false);
       return;
     }
     if (remainingSeconds <= 300 && remainingSeconds > 0 && !hasWarned) {
@@ -443,41 +430,18 @@ export function OlympiadPage() {
       setHasWarned(true);
     }
     if (attemptView.attempt.status !== "active") {
-      if (delayedAutoSubmitTimerRef.current) {
-        window.clearTimeout(delayedAutoSubmitTimerRef.current);
-        delayedAutoSubmitTimerRef.current = null;
-      }
+      setIsTimeSyncWarningOpen(false);
       return;
     }
-    if (remainingSeconds !== 0) {
-      if (delayedAutoSubmitTimerRef.current) {
-        window.clearTimeout(delayedAutoSubmitTimerRef.current);
-        delayedAutoSubmitTimerRef.current = null;
-      }
-      return;
-    }
-    if (isSubmitting || result) {
-      if (delayedAutoSubmitTimerRef.current) {
-        window.clearTimeout(delayedAutoSubmitTimerRef.current);
-        delayedAutoSubmitTimerRef.current = null;
-      }
+    if (remainingSeconds !== 0 || isSubmitting || result) {
+      setIsTimeSyncWarningOpen(false);
       return;
     }
     if (hadPositiveRemainingRef.current) {
       void submitAttempt();
       return;
     }
-    if (delayedAutoSubmitTimerRef.current) {
-      return;
-    }
-    delayedAutoSubmitTimerRef.current = window.setTimeout(() => {
-      delayedAutoSubmitTimerRef.current = null;
-      const currentAttempt = attemptStatusRef.current;
-      if (!currentAttempt || currentAttempt.status !== "active") {
-        return;
-      }
-      void submitAttempt();
-    }, 5000);
+    setIsTimeSyncWarningOpen(true);
   }, [remainingSeconds, hasWarned, isSubmitting, result, attemptView, isAuthInvalid]);
 
   const isAnswered = (taskId: number) => {
@@ -662,8 +626,19 @@ export function OlympiadPage() {
       });
       setResult(resultData);
       setIsResultOpen(true);
-    } catch {
-      setAnswerError("Не удалось завершить олимпиаду.");
+    } catch (error) {
+      const apiError =
+        error && typeof error === "object" && "code" in error
+          ? (error as { code?: string })
+          : null;
+      if (apiError?.code === "attempt_submit_too_early") {
+        setIsTimeSyncWarningOpen(true);
+        setAnswerError(
+          "Попытка только что запущена. Проверьте время на устройстве и обновите страницу."
+        );
+      } else {
+        setAnswerError("Не удалось завершить олимпиаду.");
+      }
     } finally {
       setIsSubmitting(false);
       setIsFinishOpen(false);
@@ -1053,6 +1028,23 @@ export function OlympiadPage() {
         </div>
         <div className="olympiad-modal-actions">
           <Button onClick={() => setIsWarningOpen(false)}>Понятно</Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isTimeSyncWarningOpen}
+        onClose={() => setIsTimeSyncWarningOpen(false)}
+        title="Проверьте время на устройстве"
+        className="olympiad-warning-modal"
+      >
+        <div className="olympiad-modal-body olympiad-warning-body">
+          <p>
+            Таймер не удалось синхронизировать корректно. Проверьте дату и время на устройстве и
+            обновите страницу.
+          </p>
+        </div>
+        <div className="olympiad-modal-actions olympiad-warning-actions">
+          <Button onClick={() => window.location.reload()}>Обновить страницу</Button>
         </div>
       </Modal>
 
