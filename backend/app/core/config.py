@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     ANSWERS_RL_LIMIT: int = 100
     ANSWERS_RL_WINDOW_SEC: int = 10
     SUBMIT_LOCK_TTL_SEC: int = 15
+    ATTEMPT_MIN_SUBMIT_AGE_SEC: int = 15
 
     AUTH_LOGIN_RL_LIMIT: int = 10
     AUTH_LOGIN_RL_WINDOW_SEC: int = 60

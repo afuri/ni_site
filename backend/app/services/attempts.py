@@ -484,6 +484,20 @@ class AttemptsService:
 
         now = self._now_utc()
         try:
+            min_submit_age_sec = max(int(settings.ATTEMPT_MIN_SUBMIT_AGE_SEC), 0)
+            prefetched_answers = None
+            if (
+                attempt.status == AttemptStatus.active
+                and now <= attempt.deadline_at
+                and min_submit_age_sec > 0
+                and attempt.started_at is not None
+            ):
+                elapsed_sec = (now - attempt.started_at).total_seconds()
+                if elapsed_sec < min_submit_age_sec:
+                    prefetched_answers = await self.repo.list_answers(attempt.id)
+                    if len(prefetched_answers) == 0:
+                        raise ValueError(codes.ATTEMPT_SUBMIT_TOO_EARLY)
+
             if attempt.status == AttemptStatus.active and now > attempt.deadline_at:
                 olympiad = await self._get_olympiad_cached(attempt.olympiad_id)
                 if not olympiad:
@@ -491,7 +505,11 @@ class AttemptsService:
 
                 cached = await self._get_tasks_cached(attempt.olympiad_id)
                 tasks = self._inflate_tasks(cached)
-                answers = await self.repo.list_answers(attempt.id)
+                answers = (
+                    prefetched_answers
+                    if prefetched_answers is not None
+                    else await self.repo.list_answers(attempt.id)
+                )
                 answers_by_task = {a.task_id: a for a in answers}
 
                 score_total = 0
@@ -537,7 +555,11 @@ class AttemptsService:
 
                 cached = await self._get_tasks_cached(attempt.olympiad_id)
                 tasks = self._inflate_tasks(cached)
-                answers = await self.repo.list_answers(attempt.id)
+                answers = (
+                    prefetched_answers
+                    if prefetched_answers is not None
+                    else await self.repo.list_answers(attempt.id)
+                )
                 answers_by_task = {a.task_id: a for a in answers}
 
                 score_total = 0
