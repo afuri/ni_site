@@ -1211,7 +1211,7 @@ export function HomePage() {
               </h1>
             </div>
             <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Информатика 5-6 класс <br /> доступна для прохождения <br /> с 8:00 по 21:00 (МСК)</div>
+              <div className="home-hero-panel-title">Информатика 7 класс <br /> доступна для прохождения <br /> с 8:00 по 21:00 (МСК)</div>
               {/*<Countdown targetIso={TARGET_DATE} /> */}
               { <Button onClick={() => handleStartSubject("cs")}>Принять участие</Button> }
             </div>
