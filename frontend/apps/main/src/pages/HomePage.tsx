@@ -1211,14 +1211,60 @@ export function HomePage() {
               </h1>
             </div>
             <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Информатика 7 класс <br /> доступна для прохождения <br /> с 8:00 по 21:00 (МСК)</div>
+              <div className="home-hero-panel-title">Второй тур завершен. <br /> Дипломы и результаты будут доступны <br /> в личном кабинете после 15.02.2026</div>
               {/*<Countdown targetIso={TARGET_DATE} /> */}
-              { <Button onClick={() => handleStartSubject("cs")}>Принять участие</Button> }
+              { /*<Button onClick={() => handleStartSubject("cs")}>Принять участие</Button>*/ }
             </div>
           </div>
         </section>
 
-        <section id="choose" className="home-section-alt">
+        <section className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h2>Тестирование по коду</h2>
+            </div>
+            <div className="home-code-testing">
+              <div className="home-code-controls">
+                <input
+                  type="text"
+                  name="testing-code"
+                  className="home-code-input"
+                  placeholder="код тестирования"
+                  value={testingCode}
+                  onChange={(event) => setTestingCode(event.target.value)}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  aria-label="Код тестирования"
+                />
+                <Button
+                  type="button"
+                  onClick={handleTestingCodeStart}
+                  isLoading={testingCodeStartStatus === "loading"}
+                  disabled={
+                    testingCodeStatus === "loading" ||
+                    testingCodeStartStatus === "loading" ||
+                    !testingCodeOlympiad
+                  }
+                >
+                  Начать
+                </Button>
+              </div>
+              {testingCodeStatus === "loading" ? <p className="home-text">Проверяем код...</p> : null}
+              {testingCodeOlympiad ? (
+                <div className="home-code-meta">
+                  <p className="home-code-title">{testingCodeOlympiad.title}</p>
+                  <p>Класс: {testingCodeOlympiad.age_group}</p>
+                  <p>Дата проведения: {formatOlympiadDateRange(testingCodeOlympiad)}</p>
+                  <p>Длительность: {Math.round(testingCodeOlympiad.duration_sec / 60)} минут</p>
+                </div>
+              ) : null}
+              {testingCodeError ? <p className="home-error">{testingCodeError}</p> : null}
+            </div>
+          </div>
+        </section>
+
+
+        <section id="choose" className="home-section-alt" hidden>
           <div className="container">
             <div className="home-section-heading">
               <h2>Начать олимпиаду</h2>
@@ -1407,51 +1453,6 @@ export function HomePage() {
               <a href="http://www.spass-sci.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={spassSciLogo} alt="СПб АППО" />
               </a>
-            </div>
-          </div>
-        </section>
-
-        <section className="home-section-alt">
-          <div className="container">
-            <div className="home-section-heading">
-              <h2>Тестирование по коду</h2>
-            </div>
-            <div className="home-code-testing">
-              <div className="home-code-controls">
-                <input
-                  type="text"
-                  name="testing-code"
-                  className="home-code-input"
-                  placeholder="код тестирования"
-                  value={testingCode}
-                  onChange={(event) => setTestingCode(event.target.value)}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  aria-label="Код тестирования"
-                />
-                <Button
-                  type="button"
-                  onClick={handleTestingCodeStart}
-                  isLoading={testingCodeStartStatus === "loading"}
-                  disabled={
-                    testingCodeStatus === "loading" ||
-                    testingCodeStartStatus === "loading" ||
-                    !testingCodeOlympiad
-                  }
-                >
-                  Начать
-                </Button>
-              </div>
-              {testingCodeStatus === "loading" ? <p className="home-text">Проверяем код...</p> : null}
-              {testingCodeOlympiad ? (
-                <div className="home-code-meta">
-                  <p className="home-code-title">{testingCodeOlympiad.title}</p>
-                  <p>Класс: {testingCodeOlympiad.age_group}</p>
-                  <p>Дата проведения: {formatOlympiadDateRange(testingCodeOlympiad)}</p>
-                  <p>Длительность: {Math.round(testingCodeOlympiad.duration_sec / 60)} минут</p>
-                </div>
-              ) : null}
-              {testingCodeError ? <p className="home-error">{testingCodeError}</p> : null}
             </div>
           </div>
         </section>

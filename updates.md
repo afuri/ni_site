@@ -2979,6 +2979,9 @@ Frontend: убран fallback-автосабмит при первом remaining
 обработка backend-ошибки attempt_submit_too_early: OlympiadPage.tsx (line 629)
 модалка “Проверьте время на устройстве” + кнопка “Обновить страницу”: OlympiadPage.tsx (line 1034)
 
+
+
+1.9.0 extra level
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
