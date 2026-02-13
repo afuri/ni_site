@@ -384,6 +384,7 @@ export function ResultsPage() {
       "Время начала",
       "Время завершения",
       "Длительность (мин)",
+      "ID пользователя",
       "Логин пользователя",
       "ФИО пользователя",
       "Класс",
@@ -401,6 +402,7 @@ export function ResultsPage() {
       formatTime(item.started_at),
       formatTime(item.completed_at),
       getDurationMinutes(item.started_at, item.completed_at, item.duration_sec) ?? "—",
+      item.user_id,
       item.user_login,
       item.user_full_name ?? "—",
       item.class_grade ?? "—",
@@ -472,6 +474,7 @@ export function ResultsPage() {
                 <th>Время начала</th>
                 <th>Время завершения</th>
                 <th>Длительность попытки</th>
+                <th>ID пользователя</th>
                 <th>Логин пользователя</th>
                 <th>ФИО пользователя</th>
                 <th>Класс</th>
@@ -486,11 +489,11 @@ export function ResultsPage() {
             <tbody>
               {attemptsStatus === "loading" ? (
                 <tr>
-                  <td colSpan={15}>Загрузка...</td>
+                  <td colSpan={16}>Загрузка...</td>
                 </tr>
               ) : attempts.length === 0 ? (
                 <tr>
-                  <td colSpan={15}>Нет попыток.</td>
+                  <td colSpan={16}>Нет попыток.</td>
                 </tr>
               ) : (
                 attempts.map((item, index) => (
@@ -514,6 +517,7 @@ export function ResultsPage() {
                         return minutes === null ? "—" : `${minutes} мин`;
                       })()}
                     </td>
+                    <td>{item.user_id}</td>
                     <td>{item.user_login}</td>
                     <td>{item.user_full_name ?? "—"}</td>
                     <td>{item.class_grade ?? "—"}</td>
