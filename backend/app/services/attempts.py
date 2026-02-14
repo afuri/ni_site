@@ -157,6 +157,25 @@ class AttemptsService:
                 data = json.loads(cached)
                 if "age_group" not in data:
                     raise ValueError("cache_missing_age_group")
+                if "results_released" not in data:
+                    olympiad = await self.repo.get_olympiad(olympiad_id)
+                    data["results_released"] = bool(
+                        getattr(olympiad, "results_released", False)
+                    )
+                    start = time.perf_counter()
+                    try:
+                        await redis.set(
+                            cache_key,
+                            json.dumps(data),
+                            ex=settings.OLYMPIAD_TASKS_CACHE_TTL_SEC,
+                        )
+                    except Exception:
+                        pass
+                    REDIS_OP_LATENCY_SECONDS.labels(op="set", cache="olympiad_meta").observe(
+                        time.perf_counter() - start
+                    )
+                else:
+                    data["results_released"] = bool(data.get("results_released"))
                 data["available_from"] = datetime.fromisoformat(data["available_from"])
                 data["available_to"] = datetime.fromisoformat(data["available_to"])
                 return SimpleNamespace(**data)
@@ -179,6 +198,7 @@ class AttemptsService:
             "duration_sec": olympiad.duration_sec,
             "pass_percent": olympiad.pass_percent,
             "attempts_limit": olympiad.attempts_limit,
+            "results_released": olympiad.results_released,
         }
         start = time.perf_counter()
         try:
