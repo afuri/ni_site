@@ -123,10 +123,12 @@ type AttemptRow = {
   user_id: number;
   user_login: string;
   user_full_name: string | null;
+  gender: string | null;
   class_grade: number | null;
   city: string | null;
   school: string | null;
-  linked_teachers: string | null;
+  teachers: string | null;
+  linked_teachers?: string | null;
   started_at: string;
   completed_at: string | null;
   duration_sec: number;
@@ -195,6 +197,19 @@ const formatDateOnly = (value?: string | null) => {
     return value;
   }
   return date.toLocaleDateString("ru-RU");
+};
+
+const formatGender = (value?: string | null) => {
+  if (!value) {
+    return "—";
+  }
+  if (value === "male") {
+    return "Мужской";
+  }
+  if (value === "female") {
+    return "Женский";
+  }
+  return value;
 };
 
 const getDurationMinutes = (startedAt?: string | null, completedAt?: string | null, fallbackSec?: number | null) => {
@@ -387,10 +402,11 @@ export function ResultsPage() {
       "ID пользователя",
       "Логин пользователя",
       "ФИО пользователя",
+      "Пол",
       "Класс",
       "Город",
       "Школа",
-      "Привязанные учителя",
+      "Учителя пользователя",
       "Баллы",
       "Проценты",
       "Диплом"
@@ -405,10 +421,11 @@ export function ResultsPage() {
       item.user_id,
       item.user_login,
       item.user_full_name ?? "—",
+      formatGender(item.gender),
       item.class_grade ?? "—",
       item.city ?? "—",
       item.school ?? "—",
-      item.linked_teachers ?? "—",
+      item.teachers ?? item.linked_teachers ?? "—",
       `${item.score_total}/${item.score_max}`,
       `${item.percent}%`,
       `${API_BASE_URL}/attempts/${item.id}/diploma`
@@ -477,10 +494,11 @@ export function ResultsPage() {
                 <th>ID пользователя</th>
                 <th>Логин пользователя</th>
                 <th>ФИО пользователя</th>
+                <th>Пол</th>
                 <th>Класс</th>
                 <th>Город</th>
                 <th>Школа</th>
-                <th>Привязанные учителя</th>
+                <th>Учителя пользователя</th>
                 <th>Баллы</th>
                 <th>Проценты</th>
                 <th>Диплом</th>
@@ -489,11 +507,11 @@ export function ResultsPage() {
             <tbody>
               {attemptsStatus === "loading" ? (
                 <tr>
-                  <td colSpan={16}>Загрузка...</td>
+                  <td colSpan={17}>Загрузка...</td>
                 </tr>
               ) : attempts.length === 0 ? (
                 <tr>
-                  <td colSpan={16}>Нет попыток.</td>
+                  <td colSpan={17}>Нет попыток.</td>
                 </tr>
               ) : (
                 attempts.map((item, index) => (
@@ -520,10 +538,11 @@ export function ResultsPage() {
                     <td>{item.user_id}</td>
                     <td>{item.user_login}</td>
                     <td>{item.user_full_name ?? "—"}</td>
+                    <td>{formatGender(item.gender)}</td>
                     <td>{item.class_grade ?? "—"}</td>
                     <td>{item.city ?? "—"}</td>
                     <td>{item.school ?? "—"}</td>
-                    <td>{item.linked_teachers ?? "—"}</td>
+                    <td>{item.teachers ?? item.linked_teachers ?? "—"}</td>
                     <td>
                       {item.score_total} / {item.score_max}
                     </td>

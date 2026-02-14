@@ -11,9 +11,11 @@ class AdminOlympiadAttemptRow(BaseModel):
     user_id: int
     user_login: str
     user_full_name: Optional[str] = None
+    gender: Optional[str] = None
     class_grade: Optional[int] = None
     city: Optional[str] = None
     school: Optional[str] = None
+    teachers: Optional[str] = None
     linked_teachers: Optional[str] = None
     started_at: datetime
     completed_at: Optional[datetime] = None

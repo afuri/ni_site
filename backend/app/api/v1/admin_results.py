@@ -48,13 +48,27 @@ async def list_olympiad_attempts(
     result = []
     for attempt, user in rows:
         full_name = " ".join(filter(None, [user.surname, user.name, user.father_name])) or None
+        gender = user.gender.value if user.gender else None
+
         links = await links_repo.list_links_with_users_for_student(user.id, TeacherStudentStatus.confirmed)
-        teachers = []
+        teachers: list[str] = []
         for _link, teacher_user, _student_user in links:
             teacher_name = " ".join(filter(None, [teacher_user.surname, teacher_user.name, teacher_user.father_name]))
             if teacher_name:
                 teachers.append(teacher_name)
-        linked_teachers = "; ".join(teachers) if teachers else None
+
+        for teacher in user.manual_teachers or []:
+            if isinstance(teacher, dict):
+                manual_name = str(teacher.get("full_name") or "").strip()
+                if manual_name:
+                    teachers.append(manual_name)
+
+        deduped_teachers: list[str] = []
+        for teacher_name in teachers:
+            if teacher_name not in deduped_teachers:
+                deduped_teachers.append(teacher_name)
+        teachers_value = "; ".join(deduped_teachers) if deduped_teachers else None
+
         score_max = attempt.score_max or 0
         percent = int(round(attempt.score_total / score_max * 100)) if score_max > 0 else 0
         result.append(
@@ -63,10 +77,12 @@ async def list_olympiad_attempts(
                 "user_id": attempt.user_id,
                 "user_login": user.login,
                 "user_full_name": full_name,
+                "gender": gender,
                 "class_grade": user.class_grade,
                 "city": user.city,
                 "school": user.school,
-                "linked_teachers": linked_teachers,
+                "teachers": teachers_value,
+                "linked_teachers": teachers_value,
                 "started_at": attempt.started_at,
                 "completed_at": attempt.graded_at,
                 "duration_sec": attempt.duration_sec,
