@@ -2,18 +2,22 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Response
+from fastapi.responses import RedirectResponse
 from app.core.errors import http_error
 from app.core.rate_limit import token_bucket_rate_limit
 from app.core.metrics import RATE_LIMIT_BLOCKS
 from app.core.redis import get_redis
 from app.core.config import settings
 from app.core import error_codes as codes
+from app.core.storage import public_url_for_key, presign_get
 
 
 from app.core.deps import get_db, get_read_db
 from app.core.deps_auth import require_role, get_current_user
 from app.models.user import UserRole, User
 from app.repos.attempts import AttemptsRepo
+from app.repos.teacher_students import TeacherStudentsRepo
+from app.models.teacher_student import TeacherStudentStatus
 from app.services.attempts import AttemptsService
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import (
@@ -265,6 +269,51 @@ async def get_attempt_result(
         if code == codes.FORBIDDEN:
             raise http_error(403, codes.FORBIDDEN)
         raise
+
+
+@router.get(
+    "/{attempt_id}/diploma",
+    tags=["attempts"],
+    description="Скачать диплом по попытке",
+    responses={
+        307: {"description": "Temporary redirect to diploma file"},
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.ATTEMPT_NOT_FOUND),
+        503: response_example(codes.STORAGE_UNAVAILABLE),
+    },
+)
+async def get_attempt_diploma(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_read_db),
+    user: User = Depends(get_current_user),
+):
+    repo = AttemptsRepo(db)
+    attempt = await repo.get_attempt(attempt_id)
+    if not attempt:
+        raise http_error(404, codes.ATTEMPT_NOT_FOUND)
+
+    if user.role == UserRole.student:
+        if attempt.user_id != user.id:
+            raise http_error(403, codes.FORBIDDEN)
+    elif user.role == UserRole.teacher:
+        link_repo = TeacherStudentsRepo(db)
+        link = await link_repo.get_link(user.id, attempt.user_id)
+        if not link or link.status != TeacherStudentStatus.confirmed:
+            raise http_error(403, codes.FORBIDDEN)
+    elif user.role != UserRole.admin:
+        raise http_error(403, codes.FORBIDDEN)
+
+    key = f"attempt_{attempt_id}.jpg"
+    public_url = public_url_for_key(key)
+    if public_url:
+        return RedirectResponse(url=public_url, status_code=307)
+
+    try:
+        signed_url = presign_get(key=key)
+    except RuntimeError:
+        raise http_error(503, codes.STORAGE_UNAVAILABLE)
+    return RedirectResponse(url=signed_url, status_code=307)
 
 
 @router.get(
