@@ -50,6 +50,7 @@ class AttemptTaskView(BaseModel):
     sort_order: int
     max_score: int
     current_answer: Optional[AttemptAnswerRead] = None
+    is_correct: Optional[bool] = None
 
 
 class AttemptView(BaseModel):

@@ -78,6 +78,7 @@ type AttemptTask = {
   payload: { image_position?: "before" | "after"; options?: { id: string; text: string }[] };
   current_answer?: unknown;
   answer_payload?: unknown;
+  is_correct?: boolean | null;
 };
 
 type AttemptView = {
@@ -1852,8 +1853,22 @@ export function CabinetPage() {
                     {imageUrl && imagePosition !== "before" ? (
                       <img src={imageUrl} alt="Иллюстрация" className="cabinet-attempt-image" />
                     ) : null}
-                    <div className="cabinet-attempt-answer">
+                    <div
+                      className={[
+                        "cabinet-attempt-answer",
+                        task.is_correct === true ? "is-correct" : "",
+                        task.is_correct === false ? "is-wrong" : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
                       <span>Ответ:</span>
+                      {task.is_correct === true ? (
+                        <span className="cabinet-answer-status">Правильно</span>
+                      ) : null}
+                      {task.is_correct === false ? (
+                        <span className="cabinet-answer-status">Неправильно</span>
+                      ) : null}
                       <div className="cabinet-answer">{formatAnswer(task)}</div>
                     </div>
                   </div>
