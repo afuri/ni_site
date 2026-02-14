@@ -218,6 +218,7 @@ export function CabinetPage() {
   const [attemptViewStatus, setAttemptViewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [attemptViewError, setAttemptViewError] = useState<string | null>(null);
   const [attemptImageUrls, setAttemptImageUrls] = useState<Record<string, string>>({});
+  const [diplomaDownloadAttemptId, setDiplomaDownloadAttemptId] = useState<number | null>(null);
   const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeAttemptPrompt, setActiveAttemptPrompt] = useState<AttemptResult | null>(null);
@@ -927,6 +928,53 @@ export function CabinetPage() {
     }
   };
 
+  const handleDiplomaDownload = async (attempt: AttemptResult) => {
+    if (!attempt.results_released) {
+      setPendingResultsMessage("Диплом в процессе изготовления.");
+      return;
+    }
+
+    const attemptId = attempt.attempt_id;
+    setDiplomaDownloadAttemptId(attemptId);
+
+    try {
+      const headers: Record<string, string> = {};
+      if (tokens?.access_token) {
+        headers.Authorization = `Bearer ${tokens.access_token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/diploma`, {
+        method: "GET",
+        headers,
+        credentials: "include"
+      });
+
+      if (response.status === 404) {
+        setPendingResultsMessage("Диплом не найден. Обратитесь с службу технической поддержки");
+        return;
+      }
+
+      if (!response.ok) {
+        setPendingResultsMessage("Не удалось скачать диплом. Попробуйте позже.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `attempt_${attemptId}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch {
+      setPendingResultsMessage("Не удалось скачать диплом. Попробуйте позже.");
+    } finally {
+      setDiplomaDownloadAttemptId(null);
+    }
+  };
+
   const formatDate = (value: string | null) => {
     if (!value) {
       return "—";
@@ -1196,14 +1244,16 @@ export function CabinetPage() {
                         </td>
                         <td>
                           {item.results_released ? (
-                            <a
+                            <button
+                              type="button"
                               className="cabinet-link"
-                              href={`${API_BASE_URL}/attempts/${item.attempt_id}/diploma`}
-                              target="_blank"
-                              rel="noreferrer"
+                              disabled={diplomaDownloadAttemptId === item.attempt_id}
+                              onClick={() => {
+                                void handleDiplomaDownload(item);
+                              }}
                             >
-                              Диплом
-                            </a>
+                              {diplomaDownloadAttemptId === item.attempt_id ? "Загрузка..." : "Диплом"}
+                            </button>
                           ) : (
                             <button
                               type="button"
