@@ -936,12 +936,17 @@ export function CabinetPage() {
 
     const attemptId = attempt.attempt_id;
     setDiplomaDownloadAttemptId(attemptId);
-    const diplomaWindow = window.open("", "_blank", "noopener,noreferrer");
+    const diplomaWindow = window.open("", "_blank");
 
     try {
       if (!diplomaWindow) {
         setPendingResultsMessage("Браузер заблокировал новое окно. Разрешите всплывающие окна для сайта.");
         return;
+      }
+      try {
+        diplomaWindow.opener = null;
+      } catch {
+        // ignore cross-browser opener assignment issues
       }
 
       const headers: Record<string, string> = {};
