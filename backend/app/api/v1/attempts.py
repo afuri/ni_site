@@ -117,9 +117,13 @@ async def get_attempt_view(
             raise http_error(403, codes.FORBIDDEN)
         raise
 
+    grades = await service.repo.list_grades(attempt.id)
+    grades_by_task = {g.task_id: g for g in grades}
+
     tasks_view = []
     for olymp_task, task in tasks:
         a = answers_by_task.get(task.id)
+        grade = grades_by_task.get(task.id)
         tasks_view.append(
             {
                 "task_id": task.id,
@@ -133,6 +137,7 @@ async def get_attempt_view(
                 "current_answer": None
                 if a is None
                 else {"task_id": a.task_id, "answer_payload": a.answer_payload, "updated_at": a.updated_at},
+                "is_correct": (None if not olympiad.results_released or grade is None else grade.is_correct),
             }
         )
 

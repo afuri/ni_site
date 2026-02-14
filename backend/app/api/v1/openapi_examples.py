@@ -128,6 +128,7 @@ EXAMPLE_ATTEMPT_VIEW: dict = {
             "sort_order": 1,
             "max_score": 1,
             "current_answer": None,
+            "is_correct": True,
         }
     ],
 }

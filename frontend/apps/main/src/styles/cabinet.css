@@ -555,9 +555,41 @@
   color: rgba(31, 59, 99, 0.9);
 }
 
+.cabinet-attempt-answer.is-correct {
+  color: #166534;
+}
+
+.cabinet-attempt-answer.is-wrong {
+  color: #b91c1c;
+}
+
+.cabinet-answer-status {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .cabinet-answer {
   margin-top: 4px;
   color: rgba(31, 59, 99, 0.7);
+}
+
+.cabinet-attempt-answer.is-correct .cabinet-answer {
+  color: #166534;
+}
+
+.cabinet-attempt-answer.is-wrong .cabinet-answer {
+  color: #b91c1c;
+}
+
+.cabinet-attempt-answer.is-correct .cabinet-answer-chip {
+  background: rgba(22, 101, 52, 0.12);
+  color: #166534;
+}
+
+.cabinet-attempt-answer.is-wrong .cabinet-answer-chip {
+  background: rgba(185, 28, 28, 0.12);
+  color: #b91c1c;
 }
 
 .cabinet-answer-chips {
