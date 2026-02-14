@@ -936,8 +936,14 @@ export function CabinetPage() {
 
     const attemptId = attempt.attempt_id;
     setDiplomaDownloadAttemptId(attemptId);
+    const diplomaWindow = window.open("", "_blank", "noopener,noreferrer");
 
     try {
+      if (!diplomaWindow) {
+        setPendingResultsMessage("Браузер заблокировал новое окно. Разрешите всплывающие окна для сайта.");
+        return;
+      }
+
       const headers: Record<string, string> = {};
       if (tokens?.access_token) {
         headers.Authorization = `Bearer ${tokens.access_token}`;
@@ -950,25 +956,25 @@ export function CabinetPage() {
       });
 
       if (response.status === 404) {
+        diplomaWindow.close();
         setPendingResultsMessage("Диплом не найден. Обратитесь с службу технической поддержки");
         return;
       }
 
       if (!response.ok) {
+        diplomaWindow.close();
         setPendingResultsMessage("Не удалось скачать диплом. Попробуйте позже.");
         return;
       }
 
       const blob = await response.blob();
       const objectUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = `attempt_${attemptId}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(objectUrl);
+      diplomaWindow.location.href = objectUrl;
+      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 120000);
     } catch {
+      if (diplomaWindow && !diplomaWindow.closed) {
+        diplomaWindow.close();
+      }
       setPendingResultsMessage("Не удалось скачать диплом. Попробуйте позже.");
     } finally {
       setDiplomaDownloadAttemptId(null);
