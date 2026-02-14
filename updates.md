@@ -3001,7 +3001,64 @@ ResultsPage.tsx
 Поправлен colSpan с 15 на 16 для состояний Загрузка... и Нет попыток.
 Тот же столбец добавлен в CSV-экспорт (заголовок и значение).
 
+1.9.2 update_users_geo
 
+Сделал скрипт в корне проекта:
+bulk_update_user_geo.sh
+
+Что умеет:
+
+--dry-run (по умолчанию): загрузка + проверки + симуляция обновления + ROLLBACK
+--apply: реальные обновления + COMMIT
+--csv <path>: путь к CSV
+--delimiter ';'|',': разделитель
+Рекомендация по разделителю:
+
+Для CSV из Excel (русская локаль) используй ; (это дефолт в скрипте).
+Для «технического» CSV чаще ,.
+Запуск:
+
+chmod +x /opt/ni_site/bulk_update_user_geo.sh
+cd /opt/ni_site
+
+# Проверка без изменений
+./bulk_update_user_geo.sh --dry-run --csv ./user_geo.csv --delimiter ';'
+
+# Применение
+./bulk_update_user_geo.sh --apply --csv ./user_geo.csv --delimiter ';'
+Ожидаемый header в CSV:
+
+user_id,country,city,school (или с ;, если такой delimiter)
+пустые значения будут записаны как NULL
+при дублировании user_id скрипт остановится с ошибкой.
+
+Проверил и поправил скрипт. Сейчас он готов для запуска на сервере и по поведению согласован с regrade-скриптами.
+
+Изменён файл:
+
+bulk_update_user_geo.sh
+Что исправил:
+
+Убрал psql \if-ветвление, сделал явные shell-ветки --dry-run/--apply (надёжнее на сервере).
+Добавил совместимость с вашим стилем: bulk_update_user_geo.sh.
+Проверил синтаксис: bash -n проходит.
+Сохранил транзакционность: в dry-run всегда ROLLBACK, в apply COMMIT.
+Проверки в SQL оставил: дубли user_id вызывают ошибку и остановку.
+Как запускать на сервере:
+
+cd /opt/ni_site
+chmod +x ./bulk_update_user_geo.sh
+
+# Проверка без изменений
+DRY_RUN=1 ./bulk_update_user_geo.sh --csv ./user_geo.csv --delimiter ';'
+
+# Применение
+./bulk_update_user_geo.sh --apply --csv ./user_geo.csv --delimiter ';'
+Какой разделитель использовать:
+
+Если CSV из Excel (русская локаль) — обычно ; (рекомендую его).
+Если CSV сформирован скриптом/сервисом — часто ,.
+Скрипт поддерживает оба: --delimiter ';' или --delimiter ','.
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
