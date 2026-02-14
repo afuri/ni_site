@@ -121,9 +121,9 @@ CREATE TEMP TABLE stg_user_geo (
   school text
 );
 
-\\copy stg_user_geo(user_id, country, city, school)
-  FROM '${CONTAINER_CSV}'
-  WITH (FORMAT csv, HEADER true, DELIMITER '${DELIMITER}', ENCODING 'UTF8');
+COPY stg_user_geo(user_id, country, city, school)
+FROM '${CONTAINER_CSV}'
+WITH (FORMAT csv, HEADER true, DELIMITER '${DELIMITER}', ENCODING 'UTF8');
 
 UPDATE stg_user_geo
 SET country = NULLIF(BTRIM(country), ''),
