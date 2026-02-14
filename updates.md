@@ -3059,6 +3059,55 @@ DRY_RUN=1 ./bulk_update_user_geo.sh --csv ./user_geo.csv --delimiter ';'
 Если CSV из Excel (русская локаль) — обычно ; (рекомендую его).
 Если CSV сформирован скриптом/сервисом — часто ,.
 Скрипт поддерживает оба: --delimiter ';' или --delimiter ','.
+
+
+1.10.1 Загружаем дипломы
+
+Сделано.
+
+Изменения:
+1. Скрипт массовой загрузки дипломов в MinIO добавлен:  
+`/Users/alexfedosov/Documents/ni_site/upload_diplomas_minio.py`  
+Что делает:
+- рекурсивно ищет `attempt_<id>.jpg|jpeg` в `SOURCE_DIR` (по умолчанию `.`),
+- проверяет, что `attempt_id` существует в БД (`docker compose exec -T db psql ...`),
+- загружает в bucket ключом `attempt_<id>.jpg` (корень bucket),
+- поддерживает `DRY_RUN=1`, `OVERWRITE=1`,
+- пишет отчёт `diploma_upload_report_YYYYMMDD_HHMMSS.csv`.
+
+2. В кабинете пользователя добавил модалку при отсутствии диплома (404):  
+текст: **"Диплом не найден. Обратитесь с службу технической поддержки"**  
+Файл:
+- `/Users/alexfedosov/Documents/ni_site/frontend/apps/main/src/pages/CabinetPage.tsx:931`
+- `/Users/alexfedosov/Documents/ni_site/frontend/apps/main/src/pages/CabinetPage.tsx:1246`
+
+Также кнопка «Диплом» теперь делает контролируемую загрузку и показывает `Загрузка...` во время запроса.
+
+Проверка:
+- `vite build` для `@ni/app-main` проходит.
+- `typecheck` в этом проекте падает по старым несвязанным ошибкам тестов/типов (не из этой правки).
+
+Как запускать загрузку на сервере:
+```bash
+cd /opt/ni_site
+python3 -m pip install boto3
+chmod +x ./upload_diplomas_minio.py
+
+# Сухой прогон
+SOURCE_DIR=/opt/ni_site/diplomas DRY_RUN=1 ./upload_diplomas_minio.py
+
+# Реальная загрузка
+SOURCE_DIR=/opt/ni_site/diplomas DRY_RUN=0 OVERWRITE=0 ./upload_diplomas_minio.py
+```
+
+Применение фронта после деплоя кода:
+```bash
+cd /opt/ni_site/frontend
+npm install
+npm run build:app
+rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-integral/
+```
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
