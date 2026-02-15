@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps_auth import require_role
 from app.core.deps import get_db
 from app.models.attempt import Attempt, AttemptStatus
+from app.models.audit_log import AuditLog
 from app.models.user import UserRole
 from app.schemas.admin_stats import StartedAttemptsSeries, StartedAttemptsSeriesPoint, ActiveAttemptsStats
 
@@ -32,11 +33,22 @@ async def get_attempts_stats(db: AsyncSession = Depends(get_db)) -> ActiveAttemp
         .select_from(Attempt)
         .where(Attempt.status == AttemptStatus.active, Attempt.deadline_at > now)
     )
+    diploma_downloads_total = await db.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(
+            AuditLog.method == "GET",
+            AuditLog.path.like("/api/v1/attempts/%/diploma"),
+            AuditLog.status_code >= 200,
+            AuditLog.status_code < 400,
+        )
+    )
 
     return ActiveAttemptsStats(
         active_attempts=int(active_attempts or 0),
         active_attempts_open=int(active_attempts_open or 0),
         active_users_open=int(active_users_open or 0),
+        diploma_downloads_total=int(diploma_downloads_total or 0),
         updated_at=now,
     )
 
