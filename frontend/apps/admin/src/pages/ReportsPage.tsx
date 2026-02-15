@@ -26,6 +26,7 @@ type AttemptsStats = {
   active_attempts: number;
   active_attempts_open: number;
   active_users_open: number;
+  diploma_downloads_total: number;
   updated_at: string;
 };
 
@@ -198,6 +199,10 @@ export function ReportsPage() {
         <div className="admin-stat-card">
           <span className="admin-stat-label">Уникальных пользователей</span>
           <strong className="admin-stat-value">{stats?.active_users_open ?? "—"}</strong>
+        </div>
+        <div className="admin-stat-card">
+          <span className="admin-stat-label">Скачано дипломов</span>
+          <strong className="admin-stat-value">{stats?.diploma_downloads_total ?? "—"}</strong>
         </div>
       </div>
       <div className="admin-section" style={{ marginTop: "24px" }}>
