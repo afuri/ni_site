@@ -1843,6 +1843,7 @@ export function CabinetPage() {
                     <h4>
                       Задание {index + 1}. {task.title}
                     </h4>
+                    <div className="cabinet-task-points">Баллы за задание: {task.max_score}</div>
                     {imageUrl && imagePosition === "before" ? (
                       <img src={imageUrl} alt="Иллюстрация" className="cabinet-attempt-image" />
                     ) : null}
