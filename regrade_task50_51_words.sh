@@ -115,6 +115,9 @@ if [[ "${DRY_RUN}" == "1" ]]; then
   docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
 ${SQL_COMMON_CTE}
 SELECT
+  (SELECT COUNT(*) FROM final_match) AS total_matched_rows_all_tasks,
+  (SELECT COUNT(DISTINCT attempt_id) FROM final_match) AS total_matched_attempts_all_tasks,
+  (SELECT COUNT(*) FROM to_fix_attempts) AS total_attempts_requiring_fix,
   (SELECT COUNT(*) FROM candidates) AS rows_in_scope,
   (SELECT COUNT(*) FROM final_match) AS matched_rows,
   (SELECT COUNT(DISTINCT attempt_id) FROM final_match) AS affected_attempts,
@@ -205,4 +208,12 @@ SELECT COUNT(*) AS total_attempts_fixed
 FROM tmp_regrade_fix_attempts;
 
 COMMIT;
+SQL
+
+docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
+${SQL_COMMON_CTE}
+SELECT
+  (SELECT COUNT(*) FROM final_match) AS total_matched_rows_all_tasks,
+  (SELECT COUNT(DISTINCT attempt_id) FROM final_match) AS total_matched_attempts_all_tasks,
+  (SELECT COUNT(*) FROM to_fix_attempts) AS total_attempts_requiring_fix;
 SQL
