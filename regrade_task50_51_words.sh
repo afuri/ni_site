@@ -128,7 +128,7 @@ generate_csv_reports() {
   mkdir -p "${REPORT_DIR}"
 
   docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL > "${SUMMARY_CSV}"
-\copy (
+COPY (
 ${SQL_COMMON_CTE}
 SELECT
   (SELECT COUNT(*) FROM final_match) AS total_matched_rows_all_tasks,
@@ -139,20 +139,20 @@ SELECT
   (SELECT COUNT(DISTINCT attempt_id) FROM final_match) AS affected_attempts,
   (SELECT COUNT(*) FROM to_fix_rows) AS would_change_rows,
   (SELECT COUNT(*) FROM to_fix_attempts) AS would_change_attempts
-) TO STDOUT WITH CSV HEADER
+) TO STDOUT WITH CSV HEADER;
 SQL
 
   docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL > "${ATTEMPTS_CSV}"
-\copy (
+COPY (
 ${SQL_COMMON_CTE}
 SELECT attempt_id
 FROM to_fix_attempts
 ORDER BY attempt_id
-) TO STDOUT WITH CSV HEADER
+) TO STDOUT WITH CSV HEADER;
 SQL
 
   docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL > "${DETAILS_CSV}"
-\copy (
+COPY (
 ${SQL_COMMON_CTE}
 SELECT
   attempt_id,
@@ -165,7 +165,7 @@ SELECT
   (numeric_match OR word_match) AS is_final_match
 FROM matched
 ORDER BY attempt_id, task_id
-) TO STDOUT WITH CSV HEADER
+) TO STDOUT WITH CSV HEADER;
 SQL
 }
 
