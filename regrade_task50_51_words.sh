@@ -8,10 +8,21 @@ set -euo pipefail
 #  2) Optional word match (case-insensitive) for specific task ids.
 #
 # Usage:
-#   DRY_RUN=1 ./regrade_task50_51_words.sh   # preview only
-#   ./regrade_task50_51_words.sh             # apply changes
+#   DRY_RUN=1 ./regrade_task50_51_words.sh                  # preview only
+#   ./regrade_task50_51_words.sh                            # apply changes
+#   REPORT_DIR=./reports ./regrade_task50_51_words.sh       # custom report dir
 
 DRY_RUN="${DRY_RUN:-0}"
+REPORT_DIR="${REPORT_DIR:-./reports}"
+RUN_TS="$(date +%F_%H-%M-%S)"
+MODE_TAG="apply"
+if [[ "${DRY_RUN}" == "1" ]]; then
+  MODE_TAG="dry_run"
+fi
+REPORT_PREFIX="${REPORT_DIR}/regrade_task50_51_${MODE_TAG}_${RUN_TS}"
+SUMMARY_CSV="${REPORT_PREFIX}_summary.csv"
+ATTEMPTS_CSV="${REPORT_PREFIX}_attempts_to_fix.csv"
+DETAILS_CSV="${REPORT_PREFIX}_details.csv"
 
 SQL_COMMON_CTE=$(cat <<'SQL'
 WITH cfg(task_id, word_regex) AS (
@@ -63,7 +74,7 @@ candidates AS (
 parsed AS (
   SELECT
     c.*,
-    regexp_match(COALESCE(c.expected_text, ''), '([+-]?\\d+(?:[.,]\\d+)?)') AS exp_num_match
+    regexp_match(COALESCE(c.expected_text, ''), '([+-]?[0-9]+(?:[.,][0-9]+)?)') AS exp_num_match
   FROM candidates c
 ),
 matched AS (
@@ -113,8 +124,11 @@ to_fix_attempts AS (
 SQL
 )
 
-if [[ "${DRY_RUN}" == "1" ]]; then
-  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
+generate_csv_reports() {
+  mkdir -p "${REPORT_DIR}"
+
+  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL > "${SUMMARY_CSV}"
+\copy (
 ${SQL_COMMON_CTE}
 SELECT
   (SELECT COUNT(*) FROM final_match) AS total_matched_rows_all_tasks,
@@ -124,10 +138,21 @@ SELECT
   (SELECT COUNT(*) FROM final_match) AS matched_rows,
   (SELECT COUNT(DISTINCT attempt_id) FROM final_match) AS affected_attempts,
   (SELECT COUNT(*) FROM to_fix_rows) AS would_change_rows,
-  (SELECT COUNT(*) FROM to_fix_attempts) AS would_change_attempts;
+  (SELECT COUNT(*) FROM to_fix_attempts) AS would_change_attempts
+) TO STDOUT WITH CSV HEADER
 SQL
 
-  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
+  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL > "${ATTEMPTS_CSV}"
+\copy (
+${SQL_COMMON_CTE}
+SELECT attempt_id
+FROM to_fix_attempts
+ORDER BY attempt_id
+) TO STDOUT WITH CSV HEADER
+SQL
+
+  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL > "${DETAILS_CSV}"
+\copy (
 ${SQL_COMMON_CTE}
 SELECT
   attempt_id,
@@ -140,21 +165,18 @@ SELECT
   (numeric_match OR word_match) AS is_final_match
 FROM matched
 ORDER BY attempt_id, task_id
-LIMIT 500;
+) TO STDOUT WITH CSV HEADER
 SQL
+}
 
-  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
-${SQL_COMMON_CTE}
-SELECT attempt_id
-FROM to_fix_attempts
-ORDER BY attempt_id;
-SQL
+generate_csv_reports
 
-  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
-${SQL_COMMON_CTE}
-SELECT COUNT(*) AS total_attempts_to_fix
-FROM to_fix_attempts;
-SQL
+echo "Report saved:"
+echo "  ${SUMMARY_CSV}"
+echo "  ${ATTEMPTS_CSV}"
+echo "  ${DETAILS_CSV}"
+
+if [[ "${DRY_RUN}" == "1" ]]; then
   exit 0
 fi
 
@@ -226,12 +248,4 @@ SELECT COUNT(*) AS total_attempts_fixed
 FROM tmp_regrade_fix_attempts;
 
 COMMIT;
-SQL
-
-docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
-${SQL_COMMON_CTE}
-SELECT
-  (SELECT COUNT(*) FROM final_match) AS total_matched_rows_all_tasks,
-  (SELECT COUNT(DISTINCT attempt_id) FROM final_match) AS total_matched_attempts_all_tasks,
-  (SELECT COUNT(*) FROM to_fix_attempts) AS total_attempts_requiring_fix;
 SQL
