@@ -3108,6 +3108,42 @@ npm run build:app
 rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-integral/
 ```
 
+
+1.11 score task view attempt
+
+Сделал.
+
+Добавил в просмотр попытки в личном кабинете для каждого задания строку:
+Баллы за задание: <max_score>
+
+Изменены файлы:
+
+CabinetPage.tsx
+cabinet.css
+
+Готово. Добавил скрипт:
+
+regrade_task50_51_words.sh
+
+Что делает:
+
+Берёт попытки (submitted, expired) только тех олимпиад, где есть оба задания 50 и 51.
+Считает ответ правильным:
+task_id=51: три (без учета регистра) или число 3 (в т.ч. 3.0, 3,0) с опциональной единицей (3 кг и т.п.).
+task_id=50: четыре (без учета регистра) или число 4 (аналогично, с опциональной единицей).
+Проставляет/обновляет attempt_task_grades как правильные.
+Пересчитывает итог по попытке: score_total, score_max, passed, graded_at.
+Как запускать:
+
+cd /opt/ni_site
+chmod +x regrade_task50_51_words.sh
+
+# Предпросмотр
+DRY_RUN=1 ./regrade_task50_51_words.sh
+
+# Применить
+./regrade_task50_51_words.sh
+
 ---
 
 Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
