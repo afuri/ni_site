@@ -70,6 +70,8 @@ matched AS (
   SELECT
     p.*,
     CASE
+      WHEN p.task_id = 50 THEN p.answer_text ~* '(^|[^0-9])4(?:[.,]0+)?([^0-9]|$)'
+      WHEN p.task_id = 51 THEN p.answer_text ~* '(^|[^0-9])3(?:[.,]0+)?([^0-9]|$)'
       WHEN p.exp_num_match IS NULL THEN FALSE
       ELSE (
         p.answer_text ~* (
@@ -123,6 +125,22 @@ SELECT
   (SELECT COUNT(DISTINCT attempt_id) FROM final_match) AS affected_attempts,
   (SELECT COUNT(*) FROM to_fix_rows) AS would_change_rows,
   (SELECT COUNT(*) FROM to_fix_attempts) AS would_change_attempts;
+SQL
+
+  docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
+${SQL_COMMON_CTE}
+SELECT
+  attempt_id,
+  task_id,
+  expected_text,
+  CASE WHEN exp_num_match IS NULL THEN NULL ELSE exp_num_match[1] END AS expected_number_extracted,
+  answer_text,
+  numeric_match,
+  word_match,
+  (numeric_match OR word_match) AS is_final_match
+FROM matched
+ORDER BY attempt_id, task_id
+LIMIT 500;
 SQL
 
   docker compose exec -T db psql -U postgres -d ni_site -v ON_ERROR_STOP=1 <<SQL
