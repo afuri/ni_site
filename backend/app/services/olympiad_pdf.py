@@ -298,16 +298,6 @@ def build_olympiad_pdf_bytes(
             )
 
         options = payload.get("options") if isinstance(payload.get("options"), list) else []
-        correct_ids: set[str] = set()
-        if include_correct_answer:
-            if task_type == "single_choice":
-                cid = payload.get("correct_option_id")
-                if cid is not None:
-                    correct_ids.add(str(cid))
-            elif task_type == "multi_choice":
-                raw_ids = payload.get("correct_option_ids")
-                if isinstance(raw_ids, list):
-                    correct_ids = {str(item) for item in raw_ids}
         if options:
             story.append(Spacer(1, 4))
             story.append(Paragraph("Варианты ответа:", styles["Meta"]))
@@ -316,10 +306,7 @@ def build_olympiad_pdf_bytes(
                     continue
                 oid = str(option.get("id") or "")
                 text = str(option.get("text") or "")
-                mark = " (правильный)" if include_correct_answer and oid in correct_ids else ""
-                story.append(
-                    Paragraph(f"- {html.escape(oid)}. {html.escape(text)}{mark}", styles["Normal"])
-                )
+                story.append(Paragraph(f"- {html.escape(oid)}. {html.escape(text)}", styles["Normal"]))
 
         if include_correct_answer:
             if task_type in ("single_choice", "multi_choice"):
