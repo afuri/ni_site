@@ -3172,5 +3172,37 @@ Frontend admin: добавлено модальное окно экспорта 
 Файл: requirements.txt
 
 
+1.13 result page
 
+
+Реализовал отдельную страницу результатов и переключил меню на неё.
+
+Что изменил:
+
+Добавил новую страницу:
+ResultsArchivePage.tsx
+Добавил стили страницы:
+results-archive.css
+Добавил роут:
+/results в App.tsx
+В верхнем меню главной страницы добавил пункт:
+Результаты → /results
+файл: HomePage.tsx
+Что на новой странице:
+
+Верхнее меню и footer в стиле главной (LayoutShell + home.css).
+Секции-аккордеоны по годам:
+от 2025-2026 до 2013-2014, сверху вниз.
+Внутри каждого года:
+текст статистики,
+блок “Задания и решения”,
+разделы “Математика” и “Информатика”,
+ссылки на PDF в формате:
+math_first_YYYY_YYYY+1.pdf
+math_second_YYYY_YYYY+1.pdf
+math_final_YYYY_YYYY+1.pdf
+cs_first_YYYY_YYYY+1.pdf
+cs_second_YYYY_YYYY+1.pdf
+cs_final_YYYY_YYYY+1.pdf
+путь: /docs/results/... (то есть frontend/apps/main/public/docs/results).
 
