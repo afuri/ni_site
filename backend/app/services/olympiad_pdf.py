@@ -179,6 +179,13 @@ def _task_type_label(task_type: str) -> str:
     }.get(task_type, task_type)
 
 
+def _task_type_value(task_type: Any) -> str:
+    value = getattr(task_type, "value", None)
+    if isinstance(value, str) and value:
+        return value
+    return str(task_type)
+
+
 def _answer_type_label(task_type: str, payload: dict[str, Any]) -> str:
     if task_type != "short_text":
         return "Выбор варианта"
@@ -260,6 +267,7 @@ def build_olympiad_pdf_bytes(
 
     for index, (ot, task) in enumerate(sorted_rows, start=1):
         payload = task.payload if isinstance(task.payload, dict) else {}
+        task_type = _task_type_value(task.task_type)
         image_position = str(payload.get("image_position") or "after")
         image_flow = _build_image(task.image_key, content_width)
 
@@ -281,10 +289,10 @@ def build_olympiad_pdf_bytes(
 
         if include_task_and_answer_type:
             story.append(Spacer(1, 4))
-            story.append(Paragraph(f"Тип задания: {_task_type_label(str(task.task_type))}", styles["Meta"]))
+            story.append(Paragraph(f"Тип задания: {_task_type_label(task_type)}", styles["Meta"]))
             story.append(
                 Paragraph(
-                    f"Тип ответа: {_answer_type_label(str(task.task_type), payload)}",
+                    f"Тип ответа: {_answer_type_label(task_type, payload)}",
                     styles["Meta"],
                 )
             )
@@ -292,11 +300,11 @@ def build_olympiad_pdf_bytes(
         options = payload.get("options") if isinstance(payload.get("options"), list) else []
         correct_ids: set[str] = set()
         if include_correct_answer:
-            if str(task.task_type) == "single_choice":
+            if task_type == "single_choice":
                 cid = payload.get("correct_option_id")
                 if cid is not None:
                     correct_ids.add(str(cid))
-            elif str(task.task_type) == "multi_choice":
+            elif task_type == "multi_choice":
                 raw_ids = payload.get("correct_option_ids")
                 if isinstance(raw_ids, list):
                     correct_ids = {str(item) for item in raw_ids}
@@ -314,7 +322,6 @@ def build_olympiad_pdf_bytes(
                 )
 
         if include_correct_answer:
-            task_type = str(task.task_type)
             if task_type in ("single_choice", "multi_choice"):
                 correct_items: list[str] = []
                 by_id = {
