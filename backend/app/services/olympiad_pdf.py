@@ -314,10 +314,37 @@ def build_olympiad_pdf_bytes(
                 )
 
         if include_correct_answer:
-            correct = _correct_answer_label(str(task.task_type), payload)
-            if correct:
-                story.append(Spacer(1, 4))
-                story.append(Paragraph(f"Правильный ответ: {html.escape(correct)}", styles["Meta"]))
+            task_type = str(task.task_type)
+            if task_type in ("single_choice", "multi_choice"):
+                correct_items: list[str] = []
+                by_id = {
+                    str(o.get("id")): str(o.get("text") or "")
+                    for o in options
+                    if isinstance(o, dict)
+                }
+                if task_type == "single_choice":
+                    cid = payload.get("correct_option_id")
+                    if cid is not None:
+                        cid_str = str(cid)
+                        ctext = by_id.get(cid_str, "")
+                        correct_items.append(f"{cid_str}. {ctext}" if ctext else cid_str)
+                else:
+                    raw_ids = payload.get("correct_option_ids")
+                    if isinstance(raw_ids, list):
+                        for cid in raw_ids:
+                            cid_str = str(cid)
+                            ctext = by_id.get(cid_str, "")
+                            correct_items.append(f"{cid_str}. {ctext}" if ctext else cid_str)
+                if correct_items:
+                    story.append(Spacer(1, 4))
+                    story.append(Paragraph("Правильный ответ:", styles["Meta"]))
+                    for item in correct_items:
+                        story.append(Paragraph(f"- {html.escape(item)}", styles["Normal"]))
+            else:
+                correct = _correct_answer_label(task_type, payload)
+                if correct:
+                    story.append(Spacer(1, 4))
+                    story.append(Paragraph(f"Правильный ответ: {html.escape(correct)}", styles["Meta"]))
 
         story.append(Spacer(1, 10))
 
