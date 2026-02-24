@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Modal, Table, TextInput } from "@ui";
-import { adminApiClient } from "../lib/adminClient";
+import { adminApiClient, adminStorage } from "../lib/adminClient";
 import { formatDate, fromDateTimeLocal, toDateTimeLocal } from "../lib/formatters";
 
 type OlympiadItem = {
@@ -73,6 +73,13 @@ type PoolForm = {
   gradeGroup: string;
   olympiadIds: string;
   activate: boolean;
+};
+
+type PdfExportOptions = {
+  includeDescription: boolean;
+  includeTaskTitle: boolean;
+  includeTaskAndAnswerType: boolean;
+  includeCorrectAnswer: boolean;
 };
 
 const emptyForm: OlympiadForm = {
@@ -242,6 +249,15 @@ export function OlympiadsPage() {
   const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewImageUrls, setPreviewImageUrls] = useState<Record<string, string>>({});
+  const [pdfTarget, setPdfTarget] = useState<OlympiadItem | null>(null);
+  const [pdfExporting, setPdfExporting] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>({
+    includeDescription: false,
+    includeTaskTitle: false,
+    includeTaskAndAnswerType: false,
+    includeCorrectAnswer: false
+  });
 
   const parseAgeGroup = (value: string | null) => {
     if (!value) {
@@ -670,6 +686,56 @@ export function OlympiadsPage() {
     }
   };
 
+  const openPdfExport = (item: OlympiadItem) => {
+    setPdfTarget(item);
+    setPdfError(null);
+    setPdfOptions({
+      includeDescription: false,
+      includeTaskTitle: false,
+      includeTaskAndAnswerType: false,
+      includeCorrectAnswer: false
+    });
+  };
+
+  const downloadPdf = async () => {
+    if (!pdfTarget || pdfExporting) {
+      return;
+    }
+    setPdfExporting(true);
+    setPdfError(null);
+    try {
+      const query = new URLSearchParams({
+        include_description: String(pdfOptions.includeDescription),
+        include_task_title: String(pdfOptions.includeTaskTitle),
+        include_task_and_answer_type: String(pdfOptions.includeTaskAndAnswerType),
+        include_correct_answer: String(pdfOptions.includeCorrectAnswer)
+      });
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
+      const token = adminStorage.getTokens()?.access_token;
+      const response = await fetch(`${baseUrl}/admin/olympiads/${pdfTarget.id}/pdf?${query.toString()}`, {
+        method: "GET",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
+      if (!response.ok) {
+        throw new Error("pdf_download_failed");
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `olympiad_${pdfTarget.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      setPdfTarget(null);
+    } catch {
+      setPdfError("Не удалось сформировать PDF.");
+    } finally {
+      setPdfExporting(false);
+    }
+  };
+
   const handlePoolSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPoolFormError(null);
@@ -826,6 +892,9 @@ export function OlympiadsPage() {
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => openPreview(item)}>
                       Предпросмотр
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => openPdfExport(item)}>
+                      PDF
                     </Button>
                     <Button
                       type="button"
@@ -1271,6 +1340,73 @@ export function OlympiadsPage() {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(pdfTarget)}
+        onClose={() => (pdfExporting ? undefined : setPdfTarget(null))}
+        title={pdfTarget ? `PDF: ${pdfTarget.title}` : "PDF"}
+      >
+        <div className="admin-form">
+          <p className="admin-hint">
+            В PDF всегда включаются: название олимпиады, допущенные классы, количество заданий,
+            максимальные баллы, номер каждого задания, баллы задания, условие и варианты ответа
+            (для тестовых типов).
+          </p>
+          <label className="admin-class-option">
+            <input
+              type="checkbox"
+              checked={pdfOptions.includeDescription}
+              onChange={(event) =>
+                setPdfOptions((prev) => ({ ...prev, includeDescription: event.target.checked }))
+              }
+              disabled={pdfExporting}
+            />
+            <span>Описание олимпиады</span>
+          </label>
+          <label className="admin-class-option">
+            <input
+              type="checkbox"
+              checked={pdfOptions.includeTaskTitle}
+              onChange={(event) =>
+                setPdfOptions((prev) => ({ ...prev, includeTaskTitle: event.target.checked }))
+              }
+              disabled={pdfExporting}
+            />
+            <span>Название заданий</span>
+          </label>
+          <label className="admin-class-option">
+            <input
+              type="checkbox"
+              checked={pdfOptions.includeTaskAndAnswerType}
+              onChange={(event) =>
+                setPdfOptions((prev) => ({ ...prev, includeTaskAndAnswerType: event.target.checked }))
+              }
+              disabled={pdfExporting}
+            />
+            <span>Тип задания и тип ответа</span>
+          </label>
+          <label className="admin-class-option">
+            <input
+              type="checkbox"
+              checked={pdfOptions.includeCorrectAnswer}
+              onChange={(event) =>
+                setPdfOptions((prev) => ({ ...prev, includeCorrectAnswer: event.target.checked }))
+              }
+              disabled={pdfExporting}
+            />
+            <span>Правильный ответ</span>
+          </label>
+          {pdfError ? <p className="admin-error">{pdfError}</p> : null}
+          <div className="admin-modal-actions">
+            <Button type="button" variant="outline" onClick={() => setPdfTarget(null)} disabled={pdfExporting}>
+              Отмена
+            </Button>
+            <Button type="button" onClick={downloadPdf} isLoading={pdfExporting}>
+              Скачать PDF
+            </Button>
+          </div>
+        </div>
       </Modal>
     </section>
   );

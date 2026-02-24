@@ -3144,178 +3144,33 @@ DRY_RUN=1 ./regrade_task50_51_words.sh
 # Применить
 ./regrade_task50_51_words.sh
 
----
+1.12 olympiad pdf
+
+Что изменено
+
+Backend: добавлен экспорт PDF олимпиады с нужными опциями
+Новый сервис генерации PDF:
+olympiad_pdf.py
+Новый endpoint:
+GET /admin/olympiads/{olympiad_id}/pdf с query-параметрами:
+include_description
+include_task_title
+include_task_and_answer_type
+include_correct_answer
+Файл: admin_olympiads.py
+Frontend admin: добавлено модальное окно экспорта PDF без пресетов
+Кнопка PDF в строке олимпиады.
+Модалка с 4 чекбоксами:
+Описание олимпиады
+Название заданий
+Тип задания и тип ответа
+Правильный ответ
+Скачивание файла по endpoint выше.
+Файл: OlympiadsPage.tsx
+Зависимости backend
+Добавлен reportlab==4.2.5
+Файл: requirements.txt
 
-Причина “пустой страницы” на /admin — у админки не был задан base, поэтому
-  ассеты искались по /assets/... вместо /admin/assets/....
 
-  Я добавил:
 
-  - frontend/apps/admin/vite.config.ts → base: "/admin/"
 
-  Дальше на сервере:
-
-  1. cd /opt/ni_site/frontend && npm run build:admin
-  2. Скопировать билд админки в /var/www/nevsky-integral/admin/
-  3. В nginx для /admin/ обязательно:
-
-  location /admin/ {
-    root /var/www/nevsky-integral;
-    try_files $uri /admin/index.html;
-  }
-
-  После этого страница должна загрузиться. Если будет белый экран — пришли
-  console ошибки из браузера.
-
-  1. Открой конфиг:
-
-  nano /etc/nginx/sites-available/nevsky-integral
-
-  2. Замени блок location /admin/ на один из вариантов (лучше alias):
-
-  Вариант с alias:
-
-  location /admin/ {
-      alias /var/www/nevsky-integral/admin/;
-      try_files $uri $uri/ /index.html;
-  }
-
-  Или вариант с root (если root уже /var/www/nevsky-integral):
-
-  location /admin/ {
-      root /var/www/nevsky-integral;
-      try_files $uri $uri/ /admin/index.html;
-  }
-
-  3. Применить:
-
-  nginx -t && systemctl reload nginx
-
-  4. Проверь:
-
-  ls -la /var/www/nevsky-integral/admin/index.html
-  curl -I http://127.0.0.1/admin/
-
-
-Для изменения БД
-
-cd /opt/ni_site
-git pull
-
-  # пересобрать образ, чтобы внутри /app появился новый файл миграции
-  docker compose up -d --build api
-
-  # применить миграции
-  docker compose exec api alembic -c /app/alembic.ini upgrade head
-
-
-## Проверяем скорость загрузки сайта
-
-  1. PageSpeed Insights
-     Открой https://pagespeed.web.dev/ → вставь https://nevsky-integral.ru →
-     смотри Mobile/ Desktop.
-
-
-Backup БД
-
-Полный бэкап базы ni_site (рекомендуется):
-
-  mkdir -p /opt/ni_site/backups
-  docker compose exec db pg_dump -U postgres -d ni_site | gzip > /opt/ni_site/
-  backups/ni_site_$(date +%F_%H-%M).sql.gz
-
-  Только таблица users:
-
-  mkdir -p /opt/ni_site/backups
-  docker compose exec db pg_dump -U postgres -d ni_site -t users | gzip > /opt/
-  ni_site/backups/users_$(date +%F_%H-%M).sql.gz
-
-  Проверить, что файл создался:
-
-  ls -lh /opt/ni_site/backups/
-
-  Восстановление (если надо):
-
-  gunzip -c /opt/ni_site/backups/ni_site_YYYY-MM-DD_HH-MM.sql.gz | docker
-  compose exec -T db psql -U postgres -d ni_site
-
-  Если хочешь, могу дать команду для бэкапа только схемы или сделать ежедневный
-  cron‑бэкап.
-
-
-  log_format timed '$remote_addr - $remote_user [$time_local] "$request" ' '$status $body_bytes_sent "$http_referer" "$http_user_agent"' 'rt=$request_time urt=$upstream_response_time'; access_log /var/log/nginx/access.log timed;
-## Олимпиады: пулы и распределение
-
-- Добавлены пулы олимпиад с привязкой к предмету и возрастной группе.
-- Назначение пользователю: индекс = (user_id - 1) % n, выбор закрепляется в БД.
-- Админка: создание пула (subject + grade_group + список ID олимпиад) и активация пула.
-- Главная страница: кнопки предметов вызывают назначение олимпиады из активного пула.
-
-Миграции:
-
-  docker compose exec api alembic -c /app/alembic.ini upgrade head
-
-
-cd /opt/ni_site
-
-  # 1) миграции
-  docker compose exec api alembic -c /app/alembic.ini upgrade head
-
-  # 2) пересборка и перезапуск api/worker
-  docker compose up -d --build api worker
-
-  Если обновлялся фронт:
-
-  cd /opt/ni_site/frontend
-  npm ci
-  npm run build:app
-  npm run build:admin
-  rsync -a --delete /opt/ni_site/frontend/apps/main/dist/ /var/www/nevsky-
-  integral/
-  rsync -a --delete /opt/ni_site/frontend/apps/admin/dist/ /var/www/nevsky-
-  integral/admin/
-
-
-
-
-Поставить вечером
-
-Проблема  в двух местах:
-
-  1. API не передавал subtype для short_text в попытке (в AttemptView payload
-     «чистился» и subtype выкидывался).
-  2. Backend принимал любой текст для short_text (валидация была только “не
-     пусто”).
-
-  Сделай исправления:
-
-  Backend
-
-  - backend/app/services/attempts.py
-      - AttemptView: должен передавать subtype для short_text в payload.
-      - upsert_answer: строгая валидация для int и float по regex. Неверный
-        формат ⇒ 422.
-
-  Frontend
-
-  - в OlympiadPage.tsx уже есть строгая проверка и блок перехода/сохранения с
-    нужными сообщениями:
-      - int: «В ответ можно указать только целое число.»
-      - float: «В ответ можно указать только целое число или десятичную дробь.»
-
-  Теперь:
-
-  - неверный ответ не сохранится на сервере (422),
-  - не даст перейти на следующее задание,
-  - покажет корректное сообщение.
-
-
-
-
-Сейчас в OlympiadPage.tsx при явном рассинхроне часов клиента показывается предупреждение синхронизации, чтобы не допустить авто-submit “в никуда”.
-Плюс backend-защита остаётся: ранний пустой submit блокируется.
-
-Если нужно убрать зависимость от локальных часов пользователя полностью, следующий шаг:
-
-Отдавать server_now из backend в ответе попытки.
-На фронте считать таймер по смещению offset = server_now - client_now (а не по “сырому” Date.now()).
