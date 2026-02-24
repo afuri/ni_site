@@ -289,17 +289,16 @@ def build_olympiad_pdf_bytes(
                 )
             )
 
-        if str(task.task_type) in ("single_choice", "multi_choice"):
-            options = payload.get("options") if isinstance(payload.get("options"), list) else []
-            if options:
-                story.append(Spacer(1, 4))
-                story.append(Paragraph("Варианты ответа:", styles["Meta"]))
-                for option in options:
-                    if not isinstance(option, dict):
-                        continue
-                    oid = str(option.get("id") or "")
-                    text = str(option.get("text") or "")
-                    story.append(Paragraph(f"- {html.escape(oid)}. {html.escape(text)}", styles["Normal"]))
+        options = payload.get("options") if isinstance(payload.get("options"), list) else []
+        if options:
+            story.append(Spacer(1, 4))
+            story.append(Paragraph("Варианты ответа:", styles["Meta"]))
+            for option in options:
+                if not isinstance(option, dict):
+                    continue
+                oid = str(option.get("id") or "")
+                text = str(option.get("text") or "")
+                story.append(Paragraph(f"- {html.escape(oid)}. {html.escape(text)}", styles["Normal"]))
 
         if include_correct_answer:
             correct = _correct_answer_label(str(task.task_type), payload)
