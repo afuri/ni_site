@@ -22,19 +22,30 @@ from app.core.storage import presign_get
 
 
 def _register_fonts() -> tuple[str, str, str]:
-    candidates = (
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
-    )
-    if all(Path(p).exists() for p in candidates):
+    local_dir = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+    regular = local_dir / "DejaVuSans.ttf"
+    bold = local_dir / "DejaVuSans-Bold.ttf"
+    italic = local_dir / "DejaVuSans-Oblique.ttf"
+
+    if not regular.exists():
+        regular = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+        bold = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
+        italic = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf")
+
+    if regular.exists():
         registered = set(pdfmetrics.getRegisteredFontNames())
         if "NISans" not in registered:
-            pdfmetrics.registerFont(TTFont("NISans", candidates[0]))
-        if "NISansBold" not in registered:
-            pdfmetrics.registerFont(TTFont("NISansBold", candidates[1]))
-        if "NISansItalic" not in registered:
-            pdfmetrics.registerFont(TTFont("NISansItalic", candidates[2]))
+            pdfmetrics.registerFont(TTFont("NISans", str(regular)))
+        if bold.exists():
+            if "NISansBold" not in registered:
+                pdfmetrics.registerFont(TTFont("NISansBold", str(bold)))
+        else:
+            return "NISans", "NISans", "NISans"
+        if italic.exists():
+            if "NISansItalic" not in registered:
+                pdfmetrics.registerFont(TTFont("NISansItalic", str(italic)))
+        else:
+            return "NISans", "NISansBold", "NISans"
         return "NISans", "NISansBold", "NISansItalic"
     return "Helvetica", "Helvetica-Bold", "Helvetica-Oblique"
 
