@@ -3206,3 +3206,15 @@ cs_second_YYYY_YYYY+1.pdf
 cs_final_YYYY_YYYY+1.pdf
 путь: /docs/results/... (то есть frontend/apps/main/public/docs/results).
 
+1.13.1 Ui fix result page
+
+Сделал на странице результатов:
+
+Все ссылки на PDF заменены на кнопки.
+Стиль кнопок: голубой фон.
+Добавлен PDF-логотип (бейдж PDF) слева.
+Тексты ссылок оставил без изменений.
+Измененные файлы:
+
+ResultsArchivePage.tsx
+results-archive.css

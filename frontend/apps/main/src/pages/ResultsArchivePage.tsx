@@ -17,10 +17,10 @@ const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
-  { label: "Новости", href: "/#news" },
+  {/* label: "Новости", href: "/#news" */},
   { label: "Расписание", href: "/#schedule" },
   { label: "Результаты", href: "/results" },
-  { label: "Статьи", href: "/#articles" }
+  {/* label: "Статьи", href: "/#articles" */}
 ];
 
 const buildYears = (): YearEntry[] => {
