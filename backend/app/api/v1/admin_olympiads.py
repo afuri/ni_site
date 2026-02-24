@@ -1,4 +1,7 @@
+from io import BytesIO
+
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db, get_read_db
@@ -15,6 +18,7 @@ from app.schemas.olympiads_admin import (
 from app.services.olympiads_admin import AdminOlympiadsService
 from app.schemas.olympiads_admin import OlympiadTaskFullRead
 from app.schemas.tasks import TaskRead
+from app.services.olympiad_pdf import build_olympiad_pdf_bytes
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import (
     EXAMPLE_OLYMPIAD_READ,
@@ -367,3 +371,43 @@ async def set_publish(
         if str(e) == codes.CANNOT_PUBLISH_EMPTY:
             raise http_error(409, codes.CANNOT_PUBLISH_EMPTY)
         raise
+
+
+@router.get(
+    "/{olympiad_id}/pdf",
+    tags=["admin"],
+    description="Скачать PDF-версию олимпиады",
+    responses={
+        200: {"description": "PDF-файл"},
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
+    },
+)
+async def export_olympiad_pdf(
+    olympiad_id: int,
+    include_description: bool = Query(default=False),
+    include_task_title: bool = Query(default=False),
+    include_task_and_answer_type: bool = Query(default=False),
+    include_correct_answer: bool = Query(default=False),
+    db: AsyncSession = Depends(get_read_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    o_repo = OlympiadsRepo(db)
+    obj = await o_repo.get(olympiad_id)
+    if not obj:
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+
+    repo = OlympiadTasksRepo(db)
+    rows = await repo.list_full_by_olympiad(olympiad_id)
+    pdf_bytes = build_olympiad_pdf_bytes(
+        olympiad=obj,
+        task_rows=rows,
+        include_description=include_description,
+        include_task_title=include_task_title,
+        include_task_and_answer_type=include_task_and_answer_type,
+        include_correct_answer=include_correct_answer,
+    )
+    file_name = f"olympiad_{olympiad_id}.pdf"
+    headers = {"Content-Disposition": f'attachment; filename="{file_name}"'}
+    return StreamingResponse(BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
