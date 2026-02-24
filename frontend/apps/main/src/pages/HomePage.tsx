@@ -1103,6 +1103,7 @@ export function HomePage() {
     { label: "Об олимпиаде", href: "#about" },
     ...(hasNews ? [{ label: "Новости", href: "#news" }] : []),
     { label: "Расписание", href: "#schedule" },
+    { /*label: "Результаты", href: "/results" */},
     ...(hasArticles ? [{ label: "Статьи", href: "#articles" }] : [])
   ];
 

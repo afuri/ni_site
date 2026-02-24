@@ -1,0 +1,62 @@
+.results-archive {
+  display: grid;
+  gap: 12px;
+}
+
+.results-year {
+  border: 1px solid #d7dfef;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.results-year-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  font-weight: 700;
+  font-size: 18px;
+  border-bottom: 1px solid #e8edf7;
+  background: linear-gradient(180deg, #f8fbff 0%, #f1f6ff 100%);
+}
+
+.results-year-summary::-webkit-details-marker {
+  display: none;
+}
+
+.results-year-summary::after {
+  content: "+";
+  float: right;
+}
+
+.results-year[open] .results-year-summary::after {
+  content: "-";
+}
+
+.results-year-body {
+  padding: 14px 16px 18px;
+}
+
+.results-year-body h3 {
+  margin: 8px 0;
+  font-size: 20px;
+}
+
+.results-year-body h4 {
+  margin: 12px 0 6px;
+  font-size: 17px;
+}
+
+.results-links {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.results-links li {
+  margin: 5px 0;
+}
+
+.results-links a {
+  color: #1f3e7a;
+  text-decoration: underline;
+}
