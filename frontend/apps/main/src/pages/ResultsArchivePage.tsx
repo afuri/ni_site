@@ -17,10 +17,10 @@ const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
-  { label: "Новости", href: "/#news" },
+  {/* label: "Новости", href: "/#news" */},
   { label: "Расписание", href: "/#schedule" },
   { label: "Результаты", href: "/results" },
-  { label: "Статьи", href: "/#articles" }
+  {/* label: "Статьи", href: "/#articles" */}
 ];
 
 const buildYears = (): YearEntry[] => {
@@ -38,17 +38,6 @@ const buildYears = (): YearEntry[] => {
 
 const buildDocPath = (subject: "math" | "cs", stage: "first" | "second" | "final", year: YearEntry) =>
   `/docs/results/${subject}_${stage}_${year.startYear}_${year.endYear}.pdf`;
-
-function PdfLinkButton({ href, label }: { href: string; label: string }) {
-  return (
-    <a href={href} target="_blank" rel="noreferrer" className="results-doc-button">
-      <span className="results-doc-icon" aria-hidden="true">
-        PDF
-      </span>
-      <span>{label}</span>
-    </a>
-  );
-}
 
 export function ResultsArchivePage() {
   const { status, user, signOut } = useAuth();
@@ -159,43 +148,37 @@ export function ResultsArchivePage() {
                     <h4>Математика</h4>
                     <ul className="results-links">
                       <li>
-                        <PdfLinkButton
-                          href={buildDocPath("math", "first", year)}
-                          label="Задания и решения первого дистанционного тура по математике"
-                        />
+                        <a href={buildDocPath("math", "first", year)} target="_blank" rel="noreferrer">
+                          Задания и решения первого дистанционного тура по математике
+                        </a>
                       </li>
                       <li>
-                        <PdfLinkButton
-                          href={buildDocPath("math", "second", year)}
-                          label="Задания и решения второго отборочного дистанционного тура по математике"
-                        />
+                        <a href={buildDocPath("math", "second", year)} target="_blank" rel="noreferrer">
+                          Задания и решения второго отборочного дистанционного тура по математике
+                        </a>
                       </li>
                       <li>
-                        <PdfLinkButton
-                          href={buildDocPath("math", "final", year)}
-                          label="Задания и решения заключительного очного тура по математике"
-                        />
+                        <a href={buildDocPath("math", "final", year)} target="_blank" rel="noreferrer">
+                          Задания и решения заключительного очного тура по математике
+                        </a>
                       </li>
                     </ul>
                     <h4>Информатика</h4>
                     <ul className="results-links">
                       <li>
-                        <PdfLinkButton
-                          href={buildDocPath("cs", "first", year)}
-                          label="Задания и решения первого дистанционного тура по информатике"
-                        />
+                        <a href={buildDocPath("cs", "first", year)} target="_blank" rel="noreferrer">
+                          Задания и решения первого дистанционного тура по информатике
+                        </a>
                       </li>
                       <li>
-                        <PdfLinkButton
-                          href={buildDocPath("cs", "second", year)}
-                          label="Задания и решения второго отборочного дистанционного тура по информатике"
-                        />
+                        <a href={buildDocPath("cs", "second", year)} target="_blank" rel="noreferrer">
+                          Задания и решения второго отборочного дистанционного тура по информатике
+                        </a>
                       </li>
                       <li>
-                        <PdfLinkButton
-                          href={buildDocPath("cs", "final", year)}
-                          label="Задания и решения заключительного очного тура по информатике"
-                        />
+                        <a href={buildDocPath("cs", "final", year)} target="_blank" rel="noreferrer">
+                          Задания и решения заключительного очного тура по информатике
+                        </a>
                       </li>
                     </ul>
                   </div>
