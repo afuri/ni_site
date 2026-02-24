@@ -1212,7 +1212,7 @@ export function HomePage() {
               </h1>
             </div>
             <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Второй тур завершен. <br /> Дипломы и результаты будут доступны <br /> в личном кабинете после 15.02.2026</div>
+              <div className="home-hero-panel-title">Приглашения на очный тур олимпиады <br /> будут размещены в личном кабинете участника <br /> с 10.03.2026 по  15.03.2026</div>
               {/*<Countdown targetIso={TARGET_DATE} /> */}
               { /*<Button onClick={() => handleStartSubject("cs")}>Принять участие</Button>*/ }
             </div>
