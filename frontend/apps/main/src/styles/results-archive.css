@@ -11,26 +11,12 @@
 }
 
 .results-year-summary {
-  list-style: none;
   cursor: pointer;
   padding: 14px 16px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 18px;
   border-bottom: 1px solid #e8edf7;
   background: linear-gradient(180deg, #f8fbff 0%, #f1f6ff 100%);
-}
-
-.results-year-summary::-webkit-details-marker {
-  display: none;
-}
-
-.results-year-summary::after {
-  content: "+";
-  float: right;
-}
-
-.results-year[open] .results-year-summary::after {
-  content: "-";
 }
 
 .results-year-body {
