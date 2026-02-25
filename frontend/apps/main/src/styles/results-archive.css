@@ -80,3 +80,10 @@
   font-weight: 800;
   letter-spacing: 0.4px;
 }
+
+.results-missing-info {
+  display: inline-block;
+  padding: 10px 2px;
+  color: #6b7893;
+  font-style: italic;
+}
