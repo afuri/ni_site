@@ -49,7 +49,7 @@ function PdfLinkButton({
   exists: boolean;
 }) {
   if (!exists) {
-    return null;
+    return <span className="results-missing-info">Информация будет добавлена позже</span>;
   }
   return (
     <a href={href} target="_blank" rel="noreferrer" className="results-doc-button">
