@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, LayoutShell, Modal, useAuth } from "@ui";
+import { Button, LayoutShell, useAuth } from "@ui";
 import { Link } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import vkLink from "../assets/vk_link.png";
@@ -42,31 +42,22 @@ const buildDocPath = (subject: "math" | "cs", stage: "first" | "second" | "final
 function PdfLinkButton({
   href,
   label,
-  exists,
-  onMissing
+  exists
 }: {
   href: string;
   label: string;
   exists: boolean;
-  onMissing: () => void;
 }) {
-  if (exists) {
-    return (
-      <a href={href} target="_blank" rel="noreferrer" className="results-doc-button">
-        <span className="results-doc-icon" aria-hidden="true">
-          PDF
-        </span>
-        <span>{label}</span>
-      </a>
-    );
+  if (!exists) {
+    return null;
   }
   return (
-    <button type="button" className="results-doc-button" onClick={onMissing}>
+    <a href={href} target="_blank" rel="noreferrer" className="results-doc-button">
       <span className="results-doc-icon" aria-hidden="true">
         PDF
       </span>
       <span>{label}</span>
-    </button>
+    </a>
   );
 }
 
@@ -74,7 +65,6 @@ export function ResultsArchivePage() {
   const { status, user, signOut } = useAuth();
   const isAuthenticated = status === "authenticated" && Boolean(user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMissingPdfOpen, setIsMissingPdfOpen] = useState(false);
   const [existsMap, setExistsMap] = useState<Record<string, boolean>>({});
   const years = useMemo(() => buildYears(), []);
 
@@ -139,10 +129,6 @@ export function ResultsArchivePage() {
       isMounted = false;
     };
   }, [years]);
-
-  const openMissingModal = () => {
-    setIsMissingPdfOpen(true);
-  };
 
   return (
     <div className="home-page">
@@ -238,7 +224,6 @@ export function ResultsArchivePage() {
                           href={buildDocPath("math", "first", year)}
                           label="Задания и решения первого дистанционного тура по математике"
                           exists={Boolean(existsMap[buildDocPath("math", "first", year)])}
-                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
@@ -246,7 +231,6 @@ export function ResultsArchivePage() {
                           href={buildDocPath("math", "second", year)}
                           label="Задания и решения второго отборочного дистанционного тура по математике"
                           exists={Boolean(existsMap[buildDocPath("math", "second", year)])}
-                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
@@ -254,7 +238,6 @@ export function ResultsArchivePage() {
                           href={buildDocPath("math", "final", year)}
                           label="Задания и решения заключительного очного тура по математике"
                           exists={Boolean(existsMap[buildDocPath("math", "final", year)])}
-                          onMissing={openMissingModal}
                         />
                       </li>
                     </ul>
@@ -265,7 +248,6 @@ export function ResultsArchivePage() {
                           href={buildDocPath("cs", "first", year)}
                           label="Задания и решения первого дистанционного тура по информатике"
                           exists={Boolean(existsMap[buildDocPath("cs", "first", year)])}
-                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
@@ -273,7 +255,6 @@ export function ResultsArchivePage() {
                           href={buildDocPath("cs", "second", year)}
                           label="Задания и решения второго отборочного дистанционного тура по информатике"
                           exists={Boolean(existsMap[buildDocPath("cs", "second", year)])}
-                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
@@ -281,7 +262,6 @@ export function ResultsArchivePage() {
                           href={buildDocPath("cs", "final", year)}
                           label="Задания и решения заключительного очного тура по информатике"
                           exists={Boolean(existsMap[buildDocPath("cs", "final", year)])}
-                          onMissing={openMissingModal}
                         />
                       </li>
                     </ul>
@@ -300,9 +280,6 @@ export function ResultsArchivePage() {
           onClick={() => setIsMenuOpen(false)}
         />
       ) : null}
-      <Modal isOpen={isMissingPdfOpen} onClose={() => setIsMissingPdfOpen(false)} title="Информация">
-        <p>Информация будет размещена позже.</p>
-      </Modal>
     </div>
   );
 }
