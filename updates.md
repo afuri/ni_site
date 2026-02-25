@@ -3218,3 +3218,19 @@ cs_final_YYYY_YYYY+1.pdf
 
 ResultsArchivePage.tsx
 results-archive.css
+
+1.13.5 UI result page fix
+
+Что реализовано на странице результатов:
+
+По клику на кнопку PDF сначала проверяется наличие файла в public/docs/results через HEAD.
+Если файл есть:
+открывается PDF в новой вкладке (как у Положение/Регламент).
+Если файла нет:
+показывается модальное окно:
+Информация
+Информация будет размещена позже.
+Изменённые файлы:
+
+ResultsArchivePage.tsx
+results-archive.css

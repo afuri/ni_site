@@ -1101,9 +1101,9 @@ export function HomePage() {
   const hasArticles = articleItems.length > 0;
   const navItems = [
     { label: "Об олимпиаде", href: "#about" },
-    ...(hasNews ? [{ label: "Новости", href: "#news" }] : []),
     { label: "Расписание", href: "#schedule" },
-    { /*label: "Результаты", href: "/results" */},
+    { label: "Результаты", href: "/results" },
+    ...(hasNews ? [{ label: "Новости", href: "#news" }] : []),
     ...(hasArticles ? [{ label: "Статьи", href: "#articles" }] : [])
   ];
 
@@ -1212,7 +1212,7 @@ export function HomePage() {
               </h1>
             </div>
             <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Приглашения на очный тур олимпиады <br /> будут размещены в личном кабинете участника <br /> с 10.03.2026 по  15.03.2026</div>
+              <div className="home-hero-panel-title">Приглашения на очный тур олимпиады <br /> будут размещены в личном кабинете<br /> с 10.03.2026 по  15.03.2026</div>
               {/*<Countdown targetIso={TARGET_DATE} /> */}
               { /*<Button onClick={() => handleStartSubject("cs")}>Принять участие</Button>*/ }
             </div>
