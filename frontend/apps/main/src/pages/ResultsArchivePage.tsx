@@ -92,13 +92,21 @@ export function ResultsArchivePage() {
       paths.push(buildDocPath("cs", "final", year));
     }
     let isMounted = true;
+    const isPdfResponse = (response: Response): boolean => {
+      if (!response.ok) {
+        return false;
+      }
+      const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+      return contentType.includes("application/pdf");
+    };
+
     const check = async (path: string): Promise<boolean> => {
       try {
         const head = await fetch(path, { method: "HEAD", cache: "no-store" });
-        if (head.ok) {
+        if (isPdfResponse(head)) {
           return true;
         }
-        if (head.status !== 405) {
+        if (head.status !== 405 && head.status !== 501) {
           return false;
         }
       } catch {
@@ -110,7 +118,7 @@ export function ResultsArchivePage() {
           headers: { Range: "bytes=0-0" },
           cache: "no-store"
         });
-        return get.ok;
+        return isPdfResponse(get);
       } catch {
         return false;
       }
