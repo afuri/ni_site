@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Button, LayoutShell, useAuth } from "@ui";
+import { Button, LayoutShell, Modal, useAuth } from "@ui";
 import { Link } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import vkLink from "../assets/vk_link.png";
@@ -17,10 +17,10 @@ const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
+  { label: "Новости", href: "/#news" },
   { label: "Расписание", href: "/#schedule" },
   { label: "Результаты", href: "/results" },
-  {/* label: "Новости", href: "/#news" */},
-  {/* label: "Статьи", href: "/#articles" */}
+  { label: "Статьи", href: "/#articles" }
 ];
 
 const buildYears = (): YearEntry[] => {
@@ -39,10 +39,30 @@ const buildYears = (): YearEntry[] => {
 const buildDocPath = (subject: "math" | "cs", stage: "first" | "second" | "final", year: YearEntry) =>
   `/docs/results/${subject}_${stage}_${year.startYear}_${year.endYear}.pdf`;
 
+function PdfLinkButton({
+  href,
+  label,
+  onClick
+}: {
+  href: string;
+  label: string;
+  onClick: (href: string) => void;
+}) {
+  return (
+    <button type="button" className="results-doc-button" onClick={() => onClick(href)}>
+      <span className="results-doc-icon" aria-hidden="true">
+        PDF
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export function ResultsArchivePage() {
   const { status, user, signOut } = useAuth();
   const isAuthenticated = status === "authenticated" && Boolean(user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMissingPdfOpen, setIsMissingPdfOpen] = useState(false);
   const years = useMemo(() => buildYears(), []);
 
   const requestLogin = () => {
@@ -56,6 +76,26 @@ export function ResultsArchivePage() {
 
   const handleLogout = async () => {
     await signOut();
+  };
+
+  const openPdfWithCheck = async (href: string) => {
+    const pendingWindow = window.open("", "_blank", "noopener,noreferrer");
+    try {
+      const response = await fetch(href, { method: "HEAD" });
+      if (!response.ok) {
+        throw new Error("pdf_not_found");
+      }
+      if (pendingWindow) {
+        pendingWindow.location.href = href;
+      } else {
+        window.open(href, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      if (pendingWindow) {
+        pendingWindow.close();
+      }
+      setIsMissingPdfOpen(true);
+    }
   };
 
   return (
@@ -148,37 +188,49 @@ export function ResultsArchivePage() {
                     <h4>Математика</h4>
                     <ul className="results-links">
                       <li>
-                        <a href={buildDocPath("math", "first", year)} target="_blank" rel="noreferrer">
-                          Задания и решения первого дистанционного тура по математике
-                        </a>
+                        <PdfLinkButton
+                          href={buildDocPath("math", "first", year)}
+                          label="Задания и решения первого дистанционного тура по математике"
+                          onClick={openPdfWithCheck}
+                        />
                       </li>
                       <li>
-                        <a href={buildDocPath("math", "second", year)} target="_blank" rel="noreferrer">
-                          Задания и решения второго отборочного дистанционного тура по математике
-                        </a>
+                        <PdfLinkButton
+                          href={buildDocPath("math", "second", year)}
+                          label="Задания и решения второго отборочного дистанционного тура по математике"
+                          onClick={openPdfWithCheck}
+                        />
                       </li>
                       <li>
-                        <a href={buildDocPath("math", "final", year)} target="_blank" rel="noreferrer">
-                          Задания и решения заключительного очного тура по математике
-                        </a>
+                        <PdfLinkButton
+                          href={buildDocPath("math", "final", year)}
+                          label="Задания и решения заключительного очного тура по математике"
+                          onClick={openPdfWithCheck}
+                        />
                       </li>
                     </ul>
                     <h4>Информатика</h4>
                     <ul className="results-links">
                       <li>
-                        <a href={buildDocPath("cs", "first", year)} target="_blank" rel="noreferrer">
-                          Задания и решения первого дистанционного тура по информатике
-                        </a>
+                        <PdfLinkButton
+                          href={buildDocPath("cs", "first", year)}
+                          label="Задания и решения первого дистанционного тура по информатике"
+                          onClick={openPdfWithCheck}
+                        />
                       </li>
                       <li>
-                        <a href={buildDocPath("cs", "second", year)} target="_blank" rel="noreferrer">
-                          Задания и решения второго отборочного дистанционного тура по информатике
-                        </a>
+                        <PdfLinkButton
+                          href={buildDocPath("cs", "second", year)}
+                          label="Задания и решения второго отборочного дистанционного тура по информатике"
+                          onClick={openPdfWithCheck}
+                        />
                       </li>
                       <li>
-                        <a href={buildDocPath("cs", "final", year)} target="_blank" rel="noreferrer">
-                          Задания и решения заключительного очного тура по информатике
-                        </a>
+                        <PdfLinkButton
+                          href={buildDocPath("cs", "final", year)}
+                          label="Задания и решения заключительного очного тура по информатике"
+                          onClick={openPdfWithCheck}
+                        />
                       </li>
                     </ul>
                   </div>
@@ -196,6 +248,9 @@ export function ResultsArchivePage() {
           onClick={() => setIsMenuOpen(false)}
         />
       ) : null}
+      <Modal isOpen={isMissingPdfOpen} onClose={() => setIsMissingPdfOpen(false)} title="Информация">
+        <p>Информация будет размещена позже.</p>
+      </Modal>
     </div>
   );
 }
