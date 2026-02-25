@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button, LayoutShell, Modal, useAuth } from "@ui";
 import { Link } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
@@ -17,10 +17,10 @@ const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
-  { label: "Новости", href: "/#news" },
   { label: "Расписание", href: "/#schedule" },
-  { label: "Результаты", href: "/results" },
-  { label: "Статьи", href: "/#articles" }
+  { label: "Результаты", href: "/results" }/*,
+  { label: "Новости", href: "/#news" },
+  { label: "Статьи", href: "/#articles" } */
 ];
 
 const buildYears = (): YearEntry[] => {
@@ -42,14 +42,26 @@ const buildDocPath = (subject: "math" | "cs", stage: "first" | "second" | "final
 function PdfLinkButton({
   href,
   label,
-  onClick
+  exists,
+  onMissing
 }: {
   href: string;
   label: string;
-  onClick: (href: string) => void;
+  exists: boolean;
+  onMissing: () => void;
 }) {
+  if (exists) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className="results-doc-button">
+        <span className="results-doc-icon" aria-hidden="true">
+          PDF
+        </span>
+        <span>{label}</span>
+      </a>
+    );
+  }
   return (
-    <button type="button" className="results-doc-button" onClick={() => onClick(href)}>
+    <button type="button" className="results-doc-button" onClick={onMissing}>
       <span className="results-doc-icon" aria-hidden="true">
         PDF
       </span>
@@ -63,6 +75,7 @@ export function ResultsArchivePage() {
   const isAuthenticated = status === "authenticated" && Boolean(user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMissingPdfOpen, setIsMissingPdfOpen] = useState(false);
+  const [existsMap, setExistsMap] = useState<Record<string, boolean>>({});
   const years = useMemo(() => buildYears(), []);
 
   const requestLogin = () => {
@@ -78,24 +91,57 @@ export function ResultsArchivePage() {
     await signOut();
   };
 
-  const openPdfWithCheck = async (href: string) => {
-    const pendingWindow = window.open("", "_blank", "noopener,noreferrer");
-    try {
-      const response = await fetch(href, { method: "HEAD" });
-      if (!response.ok) {
-        throw new Error("pdf_not_found");
-      }
-      if (pendingWindow) {
-        pendingWindow.location.href = href;
-      } else {
-        window.open(href, "_blank", "noopener,noreferrer");
-      }
-    } catch {
-      if (pendingWindow) {
-        pendingWindow.close();
-      }
-      setIsMissingPdfOpen(true);
+  useEffect(() => {
+    const paths: string[] = [];
+    for (const year of years) {
+      paths.push(buildDocPath("math", "first", year));
+      paths.push(buildDocPath("math", "second", year));
+      paths.push(buildDocPath("math", "final", year));
+      paths.push(buildDocPath("cs", "first", year));
+      paths.push(buildDocPath("cs", "second", year));
+      paths.push(buildDocPath("cs", "final", year));
     }
+    let isMounted = true;
+    const check = async (path: string): Promise<boolean> => {
+      try {
+        const head = await fetch(path, { method: "HEAD", cache: "no-store" });
+        if (head.ok) {
+          return true;
+        }
+        if (head.status !== 405) {
+          return false;
+        }
+      } catch {
+        // ignore and fallback below
+      }
+      try {
+        const get = await fetch(path, {
+          method: "GET",
+          headers: { Range: "bytes=0-0" },
+          cache: "no-store"
+        });
+        return get.ok;
+      } catch {
+        return false;
+      }
+    };
+    void Promise.all(paths.map(async (path) => [path, await check(path)] as const)).then((entries) => {
+      if (!isMounted) {
+        return;
+      }
+      const next: Record<string, boolean> = {};
+      entries.forEach(([path, exists]) => {
+        next[path] = exists;
+      });
+      setExistsMap(next);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [years]);
+
+  const openMissingModal = () => {
+    setIsMissingPdfOpen(true);
   };
 
   return (
@@ -191,21 +237,24 @@ export function ResultsArchivePage() {
                         <PdfLinkButton
                           href={buildDocPath("math", "first", year)}
                           label="Задания и решения первого дистанционного тура по математике"
-                          onClick={openPdfWithCheck}
+                          exists={Boolean(existsMap[buildDocPath("math", "first", year)])}
+                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
                         <PdfLinkButton
                           href={buildDocPath("math", "second", year)}
                           label="Задания и решения второго отборочного дистанционного тура по математике"
-                          onClick={openPdfWithCheck}
+                          exists={Boolean(existsMap[buildDocPath("math", "second", year)])}
+                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
                         <PdfLinkButton
                           href={buildDocPath("math", "final", year)}
                           label="Задания и решения заключительного очного тура по математике"
-                          onClick={openPdfWithCheck}
+                          exists={Boolean(existsMap[buildDocPath("math", "final", year)])}
+                          onMissing={openMissingModal}
                         />
                       </li>
                     </ul>
@@ -215,21 +264,24 @@ export function ResultsArchivePage() {
                         <PdfLinkButton
                           href={buildDocPath("cs", "first", year)}
                           label="Задания и решения первого дистанционного тура по информатике"
-                          onClick={openPdfWithCheck}
+                          exists={Boolean(existsMap[buildDocPath("cs", "first", year)])}
+                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
                         <PdfLinkButton
                           href={buildDocPath("cs", "second", year)}
                           label="Задания и решения второго отборочного дистанционного тура по информатике"
-                          onClick={openPdfWithCheck}
+                          exists={Boolean(existsMap[buildDocPath("cs", "second", year)])}
+                          onMissing={openMissingModal}
                         />
                       </li>
                       <li>
                         <PdfLinkButton
                           href={buildDocPath("cs", "final", year)}
                           label="Задания и решения заключительного очного тура по информатике"
-                          onClick={openPdfWithCheck}
+                          exists={Boolean(existsMap[buildDocPath("cs", "final", year)])}
+                          onMissing={openMissingModal}
                         />
                       </li>
                     </ul>
