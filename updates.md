@@ -3267,3 +3267,22 @@ results-archive.css
 Файл:
 
 ResultsArchivePage.tsx
+
+1.14.0 add statistics
+
+Добавил statistic.png в блок 2025-2026 перед текстом:
+
+ResultsArchivePage.tsx
+стиль изображения:
+results-archive.css
+Файл размещён для выдачи:
+
+statistic.png
+Сборка app-main проходит.
+
+Важно: в рабочем дереве есть неожиданные/побочные изменения и новые файлы, которые я не редактировал содержательно:
+
+polozhenie.pdf
+cs_first_2025_2026.pdf
+cs_second_2025_2026.pdf
+math_first_2025_2026.pdf

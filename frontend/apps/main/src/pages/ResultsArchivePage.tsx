@@ -221,6 +221,13 @@ export function ResultsArchivePage() {
                 <details key={year.label} className="results-year" open={year.startYear === 2025}>
                   <summary className="results-year-summary">{year.label}</summary>
                   <div className="results-year-body">
+                    {year.startYear === 2025 ? (
+                      <img
+                        src="/docs/results/statistic.png"
+                        alt="Статистика 2025-2026"
+                        className="results-stat-image"
+                      />
+                    ) : null}
                     <p className="home-text">
                       Статистика проведения олимпиады в {year.label} году
                     </p>
