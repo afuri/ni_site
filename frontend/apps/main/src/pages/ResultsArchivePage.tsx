@@ -233,6 +233,8 @@ export function ResultsArchivePage() {
                         className="results-stat-image"
                       />
                     ) : null}
+                    <br/>
+                    <br/>
                     <h3>Задания и решения</h3>
                     <h4>Математика</h4>
                     <ul className="results-links">
