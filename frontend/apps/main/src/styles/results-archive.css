@@ -23,6 +23,16 @@
   padding: 14px 16px 18px;
 }
 
+.results-stat-image {
+  display: block;
+  width: 100%;
+  max-width: 860px;
+  height: auto;
+  border: 1px solid #d7dfef;
+  border-radius: 8px;
+  margin: 2px 0 12px;
+}
+
 .results-year-body h3 {
   margin: 8px 0;
   font-size: 20px;
