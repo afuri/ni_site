@@ -28,9 +28,14 @@
   width: 100%;
   max-width: 860px;
   height: auto;
-  border: 1px solid #d7dfef;
-  border-radius: 8px;
-  margin: 2px 0 12px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 2px auto 12px;
+}
+
+.results-stat-text-centered {
+  text-align: center;
 }
 
 .results-year-body h3 {
