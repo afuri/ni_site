@@ -25,7 +25,7 @@ from app.core import error_codes as codes
 router = APIRouter(prefix="/teacher")
 
 CERT_PREFIX = "certificates/teachers"
-CERT_RE = re.compile(r"^certificate_(\d+)_(\d{4})_(\d{4})_(\d{2})\.png$", re.IGNORECASE)
+CERT_RE = re.compile(r"^certificate_(\d+)_(\d{4})_(\d{4})_(\d{2})\.jpg$", re.IGNORECASE)
 SEQ_TITLE_MAP = {
     2: "Благодарность за подготовку ко II дистанционному туру олимпиады в {season} году",
 }
