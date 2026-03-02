@@ -16,8 +16,9 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Iterable
 from urllib.parse import urlparse
 
 try:
@@ -185,17 +186,10 @@ def _run_sql(db_service: str, db_user: str, db_name: str, sql: str) -> set[int]:
 
 
 def _load_teacher_ids(db_service: str, db_user: str, db_name: str) -> set[int]:
-    sql = "SELECT id FROM users WHERE role = 'teacher';"
-    return _run_sql(db_service, db_user, db_name, sql)
+    return _run_sql(db_service, db_user, db_name, "SELECT id FROM users WHERE role = 'teacher';")
 
 
-def _build_client(
-    endpoint: str,
-    access_key: str,
-    secret_key: str,
-    region: str,
-    use_ssl: bool,
-):
+def _build_client(endpoint: str, access_key: str, secret_key: str, region: str, use_ssl: bool):
     return boto3.client(
         "s3",
         endpoint_url=endpoint,
@@ -207,25 +201,30 @@ def _build_client(
     )
 
 
-def _endpoint_candidates(configured_endpoint: str | None, use_ssl: bool) -> list[str]:
+def _endpoint_candidates(configured_endpoint: str | None, use_ssl: bool, override: str | None) -> list[str]:
     candidates: list[str] = []
+
+    if override:
+        candidates.append(override)
+
     if configured_endpoint:
         candidates.append(configured_endpoint)
-
         parsed = urlparse(configured_endpoint)
         host = (parsed.hostname or "").lower()
-        scheme = parsed.scheme or ("https" if use_ssl else "http")
+        scheme = (parsed.scheme or ("https" if use_ssl else "http")).lower()
+        alt_scheme = "http" if scheme == "https" else "https"
         port = parsed.port or (443 if scheme == "https" else 80)
-        local_hosts = {"127.0.0.1", "localhost", "minio"}
-        if host in local_hosts:
-            alt_scheme = "http" if scheme == "https" else "https"
-            candidates.append(f"{alt_scheme}://{host}:{port}")
+        if host not in {"127.0.0.1", "localhost", "minio"}:
+            candidates.extend(
+                [
+                    f"{scheme}://127.0.0.1:{port}",
+                    f"{scheme}://localhost:{port}",
+                    f"{alt_scheme}://127.0.0.1:{port}",
+                    f"{alt_scheme}://localhost:{port}",
+                ]
+            )
         else:
-            candidates.append(f"{scheme}://127.0.0.1:{port}")
-            candidates.append(f"{scheme}://localhost:{port}")
-            alt_scheme = "http" if scheme == "https" else "https"
-            candidates.append(f"{alt_scheme}://127.0.0.1:{port}")
-            candidates.append(f"{alt_scheme}://localhost:{port}")
+            candidates.append(f"{alt_scheme}://{host}:{port}")
 
     candidates.extend(
         [
@@ -248,30 +247,49 @@ def _endpoint_candidates(configured_endpoint: str | None, use_ssl: bool) -> list
     return unique
 
 
-def _resolve_client(
+def _probe_client(client, bucket: str) -> None:
+    client.head_bucket(Bucket=bucket)
+    client.list_objects_v2(Bucket=bucket, MaxKeys=1)
+
+
+def _resolve_clients(
     endpoint: str | None,
     bucket: str,
     access_key: str,
     secret_key: str,
     region: str,
     use_ssl: bool,
-):
-    last_error = ""
-    for candidate in _endpoint_candidates(endpoint, use_ssl):
+    override: str | None,
+) -> list[tuple[object, str]]:
+    errors: list[str] = []
+    working: list[tuple[object, str]] = []
+
+    for candidate in _endpoint_candidates(endpoint, use_ssl, override):
         try:
-            candidate_scheme = urlparse(candidate).scheme.lower()
-            candidate_use_ssl = candidate_scheme == "https"
+            scheme = urlparse(candidate).scheme.lower()
+            candidate_use_ssl = scheme == "https"
             client = _build_client(candidate, access_key, secret_key, region, candidate_use_ssl)
-            client.head_bucket(Bucket=bucket)
-            return client, candidate
+            _probe_client(client, bucket)
+            working.append((client, candidate))
         except Exception as exc:  # pragma: no cover
-            last_error = str(exc)
-            continue
+            errors.append(f"{candidate}: {exc}")
+
+    if working:
+        return working
+
+    tried = "\n".join(errors[-10:]) if errors else "no endpoints tried"
     raise RuntimeError(
         "Could not connect to storage bucket.\n"
         f"Configured endpoint: {endpoint}\n"
-        f"Last error: {last_error}"
+        f"Tried:\n{tried}"
     )
+
+
+def _iter_clients(clients: list[tuple[object, str]], start_index: int) -> Iterable[tuple[object, str, int]]:
+    for shift in range(len(clients)):
+        idx = (start_index + shift) % len(clients)
+        client, endpoint = clients[idx]
+        yield client, endpoint, idx
 
 
 def _object_exists(client, bucket: str, key: str) -> bool:
@@ -290,9 +308,7 @@ def _write_report(rows: list[ReportRow], report_path: Path) -> None:
         writer = csv.writer(fh)
         writer.writerow(["file_name", "source_path", "key", "user_id", "season", "seq", "status", "message"])
         for row in rows:
-            writer.writerow(
-                [row.file_name, row.source_path, row.key, row.user_id, row.season, row.seq, row.status, row.message]
-            )
+            writer.writerow([row.file_name, row.source_path, row.key, row.user_id, row.season, row.seq, row.status, row.message])
 
 
 def main() -> int:
@@ -308,6 +324,7 @@ def main() -> int:
     db_name = _env(env_file, "DB_NAME", "ni_site") or "ni_site"
 
     storage_endpoint = _env(env_file, "STORAGE_ENDPOINT")
+    storage_endpoint_override = _env(env_file, "STORAGE_ENDPOINT_OVERRIDE")
     storage_bucket = _env(env_file, "STORAGE_BUCKET")
     storage_access_key = _env(env_file, "STORAGE_ACCESS_KEY")
     storage_secret_key = _env(env_file, "STORAGE_SECRET_KEY")
@@ -353,20 +370,25 @@ def main() -> int:
     teacher_ids = _load_teacher_ids(db_service, db_user, db_name)
     print(f"Teacher IDs in DB: {len(teacher_ids)}")
 
-    client = None
-    endpoint_used = ""
+    clients: list[tuple[object, str]] = []
+    active_client_index = 0
     if not dry_run:
         if not storage_endpoint:
             storage_endpoint = "http://127.0.0.1:9000"
-        client, endpoint_used = _resolve_client(
+        clients = _resolve_clients(
             endpoint=storage_endpoint,
             bucket=storage_bucket or "",
             access_key=storage_access_key or "",
             secret_key=storage_secret_key or "",
             region=storage_region,
             use_ssl=storage_use_ssl,
+            override=storage_endpoint_override,
         )
-        print(f"Storage endpoint used: {endpoint_used}")
+        print(f"Storage endpoint used (primary): {clients[0][1]}")
+        if len(clients) > 1:
+            print("Storage endpoint fallbacks:")
+            for _, ep in clients[1:]:
+                print(f"  - {ep}")
 
     total = len(items)
     for idx, item in enumerate(items, start=1):
@@ -399,40 +421,64 @@ def main() -> int:
             )
             continue
 
-        assert client is not None
-        if not overwrite and _object_exists(client, storage_bucket or "", item.key):
-            report_rows.append(
-                ReportRow(
-                    file_name=item.file_name,
-                    source_path=str(item.source_path),
-                    key=item.key,
-                    user_id=str(item.user_id),
-                    season=item.season,
-                    seq=f"{item.seq:02d}",
-                    status="skipped_exists",
-                )
-            )
-            continue
+        assert clients
 
-        try:
-            client.upload_file(
-                Filename=str(item.source_path),
-                Bucket=storage_bucket or "",
-                Key=item.key,
-                ExtraArgs={"ContentType": "image/jpeg"},
-            )
-            report_rows.append(
-                ReportRow(
-                    file_name=item.file_name,
-                    source_path=str(item.source_path),
-                    key=item.key,
-                    user_id=str(item.user_id),
-                    season=item.season,
-                    seq=f"{item.seq:02d}",
-                    status="uploaded",
+        if not overwrite:
+            exists = False
+            exists_checked = False
+            for current_client, _current_endpoint, current_idx in _iter_clients(clients, active_client_index):
+                try:
+                    exists = _object_exists(current_client, storage_bucket or "", item.key)
+                    exists_checked = True
+                    active_client_index = current_idx
+                    break
+                except Exception:
+                    continue
+            if exists_checked and exists:
+                report_rows.append(
+                    ReportRow(
+                        file_name=item.file_name,
+                        source_path=str(item.source_path),
+                        key=item.key,
+                        user_id=str(item.user_id),
+                        season=item.season,
+                        seq=f"{item.seq:02d}",
+                        status="skipped_exists",
+                    )
                 )
-            )
-        except Exception as exc:  # pragma: no cover
+                continue
+
+        uploaded = False
+        last_err = ""
+        for current_client, current_endpoint, current_idx in _iter_clients(clients, active_client_index):
+            try:
+                current_client.upload_file(
+                    Filename=str(item.source_path),
+                    Bucket=storage_bucket or "",
+                    Key=item.key,
+                    ExtraArgs={"ContentType": "image/jpeg"},
+                )
+                current_client.head_object(Bucket=storage_bucket or "", Key=item.key)
+                report_rows.append(
+                    ReportRow(
+                        file_name=item.file_name,
+                        source_path=str(item.source_path),
+                        key=item.key,
+                        user_id=str(item.user_id),
+                        season=item.season,
+                        seq=f"{item.seq:02d}",
+                        status="uploaded",
+                        message=f"endpoint={current_endpoint}",
+                    )
+                )
+                active_client_index = current_idx
+                uploaded = True
+                break
+            except Exception as exc:  # pragma: no cover
+                last_err = f"{current_endpoint}: {exc}"
+                continue
+
+        if not uploaded:
             report_rows.append(
                 ReportRow(
                     file_name=item.file_name,
@@ -442,7 +488,7 @@ def main() -> int:
                     season=item.season,
                     seq=f"{item.seq:02d}",
                     status="error",
-                    message=str(exc),
+                    message=last_err or "unknown upload error",
                 )
             )
 
