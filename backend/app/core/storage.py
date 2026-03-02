@@ -146,3 +146,31 @@ def storage_health() -> bool:
         return True
     except Exception:
         return False
+
+
+def list_object_keys(prefix: str) -> list[str]:
+    client = _get_s3_client()
+    if client is None:
+        raise RuntimeError("storage_not_configured")
+    keys: list[str] = []
+    token: str | None = None
+    while True:
+        params = {
+            "Bucket": settings.STORAGE_BUCKET,
+            "Prefix": prefix,
+            "MaxKeys": 1000,
+        }
+        if token:
+            params["ContinuationToken"] = token
+        response = client.list_objects_v2(**params)
+        contents = response.get("Contents") or []
+        for item in contents:
+            key = item.get("Key")
+            if isinstance(key, str):
+                keys.append(key)
+        if not response.get("IsTruncated"):
+            break
+        token = response.get("NextContinuationToken")
+        if not token:
+            break
+    return keys

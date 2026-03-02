@@ -3286,3 +3286,81 @@ polozhenie.pdf
 cs_first_2025_2026.pdf
 cs_second_2025_2026.pdf
 math_first_2025_2026.pdf
+
+1.15.0 teacher certificates
+
+Изменения:
+
+Добавил листинг ключей в storage:
+
+storage.py
+новая функция list_object_keys(prefix: str)
+Добавил схему ответа сертификатов:
+
+teacher.py
+TeacherCertificateItem:
+file_name
+season
+seq
+title
+url
+Добавил endpoint для учителя:
+
+teacher.py
+GET /api/v1/teacher/certificates?season=YYYY_YYYY
+Если season не передан — берется текущий учебный сезон (по месяцу).
+Читает файлы из:
+certificates/teachers/{season}/
+Принимает только формат:
+certificate_{user_id}_{YYYY}_{YYYY+1}_{seq}.png
+Отдает только файлы текущего авторизованного учителя (teacher.id).
+Сортирует по seq.
+Для seq=2 возвращает title:
+Благодарность за подготовку ко II дистанционному туру олимпиады в {season} году
+Для остальных seq:
+Сертификат №{seq} ({season})
+При недоступном storage возвращает 503 storage_unavailable.
+
+Сделано на фронтенде: добавлен раздел «Благодарности и сертификаты» в личном кабинете учителя с условным отображением и скачиванием.
+
+Что реализовано:
+
+Добавлена загрузка сертификатов учителя через GET /teacher/certificates.
+Раздел показывается только для роли teacher, только в своем кабинете (не при просмотре ученика), и только если список сертификатов не пуст.
+В разделе отображается:
+title сертификата
+кнопка Скачать справа
+Скачивание работает по той же схеме, что и дипломы ученика:
+открывается новое окно
+файл грузится через fetch(..., credentials: "include")
+отображается blob в новом окне
+при ошибке показывается сообщение.
+Измененный файл:
+
+CabinetPage.tsx
+
+Добавил скрипт:
+
+upload_teacher_certificates_minio.py
+Что делает:
+
+Берёт файлы из ./teacher_certificates (по умолчанию).
+Валидирует имя строго по шаблону:
+certificate_<user_id>_<YYYY>_<YYYY+1>_<seq>.png
+Загружает в хранилище по ключу:
+certificates/teachers/<YYYY>_<YYYY+1>/<file_name>
+Проверяет, что user_id — это учитель в БД.
+Поддерживает:
+DRY_RUN=1|0 (по умолчанию 1)
+OVERWRITE=1|0 (по умолчанию 0)
+SOURCE_DIR=...
+Формирует CSV-отчёт: teacher_cert_upload_report_<timestamp>.csv
+Команды запуска:
+
+cd /Users/alexfedosov/Documents/ni_site
+
+# Проверка без загрузки
+DRY_RUN=1 SOURCE_DIR=./teacher_certificates python3 ./upload_teacher_certificates_minio.py
+
+# Реальная загрузка (с перезаписью существующих)
+DRY_RUN=0 OVERWRITE=1 SOURCE_DIR=./teacher_certificates python3 ./upload_teacher_certificates_minio.py

@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends
+import os
+import re
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
@@ -11,13 +15,34 @@ from app.repos.teacher import TeacherRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.repos.users import UsersRepo
 from app.services.teacher import TeacherService
-from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow
+from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow, TeacherCertificateItem
 from app.schemas.user import ModeratorRequestResponse
+from app.core.storage import list_object_keys, presign_get
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import EXAMPLE_TEACHER_ATTEMPT_VIEW, response_model_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/teacher")
+
+CERT_PREFIX = "certificates/teachers"
+CERT_RE = re.compile(r"^certificate_(\d+)_(\d{4})_(\d{4})_(\d{2})\.png$", re.IGNORECASE)
+SEQ_TITLE_MAP = {
+    2: "Благодарность за подготовку ко II дистанционному туру олимпиады в {season} году",
+}
+
+
+def _default_season(now: datetime) -> str:
+    year = now.year
+    if now.month >= 9:
+        return f"{year}_{year + 1}"
+    return f"{year - 1}_{year}"
+
+
+def _title_for_seq(seq: int, season_dash: str) -> str:
+    template = SEQ_TITLE_MAP.get(seq)
+    if template:
+        return template.format(season=season_dash)
+    return f"Сертификат №{seq} ({season_dash})"
 
 
 @router.get(
@@ -151,3 +176,59 @@ async def request_moderator_status(
         await repo.set_moderator_request(user, True)
 
     return {"status": "requested"}
+
+
+@router.get(
+    "/certificates",
+    response_model=list[TeacherCertificateItem],
+    tags=["teacher"],
+    description="Список сертификатов учителя за сезон",
+    responses={
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        503: response_example(codes.STORAGE_UNAVAILABLE),
+    },
+)
+async def list_teacher_certificates(
+    season: str | None = Query(default=None, pattern=r"^\d{4}_\d{4}$"),
+    teacher: User = Depends(require_role(UserRole.teacher)),
+):
+    season_value = season or _default_season(datetime.now(timezone.utc))
+    season_dash = season_value.replace("_", "-")
+    prefix = f"{CERT_PREFIX}/{season_value}/"
+    try:
+        keys = list_object_keys(prefix)
+    except RuntimeError:
+        raise http_error(503, codes.STORAGE_UNAVAILABLE)
+    except Exception:
+        raise http_error(503, codes.STORAGE_UNAVAILABLE)
+
+    rows: list[TeacherCertificateItem] = []
+    for key in keys:
+        file_name = os.path.basename(key)
+        match = CERT_RE.match(file_name)
+        if not match:
+            continue
+        user_id, year_start, year_end, seq_raw = match.groups()
+        if int(user_id) != teacher.id:
+            continue
+        if f"{year_start}_{year_end}" != season_value:
+            continue
+        seq = int(seq_raw)
+        try:
+            url = presign_get(key)
+        except RuntimeError:
+            raise http_error(503, codes.STORAGE_UNAVAILABLE)
+        except Exception:
+            raise http_error(503, codes.STORAGE_UNAVAILABLE)
+        rows.append(
+            TeacherCertificateItem(
+                file_name=file_name,
+                season=season_value,
+                seq=seq,
+                title=_title_for_seq(seq, season_dash),
+                url=url,
+            )
+        )
+    rows.sort(key=lambda item: item.seq)
+    return rows
