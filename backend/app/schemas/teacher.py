@@ -63,3 +63,11 @@ class TeacherOlympiadAttemptRow(BaseModel):
     score_max: int
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
+
+
+class TeacherCertificateItem(BaseModel):
+    file_name: str
+    season: str
+    seq: int
+    title: str
+    url: str

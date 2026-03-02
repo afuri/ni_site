@@ -87,6 +87,14 @@ type AttemptView = {
   tasks: AttemptTask[];
 };
 
+type TeacherCertificate = {
+  file_name: string;
+  season: string;
+  seq: number;
+  title: string;
+  url: string;
+};
+
 type ProfileForm = {
   login: string;
   email: string;
@@ -220,6 +228,9 @@ export function CabinetPage() {
   const [attemptViewError, setAttemptViewError] = useState<string | null>(null);
   const [attemptImageUrls, setAttemptImageUrls] = useState<Record<string, string>>({});
   const [diplomaDownloadAttemptId, setDiplomaDownloadAttemptId] = useState<number | null>(null);
+  const [teacherCertificates, setTeacherCertificates] = useState<TeacherCertificate[]>([]);
+  const [teacherCertificatesStatus, setTeacherCertificatesStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [teacherCertificateDownloadSeq, setTeacherCertificateDownloadSeq] = useState<number | null>(null);
   const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeAttemptPrompt, setActiveAttemptPrompt] = useState<AttemptResult | null>(null);
@@ -500,6 +511,25 @@ export function CabinetPage() {
     setActiveAttemptPrompt(activeAttempt);
     setIsActiveAttemptPromptOpen(true);
   }, [attemptResults, attemptsStatus, user, viewingStudentId]);
+
+  useEffect(() => {
+    if (!user || user.role !== "teacher" || viewingStudentId) {
+      setTeacherCertificates([]);
+      setTeacherCertificatesStatus("idle");
+      return;
+    }
+    setTeacherCertificatesStatus("loading");
+    client
+      .request<TeacherCertificate[]>({ path: "/teacher/certificates", method: "GET" })
+      .then((data) => {
+        setTeacherCertificates(data ?? []);
+        setTeacherCertificatesStatus("idle");
+      })
+      .catch(() => {
+        setTeacherCertificates([]);
+        setTeacherCertificatesStatus("error");
+      });
+  }, [client, user, viewingStudentId]);
 
   useEffect(() => {
     if (!user) {
@@ -987,6 +1017,42 @@ export function CabinetPage() {
     }
   };
 
+  const handleTeacherCertificateDownload = async (certificate: TeacherCertificate) => {
+    setTeacherCertificateDownloadSeq(certificate.seq);
+    const certWindow = window.open("", "_blank");
+    try {
+      if (!certWindow) {
+        setPendingResultsMessage("Браузер заблокировал новое окно. Разрешите всплывающие окна для сайта.");
+        return;
+      }
+      try {
+        certWindow.opener = null;
+      } catch {
+        // ignore cross-browser opener assignment issues
+      }
+      const response = await fetch(certificate.url, {
+        method: "GET",
+        credentials: "include"
+      });
+      if (!response.ok) {
+        certWindow.close();
+        setPendingResultsMessage("Не удалось скачать сертификат. Попробуйте позже.");
+        return;
+      }
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      certWindow.location.href = objectUrl;
+      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 120000);
+    } catch {
+      if (certWindow && !certWindow.closed) {
+        certWindow.close();
+      }
+      setPendingResultsMessage("Не удалось скачать сертификат. Попробуйте позже.");
+    } finally {
+      setTeacherCertificateDownloadSeq(null);
+    }
+  };
+
   const formatDate = (value: string | null) => {
     if (!value) {
       return "—";
@@ -1146,6 +1212,7 @@ export function CabinetPage() {
   }));
   const mobileNavItems = [
     { label: "Результаты", href: "#results", visible: activeUser?.role === "student" },
+    { label: "Сертификаты", href: "#teacher-certificates", visible: user.role === "teacher" && !viewingStudentId && teacherCertificates.length > 0 },
     { label: "Профиль", href: "#profile", visible: true },
     { label: "Сопровождение", href: "#links", visible: true }
   ].filter((item) => item.visible);
@@ -1287,6 +1354,51 @@ export function CabinetPage() {
                   )}
                 </tbody>
               </Table>
+              </section>
+            </div>
+          ) : null}
+
+          {user.role === "teacher" && !viewingStudentId && teacherCertificates.length > 0 ? (
+            <div className="cabinet-section-scroll">
+              <section className="cabinet-section" id="teacher-certificates">
+                <div className="cabinet-section-heading">
+                  <h2>Благодарности и сертификаты</h2>
+                </div>
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>№</th>
+                      <th>Название</th>
+                      <th>Скачать</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teacherCertificatesStatus === "loading" ? (
+                      <tr>
+                        <td colSpan={3}>Загрузка...</td>
+                      </tr>
+                    ) : (
+                      teacherCertificates.map((item, index) => (
+                        <tr key={item.file_name}>
+                          <td>{index + 1}</td>
+                          <td>{item.title}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="cabinet-link"
+                              disabled={teacherCertificateDownloadSeq === item.seq}
+                              onClick={() => {
+                                void handleTeacherCertificateDownload(item);
+                              }}
+                            >
+                              {teacherCertificateDownloadSeq === item.seq ? "Загрузка..." : "Скачать"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
               </section>
             </div>
           ) : null}
