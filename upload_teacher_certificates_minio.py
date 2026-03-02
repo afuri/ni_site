@@ -214,16 +214,29 @@ def _endpoint_candidates(configured_endpoint: str | None, use_ssl: bool) -> list
 
         parsed = urlparse(configured_endpoint)
         host = (parsed.hostname or "").lower()
-        if host not in {"127.0.0.1", "localhost"}:
-            scheme = parsed.scheme or ("https" if use_ssl else "http")
-            port = parsed.port or (443 if scheme == "https" else 80)
+        scheme = parsed.scheme or ("https" if use_ssl else "http")
+        port = parsed.port or (443 if scheme == "https" else 80)
+        local_hosts = {"127.0.0.1", "localhost", "minio"}
+        if host in local_hosts:
+            alt_scheme = "http" if scheme == "https" else "https"
+            candidates.append(f"{alt_scheme}://{host}:{port}")
+        else:
             candidates.append(f"{scheme}://127.0.0.1:{port}")
             candidates.append(f"{scheme}://localhost:{port}")
+            alt_scheme = "http" if scheme == "https" else "https"
+            candidates.append(f"{alt_scheme}://127.0.0.1:{port}")
+            candidates.append(f"{alt_scheme}://localhost:{port}")
 
-    if use_ssl:
-        candidates.extend(["https://127.0.0.1:9000", "https://localhost:9000"])
-    else:
-        candidates.extend(["http://127.0.0.1:9000", "http://localhost:9000", "http://minio:9000"])
+    candidates.extend(
+        [
+            "http://127.0.0.1:9000",
+            "http://localhost:9000",
+            "http://minio:9000",
+            "https://127.0.0.1:9000",
+            "https://localhost:9000",
+            "https://minio:9000",
+        ]
+    )
 
     unique: list[str] = []
     seen: set[str] = set()
@@ -246,7 +259,9 @@ def _resolve_client(
     last_error = ""
     for candidate in _endpoint_candidates(endpoint, use_ssl):
         try:
-            client = _build_client(candidate, access_key, secret_key, region, use_ssl)
+            candidate_scheme = urlparse(candidate).scheme.lower()
+            candidate_use_ssl = candidate_scheme == "https"
+            client = _build_client(candidate, access_key, secret_key, region, candidate_use_ssl)
             client.head_bucket(Bucket=bucket)
             return client, candidate
         except Exception as exc:  # pragma: no cover
