@@ -1030,19 +1030,7 @@ export function CabinetPage() {
       } catch {
         // ignore cross-browser opener assignment issues
       }
-      const response = await fetch(certificate.url, {
-        method: "GET",
-        credentials: "include"
-      });
-      if (!response.ok) {
-        certWindow.close();
-        setPendingResultsMessage("Не удалось скачать сертификат. Попробуйте позже.");
-        return;
-      }
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      certWindow.location.href = objectUrl;
-      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 120000);
+      certWindow.location.href = certificate.url;
     } catch {
       if (certWindow && !certWindow.closed) {
         certWindow.close();
