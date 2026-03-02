@@ -1200,7 +1200,14 @@ export function CabinetPage() {
   }));
   const mobileNavItems = [
     { label: "Результаты", href: "#results", visible: activeUser?.role === "student" },
-    { label: "Сертификаты", href: "#teacher-certificates", visible: user.role === "teacher" && !viewingStudentId && teacherCertificates.length > 0 },
+    {
+      label: "Сертификаты",
+      href: "#teacher-certificates",
+      visible:
+        user.role === "teacher" &&
+        !viewingStudentId &&
+        (teacherCertificatesStatus === "loading" || teacherCertificates.length > 0)
+    },
     { label: "Профиль", href: "#profile", visible: true },
     { label: "Сопровождение", href: "#links", visible: true }
   ].filter((item) => item.visible);
@@ -1346,7 +1353,9 @@ export function CabinetPage() {
             </div>
           ) : null}
 
-          {user.role === "teacher" && !viewingStudentId && teacherCertificates.length > 0 ? (
+          {user.role === "teacher" &&
+          !viewingStudentId &&
+          (teacherCertificatesStatus === "loading" || teacherCertificates.length > 0) ? (
             <div className="cabinet-section-scroll">
               <section className="cabinet-section" id="teacher-certificates">
                 <div className="cabinet-section-heading">
