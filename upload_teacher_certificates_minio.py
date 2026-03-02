@@ -2,10 +2,10 @@
 """Bulk upload teacher certificates to S3/MinIO.
 
 Expected source file name:
-  certificate_<user_id>_<YYYY>_<YYYY+1>_<seq>.png
+  certificate_<user_id>_<YYYY>_<YYYY+1>_<seq>.jpg
 
 Uploaded key format:
-  certificates/teachers/<YYYY>_<YYYY+1>/certificate_<user_id>_<YYYY>_<YYYY+1>_<seq>.png
+  certificates/teachers/<YYYY>_<YYYY+1>/certificate_<user_id>_<YYYY>_<YYYY+1>_<seq>.jpg
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from botocore.exceptions import ClientError
 
 
 CERT_FILE_RE = re.compile(
-    r"^certificate_(?P<user_id>\d+)_(?P<y1>\d{4})_(?P<y2>\d{4})_(?P<seq>\d{2})\.png$",
+    r"^certificate_(?P<user_id>\d+)_(?P<y1>\d{4})_(?P<y2>\d{4})_(?P<seq>\d{2})\.jpg$",
     re.IGNORECASE,
 )
 KEY_PREFIX = "certificates/teachers"
@@ -127,7 +127,7 @@ def _scan_source(source_dir: Path) -> tuple[list[CandidateFile], list[ReportRow]
                     season="",
                     seq="",
                     status="skipped_invalid_name",
-                    message="expected certificate_<user_id>_<YYYY>_<YYYY+1>_<seq>.png",
+                    message="expected certificate_<user_id>_<YYYY>_<YYYY+1>_<seq>.jpg",
                 )
             )
             continue
@@ -404,7 +404,7 @@ def main() -> int:
                 Filename=str(item.source_path),
                 Bucket=storage_bucket or "",
                 Key=item.key,
-                ExtraArgs={"ContentType": "image/png"},
+                ExtraArgs={"ContentType": "image/jpg"},
             )
             report_rows.append(
                 ReportRow(
