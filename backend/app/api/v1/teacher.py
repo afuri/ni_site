@@ -17,7 +17,7 @@ from app.repos.users import UsersRepo
 from app.services.teacher import TeacherService
 from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow, TeacherCertificateItem
 from app.schemas.user import ModeratorRequestResponse
-from app.core.storage import list_object_keys, presign_get
+from app.core.storage import list_object_keys, presign_get, public_url_for_key
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import EXAMPLE_TEACHER_ATTEMPT_VIEW, response_model_example
 from app.core import error_codes as codes
@@ -215,12 +215,16 @@ async def list_teacher_certificates(
         if f"{year_start}_{year_end}" != season_value:
             continue
         seq = int(seq_raw)
-        try:
-            url = presign_get(key)
-        except RuntimeError:
-            raise http_error(503, codes.STORAGE_UNAVAILABLE)
-        except Exception:
-            raise http_error(503, codes.STORAGE_UNAVAILABLE)
+        public_url = public_url_for_key(key)
+        if public_url:
+            url = public_url
+        else:
+            try:
+                url = presign_get(key)
+            except RuntimeError:
+                raise http_error(503, codes.STORAGE_UNAVAILABLE)
+            except Exception:
+                raise http_error(503, codes.STORAGE_UNAVAILABLE)
         rows.append(
             TeacherCertificateItem(
                 file_name=file_name,
