@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from functools import lru_cache
+from urllib.parse import urlparse
 
 import boto3
 from botocore.client import Config
@@ -38,17 +40,87 @@ class PresignPostResult:
 
 
 def _get_s3_client():
-    if not settings.STORAGE_ENDPOINT or not settings.STORAGE_ACCESS_KEY or not settings.STORAGE_SECRET_KEY:
+    endpoint = _resolve_working_storage_endpoint()
+    if not endpoint or not settings.STORAGE_ACCESS_KEY or not settings.STORAGE_SECRET_KEY:
         return None
+    scheme = urlparse(endpoint).scheme.lower()
+    use_ssl = scheme == "https" if scheme in {"http", "https"} else settings.STORAGE_USE_SSL
     return boto3.client(
         "s3",
-        endpoint_url=settings.STORAGE_ENDPOINT,
+        endpoint_url=endpoint,
         aws_access_key_id=settings.STORAGE_ACCESS_KEY,
         aws_secret_access_key=settings.STORAGE_SECRET_KEY,
         region_name=settings.STORAGE_REGION,
-        use_ssl=settings.STORAGE_USE_SSL,
+        use_ssl=use_ssl,
         config=Config(signature_version="s3v4"),
     )
+
+
+def _endpoint_candidates() -> list[str]:
+    candidates: list[str] = []
+    configured = (settings.STORAGE_ENDPOINT or "").strip()
+    if configured:
+        candidates.append(configured)
+        parsed = urlparse(configured)
+        host = (parsed.hostname or "").lower()
+        scheme = (parsed.scheme or ("https" if settings.STORAGE_USE_SSL else "http")).lower()
+        alt_scheme = "http" if scheme == "https" else "https"
+        port = parsed.port or (443 if scheme == "https" else 80)
+        if host not in {"minio", "localhost", "127.0.0.1"}:
+            candidates.extend(
+                [
+                    f"{scheme}://minio:9000",
+                    f"http://minio:9000",
+                    f"https://minio:9000",
+                    f"{scheme}://127.0.0.1:{port}",
+                    f"{alt_scheme}://127.0.0.1:{port}",
+                    f"{scheme}://localhost:{port}",
+                    f"{alt_scheme}://localhost:{port}",
+                ]
+            )
+        else:
+            candidates.extend(
+                [
+                    f"{alt_scheme}://{host}:{port}",
+                    "http://minio:9000",
+                    "https://minio:9000",
+                ]
+            )
+    else:
+        candidates.extend(["http://minio:9000", "https://minio:9000"])
+
+    unique: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        unique.append(candidate)
+    return unique
+
+
+@lru_cache(maxsize=1)
+def _resolve_working_storage_endpoint() -> str | None:
+    if not settings.STORAGE_ACCESS_KEY or not settings.STORAGE_SECRET_KEY:
+        return None
+    for endpoint in _endpoint_candidates():
+        scheme = urlparse(endpoint).scheme.lower()
+        use_ssl = scheme == "https" if scheme in {"http", "https"} else settings.STORAGE_USE_SSL
+        client = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=settings.STORAGE_ACCESS_KEY,
+            aws_secret_access_key=settings.STORAGE_SECRET_KEY,
+            region_name=settings.STORAGE_REGION,
+            use_ssl=use_ssl,
+            config=Config(signature_version="s3v4"),
+        )
+        try:
+            client.head_bucket(Bucket=settings.STORAGE_BUCKET)
+            return endpoint
+        except Exception:
+            continue
+    return None
 
 
 def _build_key(prefix: str, content_type: str) -> str:
