@@ -419,7 +419,7 @@ def main() -> int:
                 Filename=str(item.source_path),
                 Bucket=storage_bucket or "",
                 Key=item.key,
-                ExtraArgs={"ContentType": "image/jpg"},
+                ExtraArgs={"ContentType": "image/jpeg"},
             )
             report_rows.append(
                 ReportRow(
