@@ -95,6 +95,15 @@ type TeacherCertificate = {
   url: string;
 };
 
+type UserAnnouncement = {
+  id: number;
+  campaign_id: number;
+  subject: "math" | "cs" | "all";
+  group_number: number | null;
+  title: string;
+  body: string;
+};
+
 type ProfileForm = {
   login: string;
   email: string;
@@ -231,6 +240,8 @@ export function CabinetPage() {
   const [teacherCertificates, setTeacherCertificates] = useState<TeacherCertificate[]>([]);
   const [teacherCertificatesStatus, setTeacherCertificatesStatus] = useState<"idle" | "loading" | "error">("idle");
   const [teacherCertificateDownloadSeq, setTeacherCertificateDownloadSeq] = useState<number | null>(null);
+  const [announcements, setAnnouncements] = useState<UserAnnouncement[]>([]);
+  const [announcementsStatus, setAnnouncementsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeAttemptPrompt, setActiveAttemptPrompt] = useState<AttemptResult | null>(null);
@@ -528,6 +539,25 @@ export function CabinetPage() {
       .catch(() => {
         setTeacherCertificates([]);
         setTeacherCertificatesStatus("error");
+      });
+  }, [client, user, viewingStudentId]);
+
+  useEffect(() => {
+    if (!user || user.role !== "student" || viewingStudentId) {
+      setAnnouncements([]);
+      setAnnouncementsStatus("idle");
+      return;
+    }
+    setAnnouncementsStatus("loading");
+    client
+      .request<UserAnnouncement[]>({ path: "/users/me/announcements", method: "GET" })
+      .then((data) => {
+        setAnnouncements(data ?? []);
+        setAnnouncementsStatus("idle");
+      })
+      .catch(() => {
+        setAnnouncements([]);
+        setAnnouncementsStatus("error");
       });
   }, [client, user, viewingStudentId]);
 
@@ -1199,6 +1229,14 @@ export function CabinetPage() {
     studentId: link.student_id
   }));
   const mobileNavItems = [
+    {
+      label: "Объявления",
+      href: "#announcements",
+      visible:
+        activeUser?.role === "student" &&
+        !viewingStudentId &&
+        (announcementsStatus === "loading" || announcements.length > 0)
+    },
     { label: "Результаты", href: "#results", visible: activeUser?.role === "student" },
     {
       label: "Сертификаты",
@@ -1268,6 +1306,31 @@ export function CabinetPage() {
               </p>
             </section>
           </div>
+
+          {activeUser?.role === "student" && !viewingStudentId ? (
+            <div className="cabinet-section-scroll">
+              <section className="cabinet-section" id="announcements">
+                <div className="cabinet-section-heading">
+                  <h2>Объявления</h2>
+                </div>
+                {announcementsStatus === "loading" ? (
+                  <p className="cabinet-hint">Загрузка...</p>
+                ) : announcements.length > 0 ? (
+                  <div className="cabinet-announcements-list">
+                    {announcements.map((item) => (
+                      <article className="cabinet-announcement-card" key={item.id}>
+                        <h3>{item.title}</h3>
+                        <div
+                          className="cabinet-announcement-body"
+                          dangerouslySetInnerHTML={{ __html: renderMarkdown(item.body) }}
+                        />
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            </div>
+          ) : null}
 
           {activeUser?.role === "student" ? (
             <div className="cabinet-section-scroll">

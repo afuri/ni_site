@@ -36,6 +36,9 @@ export function AdminLayout() {
             <NavLink to="/reports" className={({ isActive }) => (isActive ? "active" : "")}>
               Отчеты
             </NavLink>
+            <NavLink to="/announcements" className={({ isActive }) => (isActive ? "active" : "")}>
+              Объявления
+            </NavLink>
           </div>
         }
         actions={

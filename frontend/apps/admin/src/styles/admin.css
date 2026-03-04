@@ -740,6 +740,30 @@
   padding: var(--space-5);
 }
 
+.admin-announcements-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.admin-ann-row-active {
+  background: rgba(28, 111, 207, 0.08);
+}
+
+.admin-ann-import-result {
+  margin-top: 12px;
+  border: 1px solid rgba(28, 111, 207, 0.24);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(28, 111, 207, 0.05);
+}
+
+.admin-ann-import-result ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
 @media (max-width: 900px) {
   .admin-app .layout-header-inner {
     grid-template-columns: 1fr;
@@ -748,5 +772,9 @@
 
   .admin-actions {
     justify-content: center;
+  }
+
+  .admin-announcements-grid {
+    grid-template-columns: 1fr;
   }
 }
