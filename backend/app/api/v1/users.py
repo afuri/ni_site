@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_db
+from app.core.deps import get_db, get_read_db
 from app.core.deps_auth import get_current_user
 from app.core.errors import http_error
 from app.models.user import User, UserRole
 from app.repos.users import UsersRepo
+from app.repos.announcements import AnnouncementsRepo
 from app.schemas.user import UserRead, UserUpdate
+from app.schemas.announcements import UserAnnouncementRead
 from app.api.v1.openapi_errors import response_example
 from app.api.v1.openapi_examples import EXAMPLE_USER_READ, response_model_example
 from app.core import error_codes as codes
@@ -62,3 +64,22 @@ async def update_me(
 
     updated = await repo.update_profile(user, data)
     return updated
+
+
+@router.get(
+    "/me/announcements",
+    response_model=list[UserAnnouncementRead],
+    tags=["users"],
+    description="Получить объявления для текущего пользователя",
+    responses={
+        401: response_example(codes.MISSING_TOKEN),
+    },
+)
+async def get_my_announcements(
+    db: AsyncSession = Depends(get_read_db),
+    user: User = Depends(get_current_user),
+):
+    if user.role != UserRole.student:
+        return []
+    repo = AnnouncementsRepo(db)
+    return await repo.get_user_announcements(user.id)
