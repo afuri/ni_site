@@ -96,12 +96,11 @@ type TeacherCertificate = {
 };
 
 type UserAnnouncement = {
-  id: number;
-  campaign_id: number;
+  campaign_code: string;
   subject: "math" | "cs" | "all";
   group_number: number | null;
   title: string;
-  body: string;
+  text: string;
 };
 
 type ProfileForm = {
@@ -552,7 +551,12 @@ export function CabinetPage() {
     client
       .request<UserAnnouncement[]>({ path: "/users/me/announcements", method: "GET" })
       .then((data) => {
-        setAnnouncements(data ?? []);
+        const normalized = (data ?? []).map((item) => ({
+          ...item,
+          subject: (item.subject ?? "all") as "math" | "cs" | "all",
+          text: typeof item.text === "string" ? item.text : ""
+        }));
+        setAnnouncements(normalized);
         setAnnouncementsStatus("idle");
       })
       .catch(() => {
@@ -1318,11 +1322,14 @@ export function CabinetPage() {
                 ) : announcements.length > 0 ? (
                   <div className="cabinet-announcements-list">
                     {announcements.map((item) => (
-                      <article className="cabinet-announcement-card" key={item.id}>
+                      <article
+                        className="cabinet-announcement-card"
+                        key={`${item.campaign_code}-${item.subject}-${item.group_number ?? "fallback"}-${item.title}`}
+                      >
                         <h3>{item.title}</h3>
                         <div
                           className="cabinet-announcement-body"
-                          dangerouslySetInnerHTML={{ __html: renderMarkdown(item.body) }}
+                          dangerouslySetInnerHTML={{ __html: renderMarkdown(item.text) }}
                         />
                       </article>
                     ))}
