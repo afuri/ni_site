@@ -3508,3 +3508,57 @@ docker compose exec api alembic upgrade head
 # перезапуск API/worker
 docker compose up -d --build --no-deps api worker
 
+1.6.2 Announcement to users frontend
+
+Перешли к frontend и реализовал раздел Объявления в личном кабинете ученика.
+
+Что сделано:
+
+В CabinetPage.tsx:
+Добавлен тип UserAnnouncement.
+Добавлены состояния announcements и announcementsStatus.
+Добавлена загрузка GET /users/me/announcements для роли student (и только для собственного кабинета).
+Добавлен новый блок Объявления (id="announcements"), который:
+показывает Загрузка... во время запроса,
+рендерит список объявлений, если они есть,
+скрыт, если объявлений нет.
+Текст объявления рендерится через renderMarkdown(...).
+В мобильную навигацию добавлен пункт Объявления, видимый только когда есть данные (или идет загрузка).
+В cabinet.css:
+Добавлены стили для карточек объявлений:
+.cabinet-announcements-list
+.cabinet-announcement-card
+.cabinet-announcement-body
+
+Сделал frontend для раздела объявлений в админке.
+
+Что реализовано:
+
+Новая страница управления объявлениями
+AnnouncementsPage.tsx
+Кампании:
+список (GET /admin/announcements/campaigns)
+создание (POST /admin/announcements/campaigns)
+редактирование (PATCH /admin/announcements/campaigns/{id})
+Групповые сообщения:
+просмотр с фильтром предмета (GET /admin/announcements/campaigns/{id}/groups)
+upsert (PUT /admin/announcements/campaigns/{id}/groups)
+Fallback:
+загрузка (GET /admin/announcements/campaigns/{id}/fallback)
+сохранение (PUT /admin/announcements/campaigns/{id}/fallback)
+CSV импорт назначений:
+math/cs через multipart/form-data
+endpoint POST /admin/announcements/campaigns/{id}/import/{subject}
+показывает статистику последнего импорта
+Подключение роутов
+App.tsx
+добавлен route: /admin/announcements
+Пункт меню в админ-верхнем меню
+AdminLayout.tsx
+добавлена вкладка Объявления
+Стили страницы
+admin.css
+двухколоночный layout для блоков
+подсветка выбранной кампании
+блок статистики импорта
+

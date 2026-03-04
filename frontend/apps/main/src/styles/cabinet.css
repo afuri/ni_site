@@ -185,6 +185,35 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.cabinet-announcements-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cabinet-announcement-card {
+  border: 1px solid rgba(15, 60, 122, 0.16);
+  border-radius: 12px;
+  background: rgba(15, 60, 122, 0.04);
+  padding: var(--space-4);
+}
+
+.cabinet-announcement-card h3 {
+  margin: 0 0 var(--space-2);
+  color: rgba(15, 23, 42, 0.95);
+}
+
+.cabinet-announcement-body {
+  color: rgba(15, 23, 42, 0.9);
+}
+
+.cabinet-announcement-body p {
+  margin: 0 0 var(--space-2);
+}
+
+.cabinet-announcement-body p:last-child {
+  margin-bottom: 0;
+}
+
 .cabinet-toggle {
   width: 100%;
   display: flex;
