@@ -214,6 +214,20 @@
   margin-bottom: 0;
 }
 
+.cabinet-announcement-body a {
+  color: #0056d2;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cabinet-announcement-body a:hover {
+  color: #003e9a;
+}
+
+.cabinet-announcement-body a:visited {
+  color: #5b3db5;
+}
+
 .cabinet-toggle {
   width: 100%;
   display: flex;
