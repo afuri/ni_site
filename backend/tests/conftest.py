@@ -32,6 +32,7 @@ import app.models.auth_token  # noqa: F401
 import app.models.audit_log  # noqa: F401
 import app.models.content  # noqa: F401
 import app.models.user_change  # noqa: F401
+import app.models.announcement  # noqa: F401
 
 
 def _get_test_db_url() -> str:

@@ -3364,3 +3364,147 @@ DRY_RUN=1 SOURCE_DIR=./teacher_certificates python3 ./upload_teacher_certificate
 
 # Реальная загрузка (с перезаписью существующих)
 DRY_RUN=0 OVERWRITE=1 SOURCE_DIR=./teacher_certificates python3 ./upload_teacher_certificates_minio.py
+
+
+---
+
+1.16.0 Announcement to users
+
+```Давай я детально распишу, что требуется. Дай только рекомендации. Необходимо чтобы в личном кабинете некоторых участников появилось одно или два объявления. Содержание объявлений и время размещения можно настраивать из админ панели. Все ученики будут разделены на 22 группы. 21 группа, у которых будут объявления и остальные, у которых не будет  объявления. 
+Имеется следующая необходимость: Надо разделить всех победителей по площадкам для приглашения на участие в очном этапе по географическому признаку. Очных этапа будет два: по математике и по инфоорматике. Соответственно, некоторые будут приглашены только на матеамтику на свою площадку, некоторые только на информатику. А у некотоорых будут два приглашения. Список групп (user_id, group_number) для математики в файле csv, список групп для информатики (user_id, group_number) в другом файле csv. 
+Для каждой группы свою объявление с информацией по очной площадке. Но есть и общая часть в объявлении. 
+Пользователям, user_id которых нет в таблице групп, можно вывести одно общее объявление, а можно не выводить.
+Порекомендуй решение```
+
+Рекомендую сделать это как “кампанийную систему объявлений” с таргетингом по предмету и группе, без хардкода в `users`.
+
+**1. Модель данных**
+- `announcement_campaigns`
+  - `id`, `code` (например `final_2026`)
+  - `title_default`
+  - `common_text` (общая часть)
+  - `is_active`
+  - `starts_at`, `ends_at`
+- `announcement_groups`
+  - `id`
+  - `campaign_id`
+  - `subject` (`math` | `cs`)
+  - `group_number` (1..21)
+  - `group_title`
+  - `group_text` (переменная часть: площадка, адрес, время)
+  - `starts_at`, `ends_at` (можно переопределять на группу)
+  - `is_active`
+  - `UNIQUE(campaign_id, subject, group_number)`
+- `user_group_assignments`
+  - `campaign_id`
+  - `user_id`
+  - `subject` (`math` | `cs`)
+  - `group_number`
+  - `source_file`, `assigned_at`
+  - `UNIQUE(campaign_id, user_id, subject)`  
+  Это позволит одному пользователю иметь 0/1/2 объявления (math/cs).
+- `campaign_fallback`
+  - `campaign_id`
+  - `enabled` (показывать ли “общее” тем, кто не попал в группы)
+  - `title`, `text`
+
+**2. Логика показа (backend)**
+- Эндпоинт: `GET /cabinet/announcements/me`
+- Для текущего пользователя:
+  - взять назначения из `user_group_assignments` по активной кампании
+  - присоединить тексты из `announcement_groups`
+  - собрать итоговые карточки: `common_text + group_text`
+- Если назначений нет:
+  - если `campaign_fallback.enabled=true` → вернуть 1 общее объявление
+  - иначе вернуть пусто
+- Ограничить максимум 2 карточки (math + cs) по вашей бизнес-логике.
+
+**3. Импорт из 2 CSV**
+- Отдельные импорт-процедуры:
+  - `import_math_groups.csv`
+  - `import_cs_groups.csv`
+- Формат: `user_id,group_number`
+- Валидировать:
+  - `user_id` существует и роль `student`
+  - `group_number` в диапазоне 1..21
+- Импорт через upsert, чтобы обновления были идемпотентны.
+- Хранить результат импорта (кол-во строк, ошибки) и лог.
+
+**4. Админ-панель**
+- Экран “Кампания объявлений”:
+  - включить/выключить кампанию
+  - общий текст (`common_text`)
+  - fallback объявление (вкл/выкл + текст)
+- Экран “Группы”:
+  - 21 группа для `math`, 21 для `cs`
+  - редактирование `group_text`, дат, активности
+- Экран “Импорт назначений”:
+  - загрузка 2 CSV отдельно
+  - превью и валидация до применения
+  - отчёт по ошибкам
+
+**5. Почему это оптимально**
+- Не трогаем `users`, схема расширяемая и сезонная.
+- Легко настраивать время публикации “раньше/позже”.
+- Поддерживает 0/1/2 объявления на пользователя.
+- Прозрачный аудит и повторные импорты без дубликатов.
+
+**6. Практические нюансы**
+- Добавить флаг версии кампании (`code`), чтобы не смешивать годы.
+- Кэшировать ответ `announcements/me` на короткое время (например 30–60 сек).
+- В UI раздел “Объявления” показывать только при непустом массиве ответа.
+
+
+Backend-часть реализована.
+
+Что добавил:
+
+Новые сущности объявлений
+announcement.py
+announcement_campaigns
+announcement_group_messages
+announcement_assignments
+announcement_campaign_fallbacks
+Alembic migration
+4f9c2a7b1d3e_add_announcement_campaigns.py
+Репозиторий и бизнес-логика
+announcements.py
+выдача объявлений пользователю (0/1/2; math/cs; fallback если назначений нет)
+CRUD-операции кампаний/групп/fallback
+импорт назначений из CSV с валидацией и статистикой
+Схемы API
+announcements.py
+API для админки
+admin_announcements.py
+GET /api/v1/admin/announcements/campaigns
+POST /api/v1/admin/announcements/campaigns
+PATCH /api/v1/admin/announcements/campaigns/{campaign_id}
+GET /api/v1/admin/announcements/campaigns/{campaign_id}/groups
+PUT /api/v1/admin/announcements/campaigns/{campaign_id}/groups
+GET /api/v1/admin/announcements/campaigns/{campaign_id}/fallback
+PUT /api/v1/admin/announcements/campaigns/{campaign_id}/fallback
+POST /api/v1/admin/announcements/campaigns/{campaign_id}/import/{subject} (CSV upload, subject=math|cs)
+API для кабинета пользователя
+users.py
+GET /api/v1/users/me/announcements
+для student возвращает объявления, для других ролей []
+Подключение роутера + коды ошибок + тестовый bootstrap импорт модели
+router.py
+error_codes.py
+env.py
+conftest.py
+Проверки:
+
+py_compile на изменённых backend-файлах проходит.
+Полноценные runtime-тесты локально не запускал (в окружении нет установленных backend-зависимостей).
+Команды применения на сервере:
+
+cd /opt/ni_site
+git pull
+
+# миграция
+docker compose exec api alembic upgrade head
+
+# перезапуск API/worker
+docker compose up -d --build --no-deps api worker
+
