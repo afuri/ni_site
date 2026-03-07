@@ -1203,7 +1203,7 @@ export function HomePage() {
             loading="eager"
             fetchpriority="high"
             width={1536}
-            height={864}
+            height={664}
           />
           <div className="container home-hero-inner">
             <div className="home-hero-title">
@@ -1252,7 +1252,7 @@ export function HomePage() {
                     frameBorder="0"
                     scrolling="no"
                     width="300"
-                    height="560"
+                    height="360"
                     src="https://yandex.ru/time/widget/?geoid=213&lang=ru&layout=vert&type=analog&face=serif"
                     style={{ border: "1px solid #ffeca6" }}
                     title="Виджет времени"
