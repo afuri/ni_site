@@ -3582,3 +3582,10 @@ admin.css
 Файл: HomePage.tsx
 Файл: home.css
 Блок home-hero-panel не трогал.
+
+            <div hidden className="home-hero-panel">
+              <div className="home-hero-panel-title">Приглашения на очный тур олимпиады <br /> будут размещены в личном кабинете<br /> с 10.03.2026 по  15.03.2026</div>
+              {/*<Countdown targetIso={TARGET_DATE} /> */}
+              { /*<Button onClick={() => handleStartSubject("cs")}>Принять участие</Button>*/ }
+            </div>
+
