@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient, type ApiError } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
-import { renderMarkdown } from "../utils/markdown";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -17,8 +16,6 @@ import herzenLogo from "../assets/herzen.png";
 import spassSciLogo from "../assets/spass_sci.png";
 import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
-import clockWidgetRaw from "../../../../clock_vidget.md?raw";
-import announcementRaw from "../../../../../announcement.md?raw";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-07T08:00:00+03:00";
@@ -1216,11 +1213,6 @@ export function HomePage() {
                 Невский интеграл
               </h1>
             </div>
-            <div className="home-hero-panel">
-              <div className="home-hero-panel-title">Приглашения на очный тур олимпиады <br /> будут размещены в личном кабинете<br /> с 10.03.2026 по  15.03.2026</div>
-              {/*<Countdown targetIso={TARGET_DATE} /> */}
-              { /*<Button onClick={() => handleStartSubject("cs")}>Принять участие</Button>*/ }
-            </div>
           </div>
         </section>
 
@@ -1228,16 +1220,44 @@ export function HomePage() {
           <div className="container">
             <div className="home-announcement-layout">
               <article className="home-announcement-card">
-                <div
-                  className="home-announcement-body"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(announcementRaw) }}
-                />
+                <div className="home-announcement-body">
+                  <h3>Открыта регистрация на участие в очном туре олимпиады «Невский интеграл»</h3>
+                  <h2>Уважаемые победители II отборочного тура!</h2>
+                  <p>
+                    В личном кабинете на сайте Олимпиады «Невский интеграл» стала доступна форма
+                    регистрации на участие в очном туре.
+                  </p>
+                  <p>
+                    Зарегистрироваться необходимо до <strong>15 марта 2026 года.</strong>
+                  </p>
+                  <p>Даты проведения очного тура:</p>
+                  <ul>
+                    <li>Математика - 1 апреля 2026 года</li>
+                    <li>Информатика - 2 апреля 2026 года</li>
+                  </ul>
+                  <p>Для регистрации необходимо:</p>
+                  <ol>
+                    <li>Войти в личный кабинет участника.</li>
+                    <li>Перейти к регистрационной форме.</li>
+                    <li>Заполнить необходимые данные и подтвердить участие.</li>
+                  </ol>
+                  <p>
+                    Просим участников своевременно пройти регистрацию через личный кабинет.
+                  </p>
+                </div>
               </article>
               <aside className="home-announcement-widget">
-                <div
-                  className="home-widget-embed"
-                  dangerouslySetInnerHTML={{ __html: clockWidgetRaw }}
-                />
+                <div className="home-widget-embed">
+                  <iframe
+                    frameBorder="0"
+                    scrolling="no"
+                    width="300"
+                    height="560"
+                    src="https://yandex.ru/time/widget/?geoid=213&lang=ru&layout=vert&type=analog&face=serif"
+                    style={{ border: "1px solid #ffeca6" }}
+                    title="Виджет времени"
+                  />
+                </div>
               </aside>
             </div>
           </div>
