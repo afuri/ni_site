@@ -1,0 +1,1 @@
+<iframe  frameborder="no" scrolling="no" width="150" height="280" src="https://yandex.ru/time/widget/?geoid=213&lang=ru&layout=vert&type=analog&face=serif" style="border: 1px solid #ffeca6;"></iframe>
