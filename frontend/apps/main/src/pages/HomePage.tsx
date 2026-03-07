@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient, type ApiError } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
+import { renderMarkdown } from "../utils/markdown";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -16,6 +17,8 @@ import herzenLogo from "../assets/herzen.png";
 import spassSciLogo from "../assets/spass_sci.png";
 import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
+import clockWidgetRaw from "../../../../clock_vidget.md?raw";
+import announcementRaw from "../../../../../announcement.md?raw";
 import "../styles/home.css";
 
 const TARGET_DATE = "2026-02-07T08:00:00+03:00";
@@ -437,6 +440,7 @@ export function HomePage() {
   const [testingCodeStatus, setTestingCodeStatus] = useState<"idle" | "loading" | "error">("idle");
   const [testingCodeStartStatus, setTestingCodeStartStatus] = useState<"idle" | "loading" | "error">("idle");
   const [testingCodeError, setTestingCodeError] = useState<string | null>(null);
+  const [isFaqOpen, setIsFaqOpen] = useState(false);
 
   const formatDateShort = (value: string) =>
     new Date(value).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -1222,45 +1226,19 @@ export function HomePage() {
 
         <section className="home-section-alt">
           <div className="container">
-            <div className="home-section-heading">
-              <h2>Тестирование по коду</h2>
-            </div>
-            <div className="home-code-testing">
-              <div className="home-code-controls">
-                <input
-                  type="text"
-                  name="testing-code"
-                  className="home-code-input"
-                  placeholder="код тестирования"
-                  value={testingCode}
-                  onChange={(event) => setTestingCode(event.target.value)}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  aria-label="Код тестирования"
+            <div className="home-announcement-layout">
+              <article className="home-announcement-card">
+                <div
+                  className="home-announcement-body"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(announcementRaw) }}
                 />
-                <Button
-                  type="button"
-                  onClick={handleTestingCodeStart}
-                  isLoading={testingCodeStartStatus === "loading"}
-                  disabled={
-                    testingCodeStatus === "loading" ||
-                    testingCodeStartStatus === "loading" ||
-                    !testingCodeOlympiad
-                  }
-                >
-                  Начать
-                </Button>
-              </div>
-              {testingCodeStatus === "loading" ? <p className="home-text">Проверяем код...</p> : null}
-              {testingCodeOlympiad ? (
-                <div className="home-code-meta">
-                  <p className="home-code-title">{testingCodeOlympiad.title}</p>
-                  <p>Класс: {testingCodeOlympiad.age_group}</p>
-                  <p>Дата проведения: {formatOlympiadDateRange(testingCodeOlympiad)}</p>
-                  <p>Длительность: {Math.round(testingCodeOlympiad.duration_sec / 60)} минут</p>
-                </div>
-              ) : null}
-              {testingCodeError ? <p className="home-error">{testingCodeError}</p> : null}
+              </article>
+              <aside className="home-announcement-widget">
+                <div
+                  className="home-widget-embed"
+                  dangerouslySetInnerHTML={{ __html: clockWidgetRaw }}
+                />
+              </aside>
             </div>
           </div>
         </section>
@@ -1344,6 +1322,51 @@ export function HomePage() {
           </div>
         </section>
 
+        <section className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+              <h2>Тестирование по коду</h2>
+            </div>
+            <div className="home-code-testing">
+              <div className="home-code-controls">
+                <input
+                  type="text"
+                  name="testing-code"
+                  className="home-code-input"
+                  placeholder="код тестирования"
+                  value={testingCode}
+                  onChange={(event) => setTestingCode(event.target.value)}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  aria-label="Код тестирования"
+                />
+                <Button
+                  type="button"
+                  onClick={handleTestingCodeStart}
+                  isLoading={testingCodeStartStatus === "loading"}
+                  disabled={
+                    testingCodeStatus === "loading" ||
+                    testingCodeStartStatus === "loading" ||
+                    !testingCodeOlympiad
+                  }
+                >
+                  Начать
+                </Button>
+              </div>
+              {testingCodeStatus === "loading" ? <p className="home-text">Проверяем код...</p> : null}
+              {testingCodeOlympiad ? (
+                <div className="home-code-meta">
+                  <p className="home-code-title">{testingCodeOlympiad.title}</p>
+                  <p>Класс: {testingCodeOlympiad.age_group}</p>
+                  <p>Дата проведения: {formatOlympiadDateRange(testingCodeOlympiad)}</p>
+                  <p>Длительность: {Math.round(testingCodeOlympiad.duration_sec / 60)} минут</p>
+                </div>
+              ) : null}
+              {testingCodeError ? <p className="home-error">{testingCodeError}</p> : null}
+            </div>
+          </div>
+        </section>
+
         {hasNews ? (
           <section id="news" className="home-section-alt">
             <div className="container">
@@ -1421,16 +1444,24 @@ export function HomePage() {
         <section className="home-section-alt">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Часто задаваемые вопросы</h2>
+              <button
+                type="button"
+                className="home-faq-toggle"
+                onClick={() => setIsFaqOpen((prev) => !prev)}
+              >
+                Часто задаваемые вопросы
+              </button>
             </div>
-            <div className="home-faq">
-              {FAQ_ITEMS.map((item) => (
-                <details key={item.question}>
-                  <summary>{item.question}</summary>
-                  <p>{item.answer}</p>
-                </details>
-              ))}
-            </div>
+            {isFaqOpen ? (
+              <div className="home-faq">
+                {FAQ_ITEMS.map((item) => (
+                  <details key={item.question}>
+                    <summary>{item.question}</summary>
+                    <p>{item.answer}</p>
+                  </details>
+                ))}
+              </div>
+            ) : null}
           </div>
         </section>
 
