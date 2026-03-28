@@ -3606,7 +3606,7 @@ admin.css
 
 bulk_send_transactional_email.py --sleep-sec 0.5
 bulk_send_transactional_email.py --limit 100
-bulk_send_transactional_email.py --subject "Подтверждение участия в очном туре"
+bulk_send_transactional_email.py --subject "Подтверждение регистрации на очный тур по информатике"
 Ожидаемый CSV:
 
 первая колонка должна содержать email
