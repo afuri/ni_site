@@ -3589,3 +3589,44 @@ admin.css
               { /*<Button onClick={() => handleStartSubject("cs")}>Принять участие</Button>*/ }
             </div>
 
+1.9.2 Массовая рассылка email
+
+Скрипт добавлен: bulk_send_transactional_email.py
+
+Что он делает:
+
+читает адреса из emails_final.csv
+читает текст письма из email_text.md
+использует текущий backend/app/core/email.py, то есть тот же SMTP/UniSender, что и регистрация/восстановление пароля
+дедуплицирует адреса, валидирует email
+поддерживает --dry-run
+пишет CSV-отчет в ./reports
+
+Полезные опции:
+
+bulk_send_transactional_email.py --sleep-sec 0.5
+bulk_send_transactional_email.py --limit 100
+bulk_send_transactional_email.py --subject "Подтверждение участия в очном туре"
+Ожидаемый CSV:
+
+первая колонка должна содержать email
+допустим заголовок email
+разделитель может быть , или ;
+
+```
+docker compose exec -T api python /app/app/scripts/bulk_send_transactional_email.py --dry-run
+
+```
+
+```
+docker compose exec -T api python /app/app/scripts/bulk_send_transactional_email.py
+
+```
+
+Если emails_final.csv и email_text.md лежат в корне /opt/ni_site, а не попадают в контейнерный /app, тогда нужно добавить их в образ/volume
+
+```
+docker cp /opt/ni_site/email_text.md ni_site-api-1:/app/email_text.md
+docker cp /opt/ni_site/emails_final.csv ni_site-api-1:/app/emails_final.csv
+
+```
