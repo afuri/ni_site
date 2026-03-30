@@ -1104,7 +1104,7 @@ export function HomePage() {
   const navItems = [
     { label: "Об олимпиаде", href: "#about" },
     { label: "Расписание", href: "#schedule" },
-    { label: "Результаты", href: "/results" },
+    { label: "Архив заданий", href: "/results" },
     ...(hasNews ? [{ label: "Новости", href: "#news" }] : []),
     ...(hasArticles ? [{ label: "Статьи", href: "#articles" }] : [])
   ];
@@ -1438,7 +1438,7 @@ export function HomePage() {
         <section id="results" className="home-section-alt home-section-hidden">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Результаты</h2>
+              <h2>Архив заданий</h2>
             </div>
           </div>
         </section>

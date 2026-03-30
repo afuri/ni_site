@@ -18,7 +18,7 @@ const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
   { label: "Расписание", href: "/#schedule" },
-  { label: "Результаты", href: "/results" }/*,
+  { label: "Архив заданий", href: "/results" }/*,
   { label: "Новости", href: "/#news" },
   { label: "Статьи", href: "/#articles" } */
 ];
