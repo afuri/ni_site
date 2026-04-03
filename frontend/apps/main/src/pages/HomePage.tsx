@@ -1221,26 +1221,14 @@ export function HomePage() {
             <div className="home-announcement-layout">
               <article className="home-announcement-card">
                 <div className="home-announcement-body">
-                  <h3>Очный тур олимпиады «Невский интеграл» завершён.</h3>
-                  <p>Результаты будут опубликованы не позднее 15 апреля в личных кабинетах участников.</p>
+                  <h2>Очный тур олимпиады «Невский интеграл» завершён.</h2>
+                  <br></br>
+                  <p>Результаты будут опубликованы не позднее <strong>15 апреля</strong> в личных кабинетах участников.</p>
                   <p>Благодарим всех участников за проявленный интерес!</p>
                   <br></br>
-                  <p>Интегралик уже ждёт вас в новом сезоне - до встречи осенью.</p>
+                  <h3>Интегралик уже ждёт вас в новом сезоне - до встречи осенью.</h3>
                 </div>
               </article>
-              <aside className="home-announcement-widget">
-                <div className="home-widget-embed">
-                  <iframe
-                    frameBorder="0"
-                    scrolling="no"
-                    width="300"
-                    height="360"
-                    src="https://yandex.ru/time/widget/?geoid=213&lang=ru&layout=vert&type=analog&face=serif"
-                    style={{ border: "1px solid #ffeca6" }}
-                    title="Виджет времени"
-                  />
-                </div>
-              </aside>
             </div>
           </div>
         </section>
