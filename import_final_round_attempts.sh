@@ -56,8 +56,8 @@ docker compose exec -T db psql -U postgres -d ni_site \
   -v ON_ERROR_STOP=1 \
   -v dry_run="${DRY_RUN}" \
   -v publish_results="${PUBLISH_RESULTS}" \
-  -v math_csv="'${TMP_MATH}'" \
-  -v inf_csv="'${TMP_INF}'" <<'SQL'
+  -v math_csv="${TMP_MATH}" \
+  -v inf_csv="${TMP_INF}" <<'SQL'
 \pset pager off
 
 BEGIN;
@@ -81,10 +81,10 @@ CREATE TEMP TABLE tmp_final_attempts_raw (
   percent text
 );
 
-\copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM :math_csv WITH (FORMAT csv, HEADER true, DELIMITER ';')
+\copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM :'math_csv' WITH (FORMAT csv, HEADER true, DELIMITER ';')
 UPDATE tmp_final_attempts_raw SET source_file = 'math_final_attempts.csv' WHERE source_file = '';
 
-\copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM :inf_csv WITH (FORMAT csv, HEADER true, DELIMITER ';')
+\copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM :'inf_csv' WITH (FORMAT csv, HEADER true, DELIMITER ';')
 UPDATE tmp_final_attempts_raw SET source_file = 'inf_final_attempts.csv' WHERE source_file = '';
 
 DELETE FROM tmp_final_attempts_raw
