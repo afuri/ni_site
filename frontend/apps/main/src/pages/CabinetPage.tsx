@@ -1027,7 +1027,7 @@ export function CabinetPage() {
 
       if (response.status === 404) {
         diplomaWindow.close();
-        setPendingResultsMessage("Диплом не найден. Обратитесь с службу технической поддержки");
+        setPendingResultsMessage("Диплом будет загружен позже");
         return;
       }
 
