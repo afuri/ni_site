@@ -3630,3 +3630,37 @@ docker cp /opt/ni_site/email_text.md ni_site-api-1:/app/email_text.md
 docker cp /opt/ni_site/emails_final.csv ni_site-api-1:/app/emails_final.csv
 
 ```
+
+1.9.3.0 final_results_upload
+
+Создал скрипт import_final_round_attempts.sh.
+
+Что он делает:
+
+читает math_final_attempts.csv и inf_final_attempts.csv
+валидирует дубли attempt_id и (user_id, olympiad_id) внутри импорта
+проверяет существование users и olympiads
+загружает попытки в attempts с явными id
+ставит status='submitted', graded_at=completed_at, считает passed
+обновляет sequence attempts.id
+по умолчанию включает results_released=true для олимпиад 52 и 53, чтобы результаты сразу появились в личном кабинете
+не создает attempt_answers, поэтому в просмотре задач будет “Нет ответа”, как и требовалось
+Отдельно учел формат ведомостей:
+
+duration_sec=60 в CSV трактуется как 60 минут и автоматически конвертируется в 3600 секунд
+Как запускать на сервере:
+
+cd /opt/ni_site
+DRY_RUN=1 ./import_final_round_attempts.sh
+
+Боевой запуск:
+
+cd /opt/ni_site
+./import_final_round_attempts.sh
+
+Если не хочешь сразу публиковать результаты:
+
+cd /opt/ni_site
+PUBLISH_RESULTS=0 ./import_final_round_attempts.sh
+
+
