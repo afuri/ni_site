@@ -102,7 +102,7 @@ WHERE COALESCE(BTRIM(id), '') = ''
   AND COALESCE(BTRIM(score_max), '') = ''
   AND COALESCE(BTRIM(percent), '') = '';
 
-DO $$
+DO \$do\$
 DECLARE
   v_duplicate_attempt_ids integer;
   v_duplicate_user_olympiads integer;
@@ -202,7 +202,8 @@ BEGIN
   IF v_existing_attempts > 0 THEN
     RAISE EXCEPTION 'Import aborted: existing attempts already found for these (user_id, olympiad_id) pairs: %', v_existing_attempts;
   END IF;
-END $$;
+END
+\$do\$;
 
 SELECT
   COUNT(*) AS rows_in_import,
@@ -228,7 +229,7 @@ FROM tmp_final_attempts_norm
 GROUP BY olympiad_id
 ORDER BY olympiad_id;
 
-DO $$
+DO \$do\$
 DECLARE
   v_dry_run boolean := :'dry_run' = '1';
   v_publish_results boolean := :'publish_results' = '1';
@@ -287,7 +288,8 @@ BEGIN
 
     RAISE NOTICE 'Olympiads 52 and 53 marked as results_released=true';
   END IF;
-END $$;
+END
+\$do\$;
 
 SELECT
   id,
