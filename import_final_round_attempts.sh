@@ -231,8 +231,8 @@ ORDER BY olympiad_id;
 
 DO \$do\$
 DECLARE
-  v_dry_run boolean := :'dry_run' = '1';
-  v_publish_results boolean := :'publish_results' = '1';
+  v_dry_run boolean := ${DRY_RUN} = 1;
+  v_publish_results boolean := ${PUBLISH_RESULTS} = 1;
   v_inserted integer;
 BEGIN
   IF v_dry_run THEN
