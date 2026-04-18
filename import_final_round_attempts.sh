@@ -14,25 +14,32 @@ set -euo pipefail
 #   DRY_RUN=1 ./import_final_round_attempts.sh
 #   ./import_final_round_attempts.sh
 
+MATH_CSV="${MATH_CSV:-./math_final_attempts.csv}"
 INF_CSV="${INF_CSV:-./inf_final_attempts.csv}"
 DRY_RUN="${DRY_RUN:-0}"
 PUBLISH_RESULTS="${PUBLISH_RESULTS:-1}"
 RUN_TS="$(date +%F_%H-%M-%S)"
 
+if [[ ! -f "${MATH_CSV}" ]]; then
+  echo "Math CSV not found: ${MATH_CSV}" >&2
+  exit 1
+fi
 
 if [[ ! -f "${INF_CSV}" ]]; then
   echo "Informatics CSV not found: ${INF_CSV}" >&2
   exit 1
 fi
 
+TMP_MATH="/tmp/final_math_${RUN_TS}_$$.csv"
 TMP_INF="/tmp/final_inf_${RUN_TS}_$$.csv"
 
 cleanup() {
-  docker compose exec -T db sh -lc "rm -f '${TMP_INF}'" >/dev/null 2>&1 || true
+  docker compose exec -T db sh -lc "rm -f '${TMP_MATH}' '${TMP_INF}'" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
 echo "Copy CSV files into db container..."
+docker compose cp "${MATH_CSV}" "db:${TMP_MATH}" >/dev/null
 docker compose cp "${INF_CSV}" "db:${TMP_INF}" >/dev/null
 
 MODE_LABEL="apply"
@@ -41,6 +48,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
 fi
 
 echo "Mode: ${MODE_LABEL}"
+echo "Math CSV: ${MATH_CSV}"
 echo "Inf CSV: ${INF_CSV}"
 echo "Publish results_released for olympiads 52/53: ${PUBLISH_RESULTS}"
 
@@ -70,6 +78,9 @@ CREATE TEMP TABLE tmp_final_attempts_raw (
   score_max text,
   percent text
 );
+
+\copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM '${TMP_MATH}' WITH (FORMAT csv, HEADER true, DELIMITER ';')
+UPDATE tmp_final_attempts_raw SET source_file = 'math_final_attempts.csv' WHERE source_file = '';
 
 \copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM '${TMP_INF}' WITH (FORMAT csv, HEADER true, DELIMITER ';')
 UPDATE tmp_final_attempts_raw SET source_file = 'inf_final_attempts.csv' WHERE source_file = '';
@@ -196,6 +207,7 @@ END
 
 SELECT
   COUNT(*) AS rows_in_import,
+  COUNT(*) FILTER (WHERE olympiad_id = 52) AS math_rows,
   COUNT(*) FILTER (WHERE olympiad_id = 53) AS inf_rows,
   MIN(id) AS min_attempt_id,
   MAX(id) AS max_attempt_id,
