@@ -71,9 +71,6 @@ CREATE TEMP TABLE tmp_final_attempts_raw (
   percent text
 );
 
-\copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM '${TMP_MATH}' WITH (FORMAT csv, HEADER true, DELIMITER ';')
-UPDATE tmp_final_attempts_raw SET source_file = 'math_final_attempts.csv' WHERE source_file = '';
-
 \copy tmp_final_attempts_raw (id, user_id, olympiad_id, olympiad_title, user_full_name, gender, class_grade, city, school, started_at, completed_at, duration_sec, score_total, score_max, percent) FROM '${TMP_INF}' WITH (FORMAT csv, HEADER true, DELIMITER ';')
 UPDATE tmp_final_attempts_raw SET source_file = 'inf_final_attempts.csv' WHERE source_file = '';
 
@@ -199,7 +196,6 @@ END
 
 SELECT
   COUNT(*) AS rows_in_import,
-  COUNT(*) FILTER (WHERE olympiad_id = 52) AS math_rows,
   COUNT(*) FILTER (WHERE olympiad_id = 53) AS inf_rows,
   MIN(id) AS min_attempt_id,
   MAX(id) AS max_attempt_id,
