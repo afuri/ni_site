@@ -226,13 +226,6 @@ export function ResultsArchivePage() {
                     >
                       Статистика проведения олимпиады в {year.label} году
                     </p>
-                    {year.startYear === 2025 ? (
-                      <img
-                        src="/docs/results/statistic.png"
-                        alt="Статистика 2025-2026"
-                        className="results-stat-image"
-                      />
-                    ) : null}
                     <br/>
                     <h3>Задания и решения</h3>
                     <h4>Математика</h4>
