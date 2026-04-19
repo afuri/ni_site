@@ -3663,4 +3663,21 @@ cd /opt/ni_site
 cd /opt/ni_site
 PUBLISH_RESULTS=0 ./import_final_round_attempts.sh
 
+1.9.5.0 Result and archive page
+
+
+/archive открывает новую ArchivePage.tsx с тем же содержимым, что раньше было в ResultsArchivePage.
+/results открывает новую ResultPage.tsx.
+В меню на главной теперь отдельные ссылки Результаты и Архив заданий.
+Роутинг обновлен в App.tsx.
+
+На ResultPage.tsx текст из final_statistic.pdf переведен в HTML-структуру:
+заголовки через <h3>
+основной текст через <p>
+Из PDF оставил только диаграммы, вырезанные отдельными изображениями:
+chart-1-dynamics.png
+chart-2-subjects.png
+chart-3-results.png
+Блок с географией очного этапа оформил как HTML-карточки вместо картинки.
+Обновил стили в results-archive.css.
 
