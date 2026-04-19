@@ -1104,7 +1104,8 @@ export function HomePage() {
   const navItems = [
     { label: "Об олимпиаде", href: "#about" },
     { label: "Расписание", href: "#schedule" },
-    { label: "Архив заданий", href: "/results" },
+    { label: "Результаты", href: "/results" },
+    { label: "Архив заданий", href: "/archive" },
     ...(hasNews ? [{ label: "Новости", href: "#news" }] : []),
     ...(hasArticles ? [{ label: "Статьи", href: "#articles" }] : [])
   ];

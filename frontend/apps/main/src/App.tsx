@@ -18,8 +18,11 @@ const VerifyEmailPage = lazy(() =>
 const ResetPasswordPage = lazy(() =>
   import("./pages/ResetPasswordPage").then((module) => ({ default: module.ResetPasswordPage }))
 );
-const ResultsArchivePage = lazy(() =>
-  import("./pages/ResultsArchivePage").then((module) => ({ default: module.ResultsArchivePage }))
+const ArchivePage = lazy(() =>
+  import("./pages/ArchivePage").then((module) => ({ default: module.ArchivePage }))
+);
+const ResultPage = lazy(() =>
+  import("./pages/ResultPage").then((module) => ({ default: module.ResultPage }))
 );
 
 const storage = createMainAuthStorage();
@@ -38,7 +41,8 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/olympiad" element={<OlympiadPage />} />
             <Route path="/cabinet" element={<CabinetPage />} />
-            <Route path="/results" element={<ResultsArchivePage />} />
+            <Route path="/results" element={<ResultPage />} />
+            <Route path="/archive" element={<ArchivePage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Routes>

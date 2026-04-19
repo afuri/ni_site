@@ -18,10 +18,9 @@ const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
   { label: "Расписание", href: "/#schedule" },
-  { label: "Архив заданий", href: "/results" }/*,
-  { label: "Новости", href: "/#news" },
-  { label: "Статьи", href: "/#articles" } */
-];
+  { label: "Результаты", href: "/results" },
+  { label: "Архив заданий", href: "/archive" }
+] as const;
 
 const buildYears = (): YearEntry[] => {
   const entries: YearEntry[] = [];
@@ -61,7 +60,7 @@ function PdfLinkButton({
   );
 }
 
-export function ResultsArchivePage() {
+export function ArchivePage() {
   const { status, user, signOut } = useAuth();
   const isAuthenticated = status === "authenticated" && Boolean(user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -73,7 +72,7 @@ export function ResultsArchivePage() {
       return;
     }
     window.localStorage.setItem(OPEN_LOGIN_STORAGE_KEY, "1");
-    window.localStorage.setItem(LOGIN_REDIRECT_KEY, "/results");
+    window.localStorage.setItem(LOGIN_REDIRECT_KEY, "/archive");
     window.location.href = "/";
   };
 
@@ -214,19 +213,24 @@ export function ResultsArchivePage() {
         <section className="home-section">
           <div className="container">
             <div className="home-section-heading">
-              <h2>Результаты олимпиады и разбор заданий</h2>
+              <h2>Архив заданий</h2>
             </div>
             <div className="results-archive">
               {years.map((year) => (
                 <details key={year.label} className="results-year" open={year.startYear === 2025}>
                   <summary className="results-year-summary">{year.label}</summary>
                   <div className="results-year-body">
-                    <p
-                      className={`home-text ${year.startYear === 2025 ? "results-stat-text-centered" : ""}`}
-                    >
+                    <p className={`home-text ${year.startYear === 2025 ? "results-stat-text-centered" : ""}`}>
                       Статистика проведения олимпиады в {year.label} году
                     </p>
-                    <br/>
+                    {year.startYear === 2025 ? (
+                      <img
+                        src="/docs/results/statistic.png"
+                        alt="Статистика 2025-2026"
+                        className="results-stat-image"
+                      />
+                    ) : null}
+                    <br />
                     <h3>Задания и решения</h3>
                     <h4>Математика</h4>
                     <ul className="results-links">

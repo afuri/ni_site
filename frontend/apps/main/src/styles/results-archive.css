@@ -102,3 +102,122 @@
   color: #6b7893;
   font-style: italic;
 }
+
+.results-report {
+  display: grid;
+  gap: 20px;
+}
+
+.results-report-prose {
+  display: grid;
+  gap: 16px;
+  width: min(80%, 1120px);
+  margin: 0 auto;
+}
+
+.results-report-title {
+  margin: 12px 0 0;
+  color: #20477e;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.results-report-text {
+  width: 100%;
+  margin: 0;
+  color: #1f2a3a;
+  font-size: 18px;
+  line-height: 1.65;
+  text-align: justify;
+  text-wrap: pretty;
+  text-indent: 4ch;
+}
+
+.results-report-chart-grid {
+  display: grid;
+  gap: 24px;
+  justify-items: center;
+}
+
+.results-report-chart {
+  margin: 8px auto 0;
+  padding: 18px;
+  width: min(60%, 840px);
+  border: 1px solid #d7dfef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(32, 71, 126, 0.08);
+}
+
+.results-report-chart img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+.results-report-chart figcaption {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 15px;
+  color: #44536d;
+  font-style: italic;
+}
+
+.results-geo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.results-geo-card {
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #eef5ff 0%, #ddeaf8 100%);
+  border: 1px solid #d7e4f4;
+  text-align: center;
+}
+
+.results-geo-card h3 {
+  margin: 0 0 10px;
+  color: #20477e;
+  font-size: 18px;
+}
+
+.results-geo-card p {
+  margin: 0;
+  color: #27354a;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .results-report-prose {
+    width: min(92%, 1120px);
+  }
+
+  .results-report-title {
+    font-size: 24px;
+  }
+
+  .results-report-chart {
+    width: min(80%, 840px);
+  }
+
+  .results-geo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .results-report-prose {
+    width: 100%;
+  }
+
+  .results-report-chart {
+    width: 100%;
+  }
+
+  .results-geo-grid {
+    grid-template-columns: 1fr;
+  }
+}
