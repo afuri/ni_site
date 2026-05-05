@@ -215,6 +215,40 @@ export function ArchivePage() {
             <div className="home-section-heading">
               <h2>Архив заданий</h2>
             </div>
+            <h3>Решения победителей очного тура 2025-2026 года</h3>
+                <ul className="home-docs">
+                  <li>
+                  <a href="/docs/results/math_3_11838.pdf" target="_blank" rel="noreferrer">
+                    Математика 3 класс
+                  </a>
+                  </li>
+                  <li>
+                  <a href="/docs/results/math_5_6435.pdf"  target="_blank" rel="noreferrer">
+                    Математика 5 класс
+                  </a>
+                  </li>
+                  <li>
+                  <a href="/docs/results/math_5_6617.pdf" target="_blank" rel="noreferrer">
+                    Математика 5 класс
+                  </a>
+                  </li>
+                  <li>
+                  <a href="/docs/results/math_6_226.pdf" target="_blank" rel="noreferrer">
+                    Математика 6 класс
+                  </a>
+                  </li>
+                  <li>
+                  <a href="/docs/results/inf_4_170.pdf" target="_blank" rel="noreferrer">
+                    Информатика 4 класс
+                  </a>
+                  </li>
+                  <li>
+                  <a href="/docs/results/inf_5_15222.pdf" target="_blank" rel="noreferrer">
+                    Информатика 5 класс
+                  </a>
+                  </li>
+                  <br></br>
+                  </ul>
             <div className="results-archive">
               {years.map((year) => (
                 <details key={year.label} className="results-year" open={year.startYear === 2025}>
