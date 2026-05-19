@@ -10,7 +10,7 @@ import catImage from "../assets/cat.png";
 import vkLink from "../assets/vk_link.png";
 import minprosImage from "../assets/minpros.png";
 import lyc344Logo from "../assets/lyc344.png";
-import imcNevLogo from "../assets/imc_nev.png";
+import SMLogo from "../assets/sm.png";
 import consorciumLogo from "../assets/consorcium.png";
 import herzenLogo from "../assets/herzen.png";
 import spassSciLogo from "../assets/spass_sci.png";
@@ -1470,7 +1470,7 @@ export function HomePage() {
                 <img src={lyc344Logo} alt="Лицей 344" />
               </a>
               <a href="http://www.imc-nev.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
-                <img src={imcNevLogo} alt="ИМЦ Невского района" />
+                <img src={SMLogo} alt="Силовые Машины" />
               </a>
               <a href="https://ingtech.info/news" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={consorciumLogo} alt="Инженерно-технологический консорциум" />
