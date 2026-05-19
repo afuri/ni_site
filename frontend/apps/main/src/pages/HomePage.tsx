@@ -1469,7 +1469,7 @@ export function HomePage() {
               <a href="https://licey344spb.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={lyc344Logo} alt="Лицей 344" />
               </a>
-              <a href="http://www.imc-nev.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
+              <a href="https://power-m.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={SMLogo} alt="Силовые Машины" />
               </a>
               <a href="https://ingtech.info/news" target="_blank" rel="noreferrer" className="home-partner-card">
