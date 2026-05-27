@@ -1218,23 +1218,14 @@ export function HomePage() {
                 Невский интеграл
               </h1>
               <br></br>
+              <br></br>
+              <br></br>
+              <br></br>
+              <br></br>
               <h3>Интегралик уже ждёт вас в новом сезоне - до встречи осенью.</h3>
             </div>
           </div>
         </section>
-
-        <section className="home-section-alt">
-          <div className="container">
-            <div className="home-announcement-layout">
-              <article className="home-announcement-card">
-                <div className="home-announcement-body">
-                  <h3>Интегралик уже ждёт вас в новом сезоне - до встречи осенью.</h3>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-
 
         <section id="choose" className="home-section-alt" hidden>
           <div className="container">
