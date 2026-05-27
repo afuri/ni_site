@@ -14,6 +14,10 @@ import SMLogo from "../assets/sm.png";
 import consorciumLogo from "../assets/consorcium.png";
 import herzenLogo from "../assets/herzen.png";
 import spassSciLogo from "../assets/spass_sci.png";
+import bloxLogo from "../assets/bloxel.png";
+import itLogo from "../assets/liceyIT.png";
+import znanieLogo from "../assets/prosv.png";
+import prosvLogo from "../assets/znanie.png";
 import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
@@ -1222,15 +1226,6 @@ export function HomePage() {
             <div className="home-announcement-layout">
               <article className="home-announcement-card">
                 <div className="home-announcement-body">
-                  <h2>Уважаемые победители и призёры!</h2>
-                  <br></br>
-                  <p><strong>Церемония награждения состоится 23 мая 2026 года.</strong></p>
-                  <p>Просим вас заранее пройти регистрацию для подтверждения участия.</p> 
-                  <br></br>
-                  <p> Проверьте электронную почту (в том числе папку «Спам»), указанную при регистрации личного кабинета.<br></br>Вам направлено письмо с информацией о церемонии награждения и ссылкой на регистрационную форму.</p>
-                  <br></br>
-                  <p>Благодарим всех участников за проявленный интерес!</p>
-                  <br></br>
                   <h3>Интегралик уже ждёт вас в новом сезоне - до встречи осенью.</h3>
                 </div>
               </article>
@@ -1472,8 +1467,20 @@ export function HomePage() {
               <a href="https://power-m.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={SMLogo} alt="Силовые Машины" />
               </a>
+              <a href="https://bloxels.ru/?utm_campaign=nevsky_integral" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={bloxLogo} alt="Блоксели" />
+              </a>
+              <a href="https://znanierussia.ru" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={znanieLogo} alt="Знание" />
+              </a>
               <a href="https://ingtech.info/news" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={consorciumLogo} alt="Инженерно-технологический консорциум" />
+              </a>
+              <a href="https://prosv.ru" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={prosvLogo} alt="Просвещение" />
+              </a>
+              <a href="https://lyceum-it.ru" target="_blank" rel="noreferrer" className="home-partner-card">
+                <img src={itLogo} alt="Лицей ИТ" />
               </a>
               <a href="https://www.herzen.spb.ru/" target="_blank" rel="noreferrer" className="home-partner-card">
                 <img src={herzenLogo} alt="РГПУ им. А. И. Герцена" />
