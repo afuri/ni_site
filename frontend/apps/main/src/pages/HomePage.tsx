@@ -1222,6 +1222,11 @@ export function HomePage() {
               <br></br>
               <br></br>
               <br></br>
+              <br></br>
+              <br></br>
+              <br></br>
+              <br></br>
+              <br></br>
               <h3>Интегралик уже ждёт вас в новом сезоне - до встречи осенью.</h3>
             </div>
           </div>
