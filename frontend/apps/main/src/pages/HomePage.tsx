@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
-import catImage from "../assets/cat.png";
+import catImage from "../assets/cat_fixer.png";
 import vkLink from "../assets/vk_link.png";
 import minprosImage from "../assets/minpros.png";
 import lyc344Logo from "../assets/lyc344.png";
@@ -1206,7 +1206,7 @@ export function HomePage() {
             aria-hidden="true"
             decoding="async"
             loading="eager"
-            fetchpriority="high"
+            fetchPriority="high"
             width={1536}
             height={664}
           />
@@ -1227,7 +1227,9 @@ export function HomePage() {
               <br></br>
               <br></br>
               <br></br>
-              <h3>Интегралик уже ждёт вас в новом сезоне - до встречи осенью.</h3>
+              <h2>ВНИМАНИЕ</h2>
+              <h3>Регистрация новых пользователей временно ограничена</h3>
+              <h4>Интегралик проводит ремонтные работы до 24.08.2026</h4>
             </div>
           </div>
         </section>
