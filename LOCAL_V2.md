@@ -83,3 +83,24 @@ docker compose -f docker-compose.local.yml logs --tail=100 api worker
 ```
 
 Исходный зашифрованный снимок остаётся эталоном для полного восстановления. Рабочая директория и Docker-тома являются изменяемой средой разработки и не заменяют резервную копию.
+
+Выполните в Терминале:
+
+```bash
+cd /Users/alexfedosov/Documents/ni_site_v2
+docker compose -f docker-compose.local.yml logs --tail=200 api
+```
+
+Чтобы смотреть новые записи в реальном времени:
+
+```bash
+docker compose -f docker-compose.local.yml logs --tail=200 -f api
+```
+
+Остановить просмотр: `Control+C`.
+
+Для одновременного просмотра API и worker:
+
+```bash
+docker compose -f docker-compose.local.yml --profile worker logs --tail=200 -f api worker
+```
