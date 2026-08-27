@@ -1,15 +1,4 @@
-Выполни "боевое" тестирование сервера через доступ по тунелю. Все необходимые инструкции найдешь в файле maintest.md, когда будешь создавать пользователей, дай
-  мне список, я верефицирую email вручную. В конце подготовь анализ теста.
 
-## main test every endpoints
-
-URL = https://surely-breach-revision-settled.trycloudflare.com
-
-1. connect to server by URL
-2. Use main admin login: admin01 password: StrongPass123 
-3. register 3 students 
-4. register 3 teachers
-5. register 1 additional admin
 
 ### wait an email verification procedure
 
