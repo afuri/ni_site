@@ -270,6 +270,32 @@
   margin-top: -8rem;
 }
 
+.home-hero-message {
+  width: fit-content;
+  margin: 0 auto;
+  margin-top: 12rem;
+  padding: 16px 24px;
+
+  background: rgba(0, 33, 75, 0.6);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+}
+
+.home-hero-title h2 {
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+.home-hero-title h3 {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 400;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
 .home-hero-panel {
   align-self: center;
   background: rgba(0, 86, 210, 0.7);
@@ -395,7 +421,7 @@
 .home-announcement-body h2,
 .home-announcement-body h3 {
   margin-top: 0;
-  color: #0f3c7a;
+  color: #72a4ea;
 }
 
 .home-announcement-body p,
@@ -1150,6 +1176,7 @@
     grid-template-columns: 1fr;
   }
 }
+
 
 @media (max-width: 720px) {
   .home-logo span {

@@ -1217,17 +1217,10 @@ export function HomePage() {
                 <br />
                 Невский интеграл
               </h1>
-              <br></br>
-              <br></br>
-              <br></br>
-              <br></br>
-              <br></br>
-              <br></br>
-              <br></br>
-              <br></br>
-              <br></br>
-              <br></br>
-              <h2>СКОРО НОВЫЙ СЕЗОН</h2>
+              <div className="home-hero-message">
+               <h2>СТАРТ НОВОГО СЕЗОНА — 5 ОКТЯБРЯ!</h2>
+               <h3>Интегралик уже собирает новые задачи. Вы готовы?</h3>
+              </div>
             </div>
           </div>
         </section>
