@@ -22,6 +22,7 @@ cd /Users/alexfedosov/Documents/ni_site_v2
 
 - `bulk_update_user_geo.sh` — массовое обновление географии пользователей.
 - `import_final_round_attempts.sh` — импорт результатов очного этапа.
+- `promote_student_grades.sh` — ежегодный перевод учеников на один класс вверх с dry-run, аудитом и защитой от повторного запуска.
 - `regrade_task37_words.sh` — переоценка ответов для задания 37.
 - `regrade_task50_51_words.sh` — переоценка выбранных текстовых заданий.
 - `regrade_task_units_3class.sh` — переоценка ответов с единицами измерения.
