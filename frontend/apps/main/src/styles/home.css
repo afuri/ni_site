@@ -319,6 +319,18 @@
   justify-content: center;
 }
 
+.home-hero-countdown {
+  width: 100%;
+  padding: 16px 24px;
+}
+
+.home-hero-countdown .countdown-timer {
+  gap: 16px;
+  font-size: clamp(1rem, 5vw, 2rem);
+  font-weight: 300;
+  line-height: 1;
+}
+
 .countdown {
   display: grid;
   gap: var(--space-2);
