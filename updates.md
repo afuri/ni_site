@@ -3686,3 +3686,26 @@ chart-3-results.png
 В разделе Архивы заданий разместил 6 ссылок на детские работы (отсканированные бланки)
 
 1.9.8.0 update_advert
+
+2.0.0.1 advert_grade_up
+
+Создан скрипт [promote_student_grades.sh](/Users/alexfedosov/Documents/ni_site_v2/manual_scripts/promote_student_grades.sh) и обновлён [README.md (line 25)](/Users/alexfedosov/Documents/ni_site_v2/manual_scripts/README.md:25).
+Сначала выполните предварительную проверку:
+./manual_scripts/promote_student_grades.sh \
+  --batch-id 2026-2027 \
+  --dry-run
+Чтобы применить изменения:
+./manual_scripts/promote_student_grades.sh \
+  --batch-id 2026-2027 \
+  --apply
+Скрипт:
+- переводит студентов классов 0..10 на один класс вверх;
+- оставляет 11 класс без изменений;
+- пропускает NULL и некорректные значения;
+- показывает сводку переходов до обновления;
+- записывает изменения в user_changes;
+- защищает от повторного применения того же batch-id;
+- использует транзакцию и блокировку от параллельного запуска;
+- по умолчанию работает в режиме dry-run.
+
+2.0.1 new_season_info
