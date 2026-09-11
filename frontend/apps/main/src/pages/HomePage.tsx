@@ -22,7 +22,7 @@ import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
 
-const TARGET_DATE = "2026-02-07T08:00:00+03:00";
+const TARGET_DATE = "2026-10-05T08:00:00+03:00";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
@@ -1366,8 +1366,9 @@ export function HomePage() {
                 Невский интеграл
               </h1>
               <div className="home-hero-message">
-               <h2>СТАРТ НОВОГО СЕЗОНА — 5 ОКТЯБРЯ!</h2>
-               <h3>Интегралик уже собирает новые задачи. Вы готовы?</h3>
+               <h2>До старта нового сезона:</h2>
+               <br />
+               <Countdown targetIso={TARGET_DATE} className="home-hero-countdown"/>
               </div>
             </div>
           </div>
@@ -1448,50 +1449,10 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="home-section-alt">
-          <div className="container">
-            <div className="home-section-heading">
-              <h2>Тестирование по коду</h2>
-            </div>
-            <div className="home-code-testing">
-              <div className="home-code-controls">
-                <input
-                  type="text"
-                  name="testing-code"
-                  className="home-code-input"
-                  placeholder="код тестирования"
-                  value={testingCode}
-                  onChange={(event) => setTestingCode(event.target.value)}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  aria-label="Код тестирования"
-                />
-                <Button
-                  type="button"
-                  onClick={handleTestingCodeStart}
-                  isLoading={testingCodeStartStatus === "loading"}
-                  disabled={
-                    testingCodeStatus === "loading" ||
-                    testingCodeStartStatus === "loading" ||
-                    !testingCodeOlympiad
-                  }
-                >
-                  Начать
-                </Button>
-              </div>
-              {testingCodeStatus === "loading" ? <p className="home-text">Проверяем код...</p> : null}
-              {testingCodeOlympiad ? (
-                <div className="home-code-meta">
-                  <p className="home-code-title">{testingCodeOlympiad.title}</p>
-                  <p>Класс: {testingCodeOlympiad.age_group}</p>
-                  <p>Дата проведения: {formatOlympiadDateRange(testingCodeOlympiad)}</p>
-                  <p>Длительность: {Math.round(testingCodeOlympiad.duration_sec / 60)} минут</p>
-                </div>
-              ) : null}
-              {testingCodeError ? <p className="home-error">{testingCodeError}</p> : null}
-            </div>
-          </div>
+        <section id="contacts" className="home-section-alt">
         </section>
+
+        
 
         {hasNews ? (
           <section id="news" className="home-section-alt">
@@ -1628,10 +1589,54 @@ export function HomePage() {
           </div>
         </section>
 
+        <section className="home-section-alt">
+          <div className="container">
+            <div className="home-section-heading">
+            </div>
+            <div className="home-code-testing">
+              <div className="home-code-controls">
+                <input
+                  type="text"
+                  name="testing-code"
+                  className="home-code-input"
+                  placeholder="Промокод"
+                  value={testingCode}
+                  onChange={(event) => setTestingCode(event.target.value)}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  aria-label="Промокод"
+                />
+                <Button
+                  type="button"
+                  onClick={handleTestingCodeStart}
+                  isLoading={testingCodeStartStatus === "loading"}
+                  disabled={
+                    testingCodeStatus === "loading" ||
+                    testingCodeStartStatus === "loading" ||
+                    !testingCodeOlympiad
+                  }
+                >
+                  ok
+                </Button>
+              </div>
+              {testingCodeStatus === "loading" ? <p className="home-text">Проверяем код...</p> : null}
+              {testingCodeOlympiad ? (
+                <div className="home-code-meta">
+                  <p className="home-code-title">{testingCodeOlympiad.title}</p>
+                  <p>Класс: {testingCodeOlympiad.age_group}</p>
+                  <p>Дата проведения: {formatOlympiadDateRange(testingCodeOlympiad)}</p>
+                  <p>Длительность: {Math.round(testingCodeOlympiad.duration_sec / 60)} минут</p>
+                </div>
+              ) : null}
+              {testingCodeError ? <p className="home-error">{testingCodeError}</p> : null}
+            </div>
+          </div>
+        </section>
+
         <section id="contacts" className="home-section-alt">
           <div className="container">
             <h2>Контакты</h2>
-            <p className="home-text">Контактный адрес: nevsky-integral@mail.ru</p>
+            <p className="home-text-2">nevsky-integral@mail.ru</p>
           </div>
         </section>
 

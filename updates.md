@@ -3709,3 +3709,5 @@ chart-3-results.png
 - по умолчанию работает в режиме dry-run.
 
 2.0.1 new_season_info
+
+2.0.2 countdown_replace_elements_homepage
