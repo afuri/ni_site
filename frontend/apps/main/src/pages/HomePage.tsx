@@ -7,7 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
-import catImage from "../assets/cat_fixer.png";
+import catImage from "../assets/cat.png";
 import vkLink from "../assets/vk_link.png";
 import minprosImage from "../assets/minpros.png";
 import lyc344Logo from "../assets/lyc344.png";
@@ -1324,10 +1324,6 @@ export function HomePage() {
                 Невский интеграл
               </h1>
               <div className="home-hero-message">
-               <h2>На сайте проводятся технические работы</h2>
-               <h2>Регистрация и вход в личный кабинет ограничены</h2>
-               <h2>до 8:00 МСК 14.09.2026</h2>
-               <br /> 
                <h2>До старта нового сезона:</h2>
                <br />
                <Countdown targetIso={TARGET_DATE} className="home-hero-countdown"/>
