@@ -23,6 +23,10 @@ from app.core.config import settings
 from app.models.social_account import SocialAccount  # noqa
 from app.models.content import ContentItem  # noqa
 from app.models.school import School  # noqa
+from app.models.region import Region  # noqa
+from app.models.city import City  # noqa
+from app.models.school_submission import SchoolSubmission  # noqa
+from app.models.school_import import SchoolImportBatch, SchoolSourceMap  # noqa
 from app.models.olympiad_pool import OlympiadPool, OlympiadPoolItem, OlympiadAssignment  # noqa
 from app.models.announcement import (  # noqa
     AnnouncementCampaign,

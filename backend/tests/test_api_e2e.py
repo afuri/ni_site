@@ -32,9 +32,9 @@ async def test_e2e_register_attempt_result(client, db_session, create_user):
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
-        "country": "Россия",
-        "city": "Москва",
-        "school": "Школа",
+        "region_id": 1,
+        "school_id": 1,
+        "school_not_found": False,
         "class_grade": 7,
         "subject": None,
     }

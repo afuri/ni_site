@@ -14,7 +14,8 @@ from app.core.request_id import get_request_id
 from app.core.redis import safe_redis
 from app.core.security import hash_password, validate_password_policy, hash_token
 from app.tasks.email import send_email_task
-from app.models.user import UserRole, User
+from app.models.user import SchoolStatus, UserRole, User
+from app.models.user_change import UserChange
 from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.audit_logs import AuditLogsRepo
 from app.repos.user_changes import UserChangesRepo
@@ -37,6 +38,7 @@ from app.api.v1.openapi_examples import (
     response_model_list_example,
 )
 from app.core import error_codes as codes
+from app.services.school_profile import SchoolProfileService
 
 router = APIRouter(prefix="/admin/users")
 
@@ -200,6 +202,9 @@ async def list_users(
     country: str | None = Query(default=None),
     city: str | None = Query(default=None),
     school: str | None = Query(default=None),
+    region_id: int | None = Query(default=None, gt=0),
+    school_id: int | None = Query(default=None, gt=0),
+    school_status: SchoolStatus | None = Query(default=None),
     class_grade: int | None = Query(default=None),
     subject: str | None = Query(default=None),
     gender: str | None = Query(default=None, pattern="^(male|female)$"),
@@ -226,6 +231,9 @@ async def list_users(
         country=country,
         city=city,
         school=school,
+        region_id=region_id,
+        school_id=school_id,
+        school_status=school_status,
         class_grade=class_grade,
         subject=subject,
         gender=gender,
@@ -262,6 +270,9 @@ async def count_users(
     country: str | None = Query(default=None),
     city: str | None = Query(default=None),
     school: str | None = Query(default=None),
+    region_id: int | None = Query(default=None, gt=0),
+    school_id: int | None = Query(default=None, gt=0),
+    school_status: SchoolStatus | None = Query(default=None),
     class_grade: int | None = Query(default=None),
     subject: str | None = Query(default=None),
     gender: str | None = Query(default=None, pattern="^(male|female)$"),
@@ -286,6 +297,9 @@ async def count_users(
         country=country,
         city=city,
         school=school,
+        region_id=region_id,
+        school_id=school_id,
+        school_status=school_status,
         class_grade=class_grade,
         subject=subject,
         gender=gender,
@@ -429,6 +443,37 @@ async def update_user(
     if admin_actor.user is not None and _requires_admin_otp(user, patch):
         await _verify_admin_otp(admin_actor.user.id, patch.get("admin_otp"))
     patch.pop("admin_otp", None)
+
+    try:
+        patch = await SchoolProfileService(db).apply_profile_fields(
+            user,
+            patch,
+            allow_selected_geography_change=True,
+        )
+    except ValueError as exc:
+        code = str(exc)
+        if code in {codes.REGION_NOT_FOUND, codes.SCHOOL_NOT_FOUND}:
+            raise http_error(404, code)
+        if code in {
+            codes.REGION_INACTIVE,
+            codes.SCHOOL_INACTIVE,
+            codes.SCHOOL_REGION_MISMATCH,
+            codes.SCHOOL_SELECTION_REQUIRED,
+            codes.CLASS_GRADE_REQUIRED,
+            codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+        }:
+            raise http_error(422, code)
+        raise
+
+    if any(patch.get(field, getattr(user, field)) != getattr(user, field) for field in ("region_id", "school_id", "school_status")):
+        db.add(
+            UserChange(
+                actor_user_id=admin_actor.id,
+                target_user_id=user.id,
+                action="user_school_changed",
+                details={"region_id": patch.get("region_id", user.region_id), "school_id": patch.get("school_id", user.school_id)},
+            )
+        )
 
     if patch.get("must_change_password") is True:
         patch["temp_password_expires_at"] = datetime.now(timezone.utc) + timedelta(

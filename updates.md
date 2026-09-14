@@ -3713,3 +3713,7 @@ chart-3-results.png
 2.0.2 countdown_replace_elements_homepage
 
 2.0.3 technical working stop
+
+2.1.0 new_school_database
+Добавил 55000 школ и новые таблицы Регион - школа. Новый формат выбора школ при регистрации.
+

@@ -62,9 +62,9 @@ async def test_auth_negative_cases(client, create_user):
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
-        "country": "Россия",
-        "city": "Москва",
-        "school": "Школа",
+        "region_id": 1,
+        "school_id": 1,
+        "school_not_found": False,
         "class_grade": 7,
         "subject": None,
     }
@@ -91,9 +91,9 @@ async def test_auth_negative_cases(client, create_user):
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
-        "country": "Россия",
-        "city": "Москва",
-        "school": "Школа",
+        "region_id": 1,
+        "school_id": 1,
+        "school_not_found": False,
         "class_grade": 7,
         "subject": None,
     }
@@ -111,9 +111,9 @@ async def test_auth_negative_cases(client, create_user):
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
-        "country": "Россия",
-        "city": "Москва",
-        "school": "Школа",
+        "region_id": 1,
+        "school_id": 1,
+        "school_not_found": False,
         "class_grade": 7,
         "subject": None,
     }
@@ -643,7 +643,7 @@ async def test_admin_users_negative_cases(client, create_user):
 
     resp = await client.put(
         "/api/v1/admin/users/9999",
-        json={"school": "Test School"},
+        json={"school_id": 1},
         headers=_auth_headers(admin_token),
     )
     assert resp.status_code == 404

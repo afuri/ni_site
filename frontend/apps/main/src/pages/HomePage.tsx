@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient, type ApiError } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
+import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
-import catImage from "../assets/cat_fixer.png";
+import catImage from "../assets/cat.png";
 import vkLink from "../assets/vk_link.png";
 import minprosImage from "../assets/minpros.png";
 import lyc344Logo from "../assets/lyc344.png";
@@ -31,7 +32,6 @@ const TESTING_CODE_OFFSET = 1_000_000;
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]{4,}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
-const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
 const LOGIN_REDIRECT_KEY = "ni_login_redirect";
@@ -45,9 +45,7 @@ const normalizeRegisterForm = (form: RegisterFormState): RegisterFormState => ({
   surname: form.surname.trim(),
   name: form.name.trim(),
   fatherName: form.fatherName.trim(),
-  country: form.country.trim(),
-  city: form.city.trim(),
-  school: form.school.trim(),
+  schoolQuery: form.schoolQuery.trim(),
   subject: form.subject.trim()
 });
 
@@ -432,9 +430,11 @@ type RegisterFormState = {
   surname: string;
   name: string;
   fatherName: string;
-  country: string;
-  city: string;
-  school: string;
+  regionId: number | null;
+  schoolId: number | null;
+  schoolQuery: string;
+  schoolCity: string;
+  schoolNotFound: boolean;
   classGrade: string;
   subject: string;
   consent: boolean;
@@ -520,8 +520,6 @@ export function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
-  const cityLookupTimer = useRef<number | null>(null);
-  const schoolLookupTimer = useRef<number | null>(null);
   const testingCodeLookupTimer = useRef<number | null>(null);
   const testingCodeLookupRequestId = useRef(0);
   const cachedPublishedOlympiads = useRef<PublicOlympiad[] | null>(null);
@@ -538,8 +536,6 @@ export function HomePage() {
   const [agreementRole, setAgreementRole] = useState<RoleValue>("student");
   const [newsItems, setNewsItems] = useState<ContentItem[]>([]);
   const [articleItems, setArticleItems] = useState<ContentItem[]>([]);
-  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
-  const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
   const [registerForm, setRegisterForm] = useState<RegisterFormState>({
     role: "student",
     login: "",
@@ -551,9 +547,11 @@ export function HomePage() {
     surname: "",
     name: "",
     fatherName: "",
-    country: "",
-    city: "",
-    school: "",
+    regionId: null,
+    schoolId: null,
+    schoolQuery: "",
+    schoolCity: "",
+    schoolNotFound: false,
     classGrade: "",
     subject: "",
     consent: false
@@ -664,68 +662,6 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!isRegisterOpen) {
-      setCitySuggestions([]);
-      setSchoolSuggestions([]);
-      return;
-    }
-    const query = registerForm.city.trim();
-    if (cityLookupTimer.current !== null) {
-      window.clearTimeout(cityLookupTimer.current);
-    }
-    if (!query) {
-      setCitySuggestions([]);
-      setSchoolSuggestions([]);
-      return;
-    }
-    cityLookupTimer.current = window.setTimeout(async () => {
-      try {
-        const cities = await publicClient.lookup.cities({ query, limit: 20 });
-        setCitySuggestions(cities);
-      } catch {
-        setCitySuggestions([]);
-      }
-    }, 250);
-    return () => {
-      if (cityLookupTimer.current !== null) {
-        window.clearTimeout(cityLookupTimer.current);
-      }
-    };
-  }, [isRegisterOpen, registerForm.city]);
-
-  useEffect(() => {
-    if (!isRegisterOpen) {
-      return;
-    }
-    const cityValue = registerForm.city.trim();
-    const query = registerForm.school.trim();
-    if (schoolLookupTimer.current !== null) {
-      window.clearTimeout(schoolLookupTimer.current);
-    }
-    if (!cityValue) {
-      setSchoolSuggestions([]);
-      return;
-    }
-    schoolLookupTimer.current = window.setTimeout(async () => {
-      try {
-        const schools = await publicClient.lookup.schools({
-          city: cityValue,
-          query,
-          limit: 50
-        });
-        setSchoolSuggestions(schools);
-      } catch {
-        setSchoolSuggestions([]);
-      }
-    }, 250);
-    return () => {
-      if (schoolLookupTimer.current !== null) {
-        window.clearTimeout(schoolLookupTimer.current);
-      }
-    };
-  }, [isRegisterOpen, registerForm.city, registerForm.school]);
-
-  useEffect(() => {
     if (testingCodeLookupTimer.current !== null) {
       window.clearTimeout(testingCodeLookupTimer.current);
       testingCodeLookupTimer.current = null;
@@ -810,6 +746,33 @@ export function HomePage() {
     }
   };
 
+  const handleRegisterSchoolChange = (selection: SchoolSelectionValue) => {
+    setRegisterForm((prev) => ({
+      ...prev,
+      ...selection
+    }));
+    setRegisterErrors((prev) => ({
+      ...prev,
+      regionId: undefined,
+      schoolQuery: undefined
+    }));
+  };
+
+  const handleClassGradeChange = (classGrade: string) => {
+    setRegisterForm((prev) => ({
+      ...prev,
+      classGrade,
+      ...(classGrade === "0"
+        ? { schoolId: null, schoolQuery: "", schoolCity: "", schoolNotFound: false }
+        : {})
+    }));
+    setRegisterErrors((prev) => ({
+      ...prev,
+      classGrade: undefined,
+      schoolQuery: undefined
+    }));
+  };
+
   const handleRoleChange = (value: RoleValue) => {
     setRegisterForm((prev) => ({
       ...prev,
@@ -863,26 +826,22 @@ export function HomePage() {
     if (form.fatherName && !FATHER_NAME_REGEX.test(form.fatherName)) {
       errors.fatherName = "Только русские буквы, каждая часть с заглавной, можно пробел.";
     }
-    if (!form.country) {
-      errors.country = "Введите страну.";
-    } else if (!RU_NAME_REGEX.test(form.country)) {
-      errors.country = "Первая буква заглавная, можно пробел и дефис.";
-    }
     if (!form.gender) {
       errors.gender = "Выберите пол.";
     }
-    if (!form.city) {
-      errors.city = "Введите город.";
-    } else if (!RU_CITY_REGEX.test(form.city)) {
-      errors.city = "Первая буква заглавная, можно пробел и дефис.";
-    }
-    if (!form.school) {
-      errors.school = "Введите школу.";
+    if (form.regionId === null) {
+      errors.regionId = "Выберите регион.";
     }
     if (form.role === "student") {
       if (!form.classGrade) {
         errors.classGrade = "Выберите класс.";
       }
+    }
+    const schoolRequired = !(form.role === "student" && form.classGrade === "0");
+    if (schoolRequired && !form.schoolNotFound && form.schoolId === null) {
+      errors.schoolQuery = form.schoolQuery
+        ? "Выберите школу из предложенного списка."
+        : "Выберите школу или отметьте, что её нет в списке.";
     }
     if (form.role === "teacher") {
       if (!form.subject) {
@@ -1114,9 +1073,9 @@ export function HomePage() {
         surname: normalizedRegisterForm.surname,
         name: normalizedRegisterForm.name,
         father_name: normalizedRegisterForm.fatherName ? normalizedRegisterForm.fatherName : null,
-        country: normalizedRegisterForm.country,
-        city: normalizedRegisterForm.city,
-        school: normalizedRegisterForm.school,
+        region_id: normalizedRegisterForm.regionId as number,
+        school_id: normalizedRegisterForm.schoolId,
+        school_not_found: normalizedRegisterForm.schoolNotFound,
         class_grade: normalizedRegisterForm.role === "student" ? Number(normalizedRegisterForm.classGrade) : null,
         subject: normalizedRegisterForm.role === "teacher" ? normalizedRegisterForm.subject : null
       });
@@ -1354,7 +1313,6 @@ export function HomePage() {
             aria-hidden="true"
             decoding="async"
             loading="eager"
-            fetchPriority="high"
             width={1536}
             height={664}
           />
@@ -1366,10 +1324,6 @@ export function HomePage() {
                 Невский интеграл
               </h1>
               <div className="home-hero-message">
-               <h2>На сайте проводятся технические работы</h2>
-               <h2>Регистрация и вход в личный кабинет ограничены</h2>
-               <h2>до 8:00 МСК 14.09.2026</h2>
-               <br /> 
                <h2>До старта нового сезона:</h2>
                <br />
                <Countdown targetIso={TARGET_DATE} className="home-hero-countdown"/>
@@ -1825,51 +1779,14 @@ export function HomePage() {
                   <span className="field-helper field-helper-error">{registerErrors.gender}</span>
                 ) : null}
               </div>
-              <TextInput
-                label="Страна"
-                name="country"
-                value={registerForm.country}
-                onChange={(event) => updateRegisterField("country", event.target.value)}
-                error={registerErrors.country}
-                placeholder="например, Россия"
-                helperText="С заглавной буквы на русском языке."
-              />
-              <TextInput
-                label="Город"
-                name="city"
-                value={registerForm.city}
-                onChange={(event) => updateRegisterField("city", event.target.value)}
-                error={registerErrors.city}
-                helperText="С заглавной буквы на русском языке."
-                list="register-city-suggestions"
-              />
-              <datalist id="register-city-suggestions">
-                {citySuggestions.map((city) => (
-                  <option key={city} value={city} />
-                ))}
-              </datalist>
-              <TextInput
-                label="Школа"
-                name="school"
-                value={registerForm.school}
-                onChange={(event) => updateRegisterField("school", event.target.value)}
-                error={registerErrors.school}
-                helperText="Если школы нет в списке, добавьте самостоятельно. Пример: ГБОУ СОШ №3"
-                list="register-school-suggestions"
-              />
-              <datalist id="register-school-suggestions">
-                {schoolSuggestions.map((school) => (
-                  <option key={school} value={school} />
-                ))}
-              </datalist>
               {registerForm.role === "student" ? (
-                <label className="field">
+                <label className="field" htmlFor="register-class">
                   <span className="field-label">Класс</span>
                   <select
                     id="register-class"
                     className={`field-input ${registerErrors.classGrade ? "field-input-error" : ""}`.trim()}
                     value={registerForm.classGrade}
-                    onChange={(event) => updateRegisterField("classGrade", event.target.value)}
+                    onChange={(event) => handleClassGradeChange(event.target.value)}
                   >
                     <option value="">Выберите класс</option>
                     {CLASS_GRADES.map((grade) => (
@@ -1885,6 +1802,22 @@ export function HomePage() {
                   )}
                 </label>
               ) : null}
+              <SchoolDirectoryPicker
+                client={publicClient}
+                value={{
+                  regionId: registerForm.regionId,
+                  schoolId: registerForm.schoolId,
+                  schoolQuery: registerForm.schoolQuery,
+                  schoolCity: registerForm.schoolCity,
+                  schoolNotFound: registerForm.schoolNotFound
+                }}
+                onChange={handleRegisterSchoolChange}
+                role={registerForm.role}
+                classGrade={registerForm.classGrade}
+                regionError={registerErrors.regionId}
+                schoolError={registerErrors.schoolQuery}
+                idPrefix="register"
+              />
               {registerForm.role === "teacher" ? (
                 <TextInput
                   label="Предмет"

@@ -17,6 +17,7 @@ from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.users import UsersRepo
 from app.tasks.email import send_email_task
 from app.core import error_codes as codes
+from app.services.school_profile import SchoolProfileService
 
 
 class AuthService:
@@ -38,9 +39,9 @@ class AuthService:
         surname: str,
         name: str,
         father_name: str | None,
-        country: str,
-        city: str,
-        school: str,
+        region_id: int,
+        school_id: int | None,
+        school_not_found: bool,
         class_grade: int | None,
         subject: str | None,
         gender: str,
@@ -78,6 +79,13 @@ class AuthService:
         except Exception:
             raise ValueError(codes.VALIDATION_ERROR)
         validate_password_policy(password)
+        choice = await SchoolProfileService(self.users_repo.db).resolve_choice(
+            role=role_enum,
+            class_grade=class_grade,
+            region_id=region_id,
+            school_id=school_id,
+            school_not_found=school_not_found,
+        )
         password_hash = hash_password(password)
         user = await self.users_repo.create(
             login=login,
@@ -88,13 +96,15 @@ class AuthService:
             surname=surname,
             name=name,
             father_name=father_name,
-            country=country,
-            city=city,
-            school=school,
+            **choice.legacy_values,
             class_grade=class_grade,
             subject=subject,
             gender=gender_enum.value,
             subscription=subscription,
+            region_id=choice.region.id,
+            school_id=choice.school.id if choice.school else None,
+            school_status=choice.status,
+            coins=0,
         )
         await self.request_email_verification(email=email)
         return user

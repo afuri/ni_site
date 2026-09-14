@@ -16,9 +16,9 @@ type UserUpdateForm = {
   surname: string;
   name: string;
   fatherName: string;
-  country: string;
-  city: string;
-  school: string;
+  regionId: string;
+  schoolId: string;
+  schoolNotFound: string;
   classGrade: string;
   subject: string;
   gender: string;
@@ -38,9 +38,9 @@ const emptyForm: UserUpdateForm = {
   surname: "",
   name: "",
   fatherName: "",
-  country: "",
-  city: "",
-  school: "",
+  regionId: "",
+  schoolId: "",
+  schoolNotFound: "",
   classGrade: "",
   subject: "",
   gender: "",
@@ -83,9 +83,13 @@ const buildUsersCsv = (users: UserRead[]) => {
     "Фамилия",
     "Имя",
     "Отчество",
-    "Страна",
+    "ID региона",
+    "Регион",
+    "ID школы",
     "Город",
     "Школа",
+    "Статус школы",
+    "Монеты",
     "Класс",
     "Пол",
     "Подписка",
@@ -106,9 +110,13 @@ const buildUsersCsv = (users: UserRead[]) => {
     user.surname,
     user.name,
     user.father_name ?? "",
-    user.country,
-    user.city,
-    user.school,
+    user.region_id ?? "",
+    user.region_name ?? "",
+    user.school_id ?? "",
+    user.city_name ?? "",
+    user.school_short_name ?? "",
+    user.school_status,
+    user.coins,
     user.class_grade !== null && user.class_grade !== undefined ? String(user.class_grade) : "",
     user.gender ?? "",
     user.subscription ?? 0,
@@ -150,9 +158,9 @@ export function UsersPage() {
     surname: "",
     name: "",
     fatherName: "",
-    country: "",
-    city: "",
-    school: "",
+    regionId: "",
+    schoolId: "",
+    schoolStatus: "",
     classGrade: "",
     subject: "",
     gender: "",
@@ -173,9 +181,9 @@ export function UsersPage() {
     if (filters.surname) params.set("surname", filters.surname);
     if (filters.name) params.set("name", filters.name);
     if (filters.fatherName) params.set("father_name", filters.fatherName);
-    if (filters.country) params.set("country", filters.country);
-    if (filters.city) params.set("city", filters.city);
-    if (filters.school) params.set("school", filters.school);
+    if (filters.regionId) params.set("region_id", filters.regionId);
+    if (filters.schoolId) params.set("school_id", filters.schoolId);
+    if (filters.schoolStatus) params.set("school_status", filters.schoolStatus);
     if (filters.classGrade) params.set("class_grade", filters.classGrade);
     if (filters.gender) params.set("gender", filters.gender);
     if (filters.subscription) params.set("subscription", filters.subscription);
@@ -360,9 +368,10 @@ export function UsersPage() {
     if (form.surname) payload.surname = form.surname;
     if (form.name) payload.name = form.name;
     if (form.fatherName) payload.father_name = form.fatherName;
-    if (form.country) payload.country = form.country;
-    if (form.city) payload.city = form.city;
-    if (form.school) payload.school = form.school;
+    if (form.regionId) payload.region_id = Number(form.regionId);
+    if (form.schoolId) payload.school_id = Number(form.schoolId);
+    const schoolNotFound = parseBoolean(form.schoolNotFound);
+    if (schoolNotFound !== undefined) payload.school_not_found = schoolNotFound;
     if (form.classGrade) payload.class_grade = Number(form.classGrade);
     if (form.gender) payload.gender = form.gender;
     if (form.subscription) {
@@ -545,23 +554,27 @@ export function UsersPage() {
             onChange={(event) => setForm((prev) => ({ ...prev, fatherName: event.target.value }))}
           />
           <TextInput
-            label="Страна"
-            name="country"
-            value={form.country}
-            onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
+            label="ID региона"
+            name="regionId"
+            type="number"
+            min={1}
+            value={form.regionId}
+            onChange={(event) => setForm((prev) => ({ ...prev, regionId: event.target.value }))}
           />
           <TextInput
-            label="Город"
-            name="city"
-            value={form.city}
-            onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
+            label="ID школы"
+            name="schoolId"
+            type="number"
+            min={1}
+            value={form.schoolId}
+            onChange={(event) => setForm((prev) => ({ ...prev, schoolId: event.target.value }))}
           />
-          <TextInput
-            label="Школа"
-            name="school"
-            value={form.school}
-            onChange={(event) => setForm((prev) => ({ ...prev, school: event.target.value }))}
-          />
+          <label className="field">
+            <span className="field-label">Школа отсутствует</span>
+            <select className="field-input" value={form.schoolNotFound} onChange={(event) => setForm((prev) => ({ ...prev, schoolNotFound: event.target.value }))}>
+              <option value="">Не менять</option><option value="true">Да</option><option value="false">Нет</option>
+            </select>
+          </label>
           <TextInput
             label="Класс"
             name="classGrade"
@@ -727,23 +740,22 @@ export function UsersPage() {
             onChange={(event) => setFilters((prev) => ({ ...prev, fatherName: event.target.value }))}
           />
           <TextInput
-            label="Страна"
-            name="countryFilter"
-            value={filters.country}
-            onChange={(event) => setFilters((prev) => ({ ...prev, country: event.target.value }))}
+            label="ID региона"
+            name="regionIdFilter"
+            type="number"
+            min={1}
+            value={filters.regionId}
+            onChange={(event) => setFilters((prev) => ({ ...prev, regionId: event.target.value }))}
           />
           <TextInput
-            label="Город"
-            name="cityFilter"
-            value={filters.city}
-            onChange={(event) => setFilters((prev) => ({ ...prev, city: event.target.value }))}
+            label="ID школы"
+            name="schoolIdFilter"
+            type="number"
+            min={1}
+            value={filters.schoolId}
+            onChange={(event) => setFilters((prev) => ({ ...prev, schoolId: event.target.value }))}
           />
-          <TextInput
-            label="Школа"
-            name="schoolFilter"
-            value={filters.school}
-            onChange={(event) => setFilters((prev) => ({ ...prev, school: event.target.value }))}
-          />
+          <label className="field"><span className="field-label">Статус школы</span><select className="field-input" value={filters.schoolStatus} onChange={(event) => setFilters((prev) => ({ ...prev, schoolStatus: event.target.value }))}><option value="">Все</option><option value="selected">Выбрана</option><option value="missing">Не указана</option><option value="submission_pending">Заявка рассматривается</option><option value="submission_rejected">Заявка отклонена</option><option value="not_required">Не требуется</option></select></label>
           <TextInput
             label="Класс"
             name="classGradeFilter"
@@ -848,9 +860,13 @@ export function UsersPage() {
                     <th>Фамилия</th>
                     <th>Имя</th>
                     <th>Отчество</th>
-                    <th>Страна</th>
+                    <th>ID региона</th>
+                    <th>Регион</th>
+                    <th>ID школы</th>
                     <th>Город</th>
                     <th>Школа</th>
+                    <th>Статус школы</th>
+                    <th>Монеты</th>
                     <th>Класс</th>
                     <th>Пол</th>
                     <th>Подписка</th>
@@ -860,11 +876,11 @@ export function UsersPage() {
                 <tbody>
                   {listStatus === "loading" ? (
                     <tr>
-                      <td colSpan={20}>Загрузка...</td>
+                      <td colSpan={24}>Загрузка...</td>
                     </tr>
                   ) : usersList.length === 0 ? (
                     <tr>
-                      <td colSpan={20}>Пользователи не найдены.</td>
+                      <td colSpan={24}>Пользователи не найдены.</td>
                     </tr>
                   ) : (
                     usersList.map((item) => (
@@ -882,9 +898,13 @@ export function UsersPage() {
                         <td>{item.surname}</td>
                         <td>{item.name}</td>
                         <td>{item.father_name ?? "—"}</td>
-                        <td>{item.country}</td>
-                        <td>{item.city}</td>
-                        <td>{item.school}</td>
+                        <td>{item.region_id ?? "—"}</td>
+                        <td>{item.region_name ?? "—"}</td>
+                        <td>{item.school_id ?? "—"}</td>
+                        <td>{item.city_name ?? "—"}</td>
+                        <td>{item.school_short_name ?? "—"}</td>
+                        <td>{item.school_status}</td>
+                        <td>{item.coins}</td>
                         <td>{item.class_grade ?? "—"}</td>
                         <td>{item.gender ?? "—"}</td>
                         <td>{item.subscription}</td>

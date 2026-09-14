@@ -82,6 +82,12 @@ async def create_or_attach_student(
             codes.SUBJECT_REQUIRED,
             codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+            codes.REGION_NOT_FOUND,
+            codes.REGION_INACTIVE,
+            codes.SCHOOL_NOT_FOUND,
+            codes.SCHOOL_INACTIVE,
+            codes.SCHOOL_REGION_MISMATCH,
+            codes.SCHOOL_SELECTION_REQUIRED,
         ):
             raise http_error(422, code)
         raise
@@ -212,6 +218,7 @@ async def get_student_profile(
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.USER_NOT_FOUND),
+        409: response_example(codes.SCHOOL_PROFILE_LOCKED),
         422: response_example(codes.VALIDATION_ERROR),
     },
 )
@@ -234,6 +241,23 @@ async def update_student_profile(
             raise http_error(404, codes.USER_NOT_FOUND)
         if code == codes.FORBIDDEN:
             raise http_error(403, codes.FORBIDDEN)
+        if code == codes.SCHOOL_PROFILE_LOCKED:
+            raise http_error(
+                409,
+                code,
+                "Подтверждённые регион и школу может изменить только администратор.",
+            )
+        if code in {codes.REGION_NOT_FOUND, codes.SCHOOL_NOT_FOUND}:
+            raise http_error(404, code)
+        if code in {
+            codes.REGION_INACTIVE,
+            codes.SCHOOL_INACTIVE,
+            codes.SCHOOL_REGION_MISMATCH,
+            codes.SCHOOL_SELECTION_REQUIRED,
+            codes.CLASS_GRADE_REQUIRED,
+            codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+        }:
+            raise http_error(422, code)
         raise
 
 

@@ -57,9 +57,16 @@ Login (teacher/student):
 - только латиница и цифры
 - первый символ — буква
 - длина ≥ 5
-ФИО/страна/город/школа/предмет (teacher) и ФИО/страна/город/школа (student):
+ФИО и предмет (teacher), ФИО (student):
 - только кириллица
 - первая буква заглавная
+География регистрации:
+- обязательный `region_id` из справочника;
+- `school_id` выбирается из школ этого региона, город определяется школой;
+- если школы нет, передаются `school_id = null` и `school_not_found = true`, затем создаётся заявка;
+- для student с `grade = 0` школа не требуется (`school_status = not_required`);
+- пользователь со статусом `selected` не может сам менять регион/школу, admin может;
+- строки `country`, `city`, `school` являются переходными legacy-полями, не источником истины.
 Grade (student):
 - целое число 0..11
 
@@ -121,9 +128,16 @@ Payload (рекомендуемый контракт JSONB):
 - `attempts`
 - `attempt_answers` (JSONB answer_payload)
 - `attempt_task_grades`
+- `regions`, `cities`, `schools` (канонический справочник Region → City → School)
+- `school_submissions`, `school_import_batches`, `school_source_map`
+
+Пользователь связан с географией через `region_id`, nullable `school_id` и
+`school_status`; `coins` — неотрицательное целое число. Старую таблицу
+`schools_legacy` и legacy-поля пользователя не удалять до отдельной contract-миграции.
 
 Индексы обязательны по:
-- `user_id`, `child_id` (если есть раздельные сущности), `olympiad_id`, `attempt_id`.
+- `user_id`, `child_id` (если есть раздельные сущности), `olympiad_id`, `attempt_id`,
+  `region_id`, `city_id`, `school_id`, `school_status`.
 
 ## 7) API и контрактность
 - Любые изменения схем API должны сопровождаться обновлением Pydantic‑схем и автодокументации OpenAPI.

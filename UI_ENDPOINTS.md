@@ -48,9 +48,9 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "surname": "Иванов",
     "name": "Иван",
     "father_name": null,
-    "country": "Россия",
-    "city": "Москва",
-    "school": "Школа",
+    "region_id": 77,
+    "school_id": 12345,
+    "school_not_found": false,
     "class_grade": 7,
     "subject": null
   }
@@ -71,9 +71,17 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "surname": "Иванов",
     "name": "Иван",
     "father_name": null,
-    "country": "Россия",
-    "city": "Москва",
-    "school": "Школа",
+    "country": null,
+    "city": null,
+    "school": null,
+    "region_id": 77,
+    "region_name": "Москва",
+    "school_id": 12345,
+    "school_short_name": "Школа № 1",
+    "school_full_name": "ГБОУ Школа № 1",
+    "city_name": "Москва",
+    "school_status": "selected",
+    "coins": 0,
     "class_grade": 7,
     "gender": "male",
     "subscription": 0,
@@ -120,6 +128,10 @@ Uploads limits/types: `API_CONVENTIONS.md`
 
 ## Profile
 
+Поля `country`, `city`, `school` в `UserRead` временно возвращаются как legacy.
+Новые интерфейсы используют `region_id`, `region_name`, `school_id`,
+`school_short_name`, `school_full_name`, `city_name` и `school_status`.
+
 - `GET /users/me` — получить профиль (`UserRead`)
   Пример ответа:
   ```json
@@ -136,9 +148,17 @@ Uploads limits/types: `API_CONVENTIONS.md`
     "surname": "Петров",
     "name": "Петр",
     "father_name": null,
-    "country": "Россия",
-    "city": "Казань",
-    "school": "Лицей",
+    "country": null,
+    "city": null,
+    "school": null,
+    "region_id": 16,
+    "region_name": "Республика Татарстан",
+    "school_id": 6789,
+    "school_short_name": "Лицей",
+    "school_full_name": "Муниципальный лицей",
+    "city_name": "Казань",
+    "school_status": "selected",
+    "coins": 0,
     "class_grade": null,
     "gender": "female",
     "subscription": 0,
@@ -147,8 +167,40 @@ Uploads limits/types: `API_CONVENTIONS.md`
   ```
 - `PUT /users/me` — обновить профиль
   ```json
-  { "surname": "Иванов", "name": "Иван", "city": "Казань" }
+  { "surname": "Иванов", "name": "Иван", "region_id": 16, "school_id": 6789 }
   ```
+
+  При `school_status=selected` изменение `region_id`, `school_id`, установка
+  `school_not_found` и дошкольный обход запрещены: `409 school_profile_locked`.
+  Неизменённую географию лучше не включать в payload.
+
+## School directory and submissions
+
+- `GET /lookup/regions?query=&limit=100` — активные регионы:
+  ```json
+  [{ "id": 77, "name": "Москва", "country_code": "RU", "is_other": false }]
+  ```
+- `GET /lookup/schools?region_id=77&query=лицей&limit=20` — школы выбранного региона:
+  ```json
+  [{ "id": 12345, "short_name": "Лицей", "full_name": "ГБОУ Лицей", "city": "Москва" }]
+  ```
+- `GET /lookup/cities` — deprecated compatibility endpoint.
+- `GET /users/me/school-submission` — последняя заявка пользователя или `null`.
+- `POST /users/me/school-submissions` — создать заявку:
+  ```json
+  {
+    "city_name": "Москва",
+    "school_short_name": "Школа № 1",
+    "school_full_name": null,
+    "address": null,
+    "url": null,
+    "email": null
+  }
+  ```
+
+`submission_pending` разрешает участие, но не выдачу диплома. `missing` и
+`submission_rejected` запрещают новую попытку. Дошкольник имеет
+`school_status=not_required` и `school_id=null`.
 
 ## Olympiads (public)
 
@@ -298,7 +350,7 @@ Uploads limits/types: `API_CONVENTIONS.md`
   ```
   или
   ```json
-  { "create": { "login": "student02", "password": "StrongPass1", "email": "s2@example.com", "gender": "female", "subscription": 0, "surname": "Иванов", "name": "Иван", "father_name": null, "country": "Россия", "city": "Москва", "school": "Школа", "class_grade": 7 } }
+  { "create": { "login": "student02", "password": "StrongPass1", "email": "s2@example.com", "gender": "female", "subscription": 0, "surname": "Иванов", "name": "Иван", "father_name": null, "region_id": 77, "school_id": 12345, "school_not_found": false, "class_grade": 7 } }
   ```
 - `POST /teacher/students/{student_id}/confirm` — подтвердить связь
   Пример ответа:
@@ -480,8 +532,39 @@ Uploads limits/types: `API_CONVENTIONS.md`
 
 ## Admin: Users & Audit
 
+### Schools
+
+- `GET /admin/schools/summary` — количество школ с теми же фильтрами, что список.
+- `GET /admin/schools` — пагинация `limit`/`offset`; фильтры `region_id`,
+  `city_id`, `query`, `is_active`, `is_sirius`, `is_consortium`, `is_peterson`,
+  `is_partner`, `is_platform`. Ответ включает `user_count`, вычисленный по
+  `users.school_id`.
+- `GET /admin/schools/{school_id}` — полная карточка школы.
+- `GET /admin/schools/cities?region_id=...` — города региона для формы admin.
+- `POST /admin/schools` — создать школу в существующем городе.
+- `PATCH /admin/schools/{school_id}` — изменить все поля каталога или
+  деактивировать школу через `is_active=false`.
+
+### School submissions
+
+- `GET /admin/school-submissions?status=pending&limit=100&offset=0`.
+- `POST /admin/school-submissions/{id}/duplicate-candidates` — кандидаты-дубли
+  перед созданием новой школы.
+- `POST /admin/school-submissions/{id}/approve` — ровно один вариант:
+  ```json
+  { "existing_school_id": 12345, "new_school": null }
+  ```
+  или объект `new_school` с городом и полями новой школы.
+- `POST /admin/school-submissions/{id}/reject`:
+  ```json
+  { "admin_comment": "Уточните полное название школы" }
+  ```
+
+Одобрение атомарно связывает пользователя с канонической школой. Отклонение
+требует непустой комментарий администратора.
+
 - `GET /admin/users` — список пользователей
-  - Query: `user_id`, `role`, `is_active`, `is_email_verified`, `must_change_password`, `is_moderator`, `moderator_requested`, `login`, `email`, `surname`, `name`, `father_name`, `country`, `city`, `school`, `class_grade`, `gender`, `subscription`, `subject`, `limit`, `offset`
+  - Query: `user_id`, `role`, `is_active`, `is_email_verified`, `must_change_password`, `is_moderator`, `moderator_requested`, `login`, `email`, `surname`, `name`, `father_name`, legacy `country`/`city`/`school`, `region_id`, `school_id`, `school_status`, `class_grade`, `gender`, `subscription`, `subject`, `limit`, `offset`
   Пример ответа (`UserRead[]`):
   ```json
   [
@@ -566,7 +649,7 @@ Uploads limits/types: `API_CONVENTIONS.md`
   ```
 - `PUT /admin/users/{user_id}` — обновить пользователя (кроме email)
   ```json
-  { "login": "newlogin", "city": "Казань", "is_active": true, "admin_otp": "123456" }
+  { "login": "newlogin", "region_id": 16, "school_id": 6789, "is_active": true, "admin_otp": "123456" }
   ```
   Пример ответа (`UserRead`):
   ```json

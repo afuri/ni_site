@@ -14,7 +14,8 @@ from app.core.storage import public_url_for_key, presign_get
 
 from app.core.deps import get_db, get_read_db
 from app.core.deps_auth import require_role, get_current_user
-from app.models.user import UserRole, User
+from app.models.user import SchoolStatus, UserRole, User
+from app.repos.users import UsersRepo
 from app.repos.attempts import AttemptsRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.models.teacher_student import TeacherStudentStatus
@@ -49,7 +50,7 @@ router = APIRouter(prefix="/attempts")
     responses={
         201: response_model_example(AttemptRead, EXAMPLE_ATTEMPT_READ),
         401: response_example(codes.MISSING_TOKEN),
-        403: response_example(codes.EMAIL_NOT_VERIFIED),
+        403: response_examples(codes.EMAIL_NOT_VERIFIED, codes.SCHOOL_PROFILE_REQUIRED),
         409: response_examples(
             codes.OLYMPIAD_NOT_AVAILABLE,
             codes.OLYMPIAD_AGE_GROUP_MISMATCH,
@@ -74,6 +75,8 @@ async def start_attempt(
             raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
         if code == codes.EMAIL_NOT_VERIFIED:
             raise http_error(403, codes.EMAIL_NOT_VERIFIED)
+        if code == codes.SCHOOL_PROFILE_REQUIRED:
+            raise http_error(403, codes.SCHOOL_PROFILE_REQUIRED)
         if code == codes.OLYMPIAD_NOT_PUBLISHED:
             raise http_error(409, codes.OLYMPIAD_NOT_PUBLISHED)
         if code == codes.OLYMPIAD_NOT_AVAILABLE:
@@ -285,7 +288,7 @@ async def get_attempt_result(
     responses={
         307: {"description": "Temporary redirect to diploma file"},
         401: response_example(codes.MISSING_TOKEN),
-        403: response_example(codes.FORBIDDEN),
+        403: response_examples(codes.FORBIDDEN, codes.DIPLOMA_SCHOOL_PENDING),
         404: response_example(codes.ATTEMPT_NOT_FOUND),
         503: response_example(codes.STORAGE_UNAVAILABLE),
     },
@@ -310,6 +313,13 @@ async def get_attempt_diploma(
             raise http_error(403, codes.FORBIDDEN)
     elif user.role != UserRole.admin:
         raise http_error(403, codes.FORBIDDEN)
+
+    if user.role != UserRole.admin:
+        owner = user if user.role == UserRole.student else await UsersRepo(db).get_by_id(attempt.user_id)
+        if owner is None:
+            raise http_error(404, codes.USER_NOT_FOUND)
+        if owner.school_status not in {SchoolStatus.selected, SchoolStatus.not_required}:
+            raise http_error(403, codes.DIPLOMA_SCHOOL_PENDING)
 
     key = f"attempt_{attempt_id}.jpg"
     public_url = public_url_for_key(key)

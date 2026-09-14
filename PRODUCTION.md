@@ -1,5 +1,9 @@
 # Production checklist
 
+> Первый переход на справочник Region → City → School выполняется только по
+> [PRODUCTION_SCHOOL_MIGRATION.md](PRODUCTION_SCHOOL_MIGRATION.md). Общая команда
+> `alembic upgrade head` не заменяет обязательные backup, dry-run и SQL-проверки.
+
 ## Base runtime
 
 - Run API with gunicorn:
@@ -105,6 +109,9 @@ alembic -c alembic.ini upgrade head
 ```
 
 Avoid creating ad-hoc tables like `t_probe` in production databases.
+
+Для миграции справочника школ не удалять `schools_legacy`, legacy-поля пользователей
+и `school_source_map`: они нужны для проверки и безопасного отката первого релиза.
 
 ## Dev/Stage bootstrap
 

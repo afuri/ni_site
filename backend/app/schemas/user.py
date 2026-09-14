@@ -2,7 +2,7 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
-from app.models.user import UserRole
+from app.models.user import SchoolStatus, UserRole
 
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
@@ -35,6 +35,14 @@ class UserRead(BaseModel):
     country: Optional[str] = None
     city: Optional[str] = None
     school: Optional[str] = None
+    region_id: int | None = None
+    region_name: str | None = None
+    school_id: int | None = None
+    school_short_name: str | None = None
+    school_full_name: str | None = None
+    city_name: str | None = None
+    school_status: SchoolStatus = SchoolStatus.missing
+    coins: int = Field(default=0, ge=0)
     class_grade: Optional[int] = None
     gender: Optional[str] = None
     subscription: int = Field(default=0, ge=0, le=5)
@@ -50,15 +58,17 @@ class UserUpdate(BaseModel):
     name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
-    country: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    school: Optional[str] = None
+    region_id: int | None = Field(default=None, gt=0)
+    school_id: int | None = Field(default=None, gt=0)
+    school_not_found: bool | None = None
     class_grade: Optional[int] = Field(default=None)
     gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
     subscription: Optional[int] = Field(default=None, ge=0, le=5)
     manual_teachers: Optional[list["ManualTeacher"]] = None
 
     subject: Optional[str] = Field(default=None, max_length=120)
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class ModeratorRequestResponse(BaseModel):
@@ -83,9 +93,9 @@ class AdminUserUpdate(BaseModel):
     name: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
     father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
-    country: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    city: Optional[str] = Field(default=None, max_length=120, pattern=CYRILLIC_RE)
-    school: Optional[str] = None
+    region_id: int | None = Field(default=None, gt=0)
+    school_id: int | None = Field(default=None, gt=0)
+    school_not_found: bool | None = None
     class_grade: Optional[int] = Field(default=None)
     gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
     subscription: Optional[int] = Field(default=None, ge=0, le=5)

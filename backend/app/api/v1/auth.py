@@ -74,7 +74,16 @@ async def _apply_rate_limit(
     responses={
         201: response_model_example(UserRead, EXAMPLE_USER_READ),
         409: response_examples(codes.LOGIN_TAKEN, codes.EMAIL_TAKEN),
-        422: response_examples(codes.VALIDATION_ERROR, codes.WEAK_PASSWORD),
+        422: response_examples(
+            codes.VALIDATION_ERROR,
+            codes.WEAK_PASSWORD,
+            codes.REGION_NOT_FOUND,
+            codes.REGION_INACTIVE,
+            codes.SCHOOL_NOT_FOUND,
+            codes.SCHOOL_INACTIVE,
+            codes.SCHOOL_REGION_MISMATCH,
+            codes.SCHOOL_SELECTION_REQUIRED,
+        ),
     },
 )
 async def register(
@@ -101,9 +110,9 @@ async def register(
             surname=payload.surname,
             name=payload.name,
             father_name=payload.father_name,
-            country=payload.country,
-            city=payload.city,
-            school=payload.school,
+            region_id=payload.region_id,
+            school_id=payload.school_id,
+            school_not_found=payload.school_not_found,
             class_grade=payload.class_grade,
             subject=payload.subject,
             gender=payload.gender,
@@ -122,6 +131,12 @@ async def register(
             codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
             codes.WEAK_PASSWORD,
+            codes.REGION_NOT_FOUND,
+            codes.REGION_INACTIVE,
+            codes.SCHOOL_NOT_FOUND,
+            codes.SCHOOL_INACTIVE,
+            codes.SCHOOL_REGION_MISMATCH,
+            codes.SCHOOL_SELECTION_REQUIRED,
         ):
             raise http_error(422, str(e))
         raise

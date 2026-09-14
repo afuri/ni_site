@@ -17,7 +17,10 @@ from app.core.deps import get_db, get_read_db
 from app.core.security import hash_password
 from app.db.base import Base
 from app.main import app as fastapi_app
-from app.models.user import UserRole
+from app.models.city import City
+from app.models.region import Region
+from app.models.school import School
+from app.models.user import SchoolStatus, UserRole
 from app.repos.users import UsersRepo
 from app.core import redis as redis_module
 
@@ -88,6 +91,25 @@ async def client(db_session):
         async with session_maker() as session:
             yield session
 
+    async with session_maker() as seed_session:
+        region = Region(country_code="RU", name="Москва", normalized_name="москва")
+        seed_session.add(region)
+        await seed_session.flush()
+        city = City(region_id=region.id, name="Москва", normalized_name="москва")
+        seed_session.add(city)
+        await seed_session.flush()
+        seed_session.add(
+            School(
+                city_id=city.id,
+                full_name="ГБОУ Школа № 1",
+                short_name="Школа № 1",
+                normalized_full_name="гбоу школа № 1",
+                normalized_short_name="школа № 1",
+                address="Москва",
+            )
+        )
+        await seed_session.commit()
+
     fastapi_app.dependency_overrides[get_db] = _get_test_db
     fastapi_app.dependency_overrides[get_read_db] = _get_test_db
     prev_audit = settings.AUDIT_LOG_ENABLED
@@ -136,6 +158,13 @@ async def create_user(db_session):
         subscription: int = 0,
     ):
         repo = UsersRepo(db_session)
+        school_status = (
+            SchoolStatus.not_required
+            if role == UserRole.student and class_grade == 0
+            else SchoolStatus.submission_pending
+            if role == UserRole.student
+            else SchoolStatus.missing
+        )
         return await repo.create(
             login=login,
             email=email,
@@ -153,6 +182,7 @@ async def create_user(db_session):
             subject=subject,
             gender=gender,
             subscription=subscription,
+            school_status=school_status,
         )
 
     return _create

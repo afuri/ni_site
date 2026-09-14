@@ -20,7 +20,7 @@ from app.core.age_groups import class_grades_allow, normalize_age_group
 from app.core.security import generate_token
 from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
-from app.models.user import User, UserRole
+from app.models.user import SchoolStatus, User, UserRole
 from app.repos.attempts import AttemptsRepo
 from app.core import error_codes as codes
 
@@ -355,6 +355,13 @@ class AttemptsService:
         if existing:
             # идемпотентный старт: возвращаем текущую попытку
             return existing, olympiad
+
+        if user.school_status not in {
+            SchoolStatus.selected,
+            SchoolStatus.submission_pending,
+            SchoolStatus.not_required,
+        }:
+            raise ValueError(codes.SCHOOL_PROFILE_REQUIRED)
 
         now = self._now_utc()
         if now < olympiad.available_from or now > olympiad.available_to:

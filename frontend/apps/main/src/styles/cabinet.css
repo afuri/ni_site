@@ -176,6 +176,50 @@
   color: rgba(31, 59, 99, 0.7);
 }
 
+.cabinet-school-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid rgba(180, 83, 9, 0.28);
+  border-radius: var(--radius-md);
+  background: #fff7ed;
+  box-shadow: var(--shadow-1);
+}
+
+.cabinet-school-banner h2,
+.cabinet-school-banner p {
+  margin: 0;
+}
+
+.cabinet-school-banner h2 {
+  margin-bottom: var(--space-2);
+  font-size: 1.2rem;
+}
+
+.cabinet-school-banner-submission_pending {
+  border-color: rgba(3, 105, 161, 0.26);
+  background: #f0f9ff;
+}
+
+.cabinet-school-banner-submission_rejected {
+  border-color: rgba(185, 28, 28, 0.25);
+  background: #fef2f2;
+}
+
+.cabinet-school-submission-modal .modal-content {
+  max-height: min(84vh, 820px);
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .cabinet-school-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .cabinet-section-heading {
   margin-bottom: var(--space-4);
 }

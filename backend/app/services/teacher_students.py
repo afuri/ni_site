@@ -4,7 +4,9 @@ from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.services.auth import AuthService
 from app.models.teacher_student import TeacherStudentStatus, TeacherStudentRequestedBy
+from app.models.user_change import UserChange
 from app.core import error_codes as codes
+from app.services.school_profile import SchoolProfileService
 
 
 
@@ -56,9 +58,9 @@ class TeacherStudentsService:
             surname=payload["surname"],
             name=payload["name"],
             father_name=payload.get("father_name"),
-            country=payload["country"],
-            city=payload["city"],
-            school=payload["school"],
+            region_id=payload["region_id"],
+            school_id=payload.get("school_id"),
+            school_not_found=payload.get("school_not_found", False),
             class_grade=payload["class_grade"],
             subject=None,
             gender=payload["gender"],
@@ -197,4 +199,14 @@ class TeacherStudentsService:
             raise ValueError(codes.USER_NOT_FOUND)
         if "subject" in data:
             data.pop("subject", None)
+        data = await SchoolProfileService(self.users_repo.db).apply_profile_fields(student, data)
+        if any(data.get(field, getattr(student, field)) != getattr(student, field) for field in ("region_id", "school_id", "school_status")):
+            self.users_repo.db.add(
+                UserChange(
+                    actor_user_id=teacher.id,
+                    target_user_id=student.id,
+                    action="user_school_changed",
+                    details={"region_id": data.get("region_id", student.region_id), "school_id": data.get("school_id", student.school_id)},
+                )
+            )
         return await self.users_repo.update_profile(student, data)

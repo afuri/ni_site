@@ -23,4 +23,5 @@ reports/
 *.tar.gz
 *.zip
 *_report_*.csv
+temporary/*.csv
 regrade_task49.sh

@@ -104,3 +104,30 @@ docker compose -f docker-compose.local.yml logs --tail=200 -f api
 ```bash
 docker compose -f docker-compose.local.yml --profile worker logs --tail=200 -f api worker
 ```
+
+## Справочник Region → City → School
+
+Первичный импорт всегда начинается с dry-run:
+
+```bash
+cd /Users/alexfedosov/Documents/ni_site_v2
+./manual_scripts/import_school_directory.sh \
+  --compose-file docker-compose.local.yml \
+  --schools temporary/ni_schools.csv \
+  --users temporary/user_school.csv \
+  --batch-id local-check-YYYYMMDD \
+  --dry-run
+```
+
+Импортёр не очищает существующие данные и требует пустой новый каталог. Поэтому
+его нельзя повторно применять к уже заполненной основной локальной БД. После
+успешного apply состояние проверяется так:
+
+```bash
+docker compose -f docker-compose.local.yml exec -T db \
+  psql -U postgres -d ni_site -v ON_ERROR_STOP=1 -f /dev/stdin \
+  < manual_scripts/verify_school_directory.sql
+```
+
+Production-переход описан отдельно в `PRODUCTION_SCHOOL_MIGRATION.md`; локальные
+команды нельзя механически выполнять на сервере.

@@ -167,6 +167,7 @@ export function OlympiadPage() {
     [attemptView]
   );
   const activeTask = sortedTasks[activeIndex];
+  const activeImageUrl = activeTask?.image_key ? imageUrls[activeTask.image_key] : undefined;
   const deadlineWarningLabel = useMemo(() => {
     const deadlineRaw = attemptView?.attempt.deadline_at;
     if (!deadlineRaw) {
@@ -809,12 +810,12 @@ export function OlympiadPage() {
             </div>
             {activeTask.image_key &&
             activeTask.payload.image_position === "before" &&
-            imageUrls[activeTask.image_key] ? (
+            activeImageUrl ? (
               <img
-                src={imageUrls[activeTask.image_key]}
+                src={activeImageUrl}
                 alt="Иллюстрация"
                 className="olympiad-task-image"
-                onClick={() => setFullscreenImage(imageUrls[activeTask.image_key])}
+                onClick={() => setFullscreenImage(activeImageUrl)}
               />
             ) : null}
             <div
@@ -823,12 +824,12 @@ export function OlympiadPage() {
             />
             {activeTask.image_key &&
             activeTask.payload.image_position !== "before" &&
-            imageUrls[activeTask.image_key] ? (
+            activeImageUrl ? (
               <img
-                src={imageUrls[activeTask.image_key]}
+                src={activeImageUrl}
                 alt="Иллюстрация"
                 className="olympiad-task-image"
-                onClick={() => setFullscreenImage(imageUrls[activeTask.image_key])}
+                onClick={() => setFullscreenImage(activeImageUrl)}
               />
             ) : null}
           </div>
