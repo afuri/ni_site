@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import UserRole
+from app.models.user import SchoolStatus, UserRole
+from app.repos.regions import RegionsRepo
 from app.repos.users import UsersRepo
 from app.repos.social_accounts import SocialAccountsRepo
 from app.core.security import create_access_token, create_refresh_token
@@ -30,6 +31,9 @@ class AuthVKService:
         # Если email уже занят — используем существующего пользователя и просто привязываем VK
         user = await self.users.get_by_email(norm_email)
         if not user:
+            other_region = await RegionsRepo(self.db).get_other_active()
+            if other_region is None:
+                raise ValueError(codes.REGION_NOT_FOUND)
             # пароль не нужен, но поле обязательное — кладём случайный хэш
             password_hash = hash_password("vk:" + provider_user_id)
             login = f"vk{provider_user_id}"
@@ -44,13 +48,16 @@ class AuthVKService:
                 surname="Неизвестно",
                 name="Неизвестно",
                 father_name=None,
-                country="Неизвестно",
-                city="Неизвестно",
-                school="Неизвестно",
+                country=None,
+                city=None,
+                school=None,
                 class_grade=0,
                 subject=None,
                 gender=None,
                 subscription=0,
+                region_id=other_region.id,
+                school_id=None,
+                school_status=SchoolStatus.not_required,
             )
 
         await self.socials.create(provider="vk", provider_user_id=provider_user_id, user_id=user.id)

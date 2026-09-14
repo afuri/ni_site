@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from sqlalchemy import select, func
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from app.core import error_codes as codes
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.user import User, Gender
+from app.models.user import User, Gender, SchoolStatus
+from app.models.city import City
+from app.models.region import Region
+from app.models.school import School
 
 
 class UsersRepo:
@@ -46,8 +49,11 @@ class UsersRepo:
         res = await self.db.execute(select(User).where(func.lower(User.email) == email_value))
         return res.scalar_one_or_none()
 
-    async def get_by_id(self, user_id: int) -> User | None:
-        res = await self.db.execute(select(User).where(User.id == user_id))
+    async def get_by_id(self, user_id: int, *, for_update: bool = False) -> User | None:
+        stmt = select(User).where(User.id == user_id)
+        if for_update:
+            stmt = stmt.with_for_update(of=User)
+        res = await self.db.execute(stmt)
         return res.scalar_one_or_none()
 
     async def list(
@@ -68,6 +74,9 @@ class UsersRepo:
         country: str | None = None,
         city: str | None = None,
         school: str | None = None,
+        region_id: int | None = None,
+        school_id: int | None = None,
+        school_status: SchoolStatus | None = None,
         class_grade: int | None = None,
         subject: str | None = None,
         gender: str | None = None,
@@ -93,6 +102,9 @@ class UsersRepo:
             country=country,
             city=city,
             school=school,
+            region_id=region_id,
+            school_id=school_id,
+            school_status=school_status,
             class_grade=class_grade,
             subject=subject,
             gender=gender,
@@ -119,6 +131,9 @@ class UsersRepo:
         country: str | None = None,
         city: str | None = None,
         school: str | None = None,
+        region_id: int | None = None,
+        school_id: int | None = None,
+        school_status: SchoolStatus | None = None,
         class_grade: int | None = None,
         subject: str | None = None,
         gender: str | None = None,
@@ -142,6 +157,9 @@ class UsersRepo:
             country=country,
             city=city,
             school=school,
+            region_id=region_id,
+            school_id=school_id,
+            school_status=school_status,
             class_grade=class_grade,
             subject=subject,
             gender=gender,
@@ -169,6 +187,9 @@ class UsersRepo:
         country: str | None,
         city: str | None,
         school: str | None,
+        region_id: int | None,
+        school_id: int | None,
+        school_status: SchoolStatus | None,
         class_grade: int | None,
         subject: str | None,
         gender: str | None,
@@ -199,11 +220,24 @@ class UsersRepo:
         if father_name:
             stmt = stmt.where(User.father_name.ilike(f"%{father_name}%"))
         if country:
-            stmt = stmt.where(User.country.ilike(f"%{country}%"))
+            if country.strip().casefold() in {"россия", "рф", "russia", "российская федерация"}:
+                stmt = stmt.where(User.region_record.has(Region.country_code == "RU"))
+            else:
+                stmt = stmt.where(User.region_record.has(Region.name.ilike(f"%{country}%")))
         if city:
-            stmt = stmt.where(User.city.ilike(f"%{city}%"))
+            stmt = stmt.where(User.school_record.has(School.city.has(City.name.ilike(f"%{city}%"))))
         if school:
-            stmt = stmt.where(User.school.ilike(f"%{school}%"))
+            stmt = stmt.where(
+                User.school_record.has(
+                    or_(School.short_name.ilike(f"%{school}%"), School.full_name.ilike(f"%{school}%"))
+                )
+            )
+        if region_id is not None:
+            stmt = stmt.where(User.region_id == region_id)
+        if school_id is not None:
+            stmt = stmt.where(User.school_id == school_id)
+        if school_status is not None:
+            stmt = stmt.where(User.school_status == school_status)
         if class_grade is not None:
             stmt = stmt.where(User.class_grade == class_grade)
         if subject:
@@ -229,14 +263,18 @@ class UsersRepo:
         surname: str,
         name: str,
         father_name: str | None,
-        country: str,
-        city: str,
-        school: str,
+        country: str | None,
+        city: str | None,
+        school: str | None,
         class_grade: int | None,
         subject: str | None,
         gender: str | None,
         subscription: int,
         manual_teachers: list[dict] | None = None,
+        region_id: int | None = None,
+        school_id: int | None = None,
+        school_status: SchoolStatus = SchoolStatus.missing,
+        coins: int = 0,
     ) -> User:
         gender_value = self._normalize_gender(gender)
         user = User(
@@ -258,6 +296,10 @@ class UsersRepo:
             gender=gender_value,
             subscription=subscription,
             manual_teachers=manual_teachers or [],
+            region_id=region_id,
+            school_id=school_id,
+            school_status=school_status,
+            coins=coins,
         )
         self.db.add(user)
         try:

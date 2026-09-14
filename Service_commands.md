@@ -85,16 +85,23 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
     "password": "StrongPass1",
     "role": "student",
     "email": "student01@example.com",
+    "gender": "male",
+    "subscription": 0,
     "surname": "Иванов",
     "name": "Иван",
     "father_name": "Иванович",
-    "country": "Россия",
-    "city": "Москва",
-    "school": "Школа",
+    "region_id": 77,
+    "school_id": 12345,
+    "school_not_found": false,
     "class_grade": 7,
-    "subject": "Math"
+    "subject": null
   }'
 ```
+
+Если школа не найдена, используйте `school_id: null` и
+`school_not_found: true`. Для получения идентификаторов сначала вызовите
+`GET /api/v1/lookup/regions`, затем
+`GET /api/v1/lookup/schools?region_id=...&query=...`.
 
 ### Логин (по login)
 

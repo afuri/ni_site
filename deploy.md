@@ -98,8 +98,18 @@ docker compose exec api alembic -c /app/alembic.ini upgrade head
 Если нужно загрузить список школ из CSV:
 
 ```bash
-docker compose exec api python /app/scripts/load_school.py --truncate
+./manual_scripts/import_school_directory.sh \
+  --compose-file docker-compose.yml \
+  --schools temporary/ni_schools.csv \
+  --users temporary/user_school.csv \
+  --batch-id <уникальный-batch-id> \
+  --dry-run
 ```
+
+Первичная загрузка нового справочника — часть отдельного миграционного окна.
+После dry-run нельзя автоматически переходить к `--apply`: сначала сопоставьте
+все контрольные значения с [production runbook](PRODUCTION_SCHOOL_MIGRATION.md).
+Опция `--truncate` больше не поддерживается и не должна использоваться.
 
 ## 7) Сборка фронтенда
 

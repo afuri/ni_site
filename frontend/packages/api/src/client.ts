@@ -2,6 +2,10 @@ import type {
   ApiError,
   ApiErrorResponse,
   AuthStorage,
+  RegionLookup,
+  SchoolLookup,
+  SchoolSubmission,
+  SchoolSubmissionCreate,
   TokenPair,
   UserRead
 } from "./types";
@@ -41,9 +45,9 @@ type RegisterPayload = {
   surname: string;
   name: string;
   father_name: string | null;
-  country: string;
-  city: string;
-  school: string;
+  region_id: number;
+  school_id: number | null;
+  school_not_found: boolean;
   class_grade: number | null;
   subject: string | null;
 };
@@ -58,8 +62,12 @@ type ApiClient = {
     me: () => Promise<UserRead>;
   };
   lookup: {
-    cities: (options?: { query?: string; limit?: number }) => Promise<string[]>;
-    schools: (options: { city: string; query?: string; limit?: number }) => Promise<string[]>;
+    regions: (options?: { query?: string; limit?: number; signal?: AbortSignal }) => Promise<RegionLookup[]>;
+    schools: (options: { regionId: number; query: string; limit?: number; signal?: AbortSignal }) => Promise<SchoolLookup[]>;
+  };
+  schoolSubmissions: {
+    getMine: () => Promise<SchoolSubmission | null>;
+    create: (payload: SchoolSubmissionCreate) => Promise<SchoolSubmission>;
   };
 };
 
@@ -260,24 +268,39 @@ export function createApiClient(options: ClientOptions): ApiClient {
       me: () => request<UserRead>({ path: "/auth/me", method: "GET" })
     },
     lookup: {
-      cities: (options = {}) =>
-        request<string[]>({
-          path: `/lookup/cities${buildQuery({
+      regions: (options = {}) =>
+        request<RegionLookup[]>({
+          path: `/lookup/regions${buildQuery({
             query: options.query,
             limit: options.limit
           })}`,
           method: "GET",
-          auth: false
+          auth: false,
+          signal: options.signal
         }),
       schools: (options) =>
-        request<string[]>({
+        request<SchoolLookup[]>({
           path: `/lookup/schools${buildQuery({
-            city: options.city,
+            region_id: options.regionId,
             query: options.query,
             limit: options.limit
           })}`,
           method: "GET",
-          auth: false
+          auth: false,
+          signal: options.signal
+        })
+    },
+    schoolSubmissions: {
+      getMine: () =>
+        request<SchoolSubmission | null>({
+          path: "/users/me/school-submission",
+          method: "GET"
+        }),
+      create: (payload) =>
+        request<SchoolSubmission>({
+          path: "/users/me/school-submissions",
+          method: "POST",
+          body: payload
         })
     }
   };

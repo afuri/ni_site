@@ -1,7 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
-import { createApiClient, type ManualTeacher, type UserRead } from "@api";
+import {
+  createApiClient,
+  type ApiError,
+  type ManualTeacher,
+  type SchoolStatus,
+  type SchoolSubmission,
+  type SchoolSubmissionCreate,
+  type UserRead
+} from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
+import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
 import { renderMarkdown } from "../utils/markdown";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
@@ -32,7 +41,6 @@ const loadMockS3 = (): Record<string, string> => {
 const LOGIN_REGEX = /^[A-Za-z][A-Za-z0-9]*$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
-const RU_CITY_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 
 const normalizeProfileForm = (form: ProfileForm): ProfileForm => ({
@@ -42,9 +50,7 @@ const normalizeProfileForm = (form: ProfileForm): ProfileForm => ({
   surname: form.surname.trim(),
   name: form.name.trim(),
   fatherName: form.fatherName.trim(),
-  country: form.country.trim(),
-  city: form.city.trim(),
-  school: form.school.trim(),
+  schoolQuery: form.schoolQuery.trim(),
   subject: form.subject.trim()
 });
 
@@ -71,6 +77,7 @@ type AttemptResult = {
 
 type AttemptTask = {
   task_id: number;
+  max_score: number;
   title: string;
   content: string;
   task_type: "single_choice" | "multi_choice" | "short_text";
@@ -109,15 +116,39 @@ type ProfileForm = {
   surname: string;
   name: string;
   fatherName: string;
-  country: string;
-  city: string;
-  school: string;
+  regionId: number | null;
+  schoolId: number | null;
+  schoolQuery: string;
+  schoolCity: string;
+  schoolNotFound: boolean;
   classGrade: string;
   gender: "" | "male" | "female";
   subject: string;
 };
 
 type ProfileErrors = Partial<Record<keyof ProfileForm, string>>;
+
+type SchoolSubmissionForm = {
+  countryName: string;
+  regionName: string;
+  cityName: string;
+  schoolShortName: string;
+  schoolFullName: string;
+  address: string;
+  url: string;
+  email: string;
+};
+
+const EMPTY_SCHOOL_SUBMISSION: SchoolSubmissionForm = {
+  countryName: "",
+  regionName: "",
+  cityName: "",
+  schoolShortName: "",
+  schoolFullName: "",
+  address: "",
+  url: "",
+  email: ""
+};
 
 type TeacherEntry = {
   id: number;
@@ -166,9 +197,11 @@ const buildProfileFromUser = (currentUser: UserRead): ProfileForm => ({
   surname: currentUser.surname ?? "",
   name: currentUser.name ?? "",
   fatherName: currentUser.father_name ?? "",
-  country: currentUser.country ?? "Россия",
-  city: currentUser.city ?? "",
-  school: currentUser.school ?? "",
+  regionId: currentUser.region_id ?? null,
+  schoolId: currentUser.school_id ?? null,
+  schoolQuery: currentUser.school_short_name ?? currentUser.school ?? "",
+  schoolCity: currentUser.city_name ?? currentUser.city ?? "",
+  schoolNotFound: currentUser.school_status === "missing" || currentUser.school_status === "submission_rejected",
   classGrade:
     currentUser.class_grade !== null && currentUser.class_grade !== undefined
       ? String(currentUser.class_grade)
@@ -207,9 +240,11 @@ export function CabinetPage() {
     surname: "",
     name: "",
     fatherName: "",
-    country: "Россия",
-    city: "",
-    school: "",
+    regionId: null,
+    schoolId: null,
+    schoolQuery: "",
+    schoolCity: "",
+    schoolNotFound: false,
     classGrade: "",
     gender: "",
     subject: ""
@@ -218,14 +253,8 @@ export function CabinetPage() {
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
   const [profileStatus, setProfileStatus] = useState<"idle" | "saving" | "error">("idle");
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
-  const [cityLookupEnabled, setCityLookupEnabled] = useState(false);
-  const [schoolLookupEnabled, setSchoolLookupEnabled] = useState(false);
-  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
-  const [schoolSuggestions, setSchoolSuggestions] = useState<string[]>([]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
-  const cityLookupTimer = useRef<number | null>(null);
-  const schoolLookupTimer = useRef<number | null>(null);
   const [viewedStudent, setViewedStudent] = useState<UserRead | null>(null);
 
   const [attemptResults, setAttemptResults] = useState<AttemptResult[]>([]);
@@ -243,6 +272,12 @@ export function CabinetPage() {
   const [announcementsStatus, setAnnouncementsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pendingResultsMessage, setPendingResultsMessage] = useState<string | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [schoolSubmission, setSchoolSubmission] = useState<SchoolSubmission | null>(null);
+  const [schoolSubmissionForm, setSchoolSubmissionForm] = useState<SchoolSubmissionForm>(EMPTY_SCHOOL_SUBMISSION);
+  const [schoolSubmissionStatus, setSchoolSubmissionStatus] = useState<"idle" | "loading" | "saving" | "error">("idle");
+  const [schoolSubmissionMessage, setSchoolSubmissionMessage] = useState<string | null>(null);
+  const [isSchoolSubmissionOpen, setIsSchoolSubmissionOpen] = useState(false);
+  const [activeRegionIsOther, setActiveRegionIsOther] = useState(false);
   const [activeAttemptPrompt, setActiveAttemptPrompt] = useState<AttemptResult | null>(null);
   const [isActiveAttemptPromptOpen, setIsActiveAttemptPromptOpen] = useState(false);
   const activeAttemptPromptShown = useRef(false);
@@ -326,11 +361,62 @@ export function CabinetPage() {
       : null;
 
   const activeUser = viewingStudentId ? viewedStudent : user;
+  const activeSchoolStatus: SchoolStatus =
+    activeUser?.school_status ?? (activeUser?.school_id || activeUser?.school ? "selected" : "missing");
+  const diplomaAllowed = activeSchoolStatus === "selected" || activeSchoolStatus === "not_required";
   const greetingName =
     activeUser?.role === "teacher"
       ? [activeUser?.name, activeUser?.father_name].filter(Boolean).join(" ")
       : activeUser?.name ?? "";
   const greetingLabel = greetingName.trim() || activeUser?.login || "";
+
+  useEffect(() => {
+    if (!user || viewingStudentId || !user.region_id) {
+      setActiveRegionIsOther(false);
+      return;
+    }
+    const controller = new AbortController();
+    client.lookup
+      .regions({ limit: 100, signal: controller.signal })
+      .then((regions) => {
+        setActiveRegionIsOther(regions.some((region) => region.id === user.region_id && region.is_other));
+      })
+      .catch((error) => {
+        if ((error as Error)?.name !== "AbortError") {
+          setActiveRegionIsOther(false);
+        }
+      });
+    return () => controller.abort();
+  }, [client, user, viewingStudentId]);
+
+  useEffect(() => {
+    if (!user || viewingStudentId || !["submission_pending", "submission_rejected"].includes(user.school_status)) {
+      setSchoolSubmission(null);
+      return;
+    }
+    setSchoolSubmissionStatus("loading");
+    client.schoolSubmissions
+      .getMine()
+      .then((submission) => {
+        setSchoolSubmission(submission);
+        if (submission) {
+          setSchoolSubmissionForm({
+            countryName: submission.country_name ?? "",
+            regionName: submission.region_name ?? "",
+            cityName: submission.city_name,
+            schoolShortName: submission.school_short_name,
+            schoolFullName: submission.school_full_name ?? "",
+            address: submission.address ?? "",
+            url: submission.url ?? "",
+            email: submission.email ?? ""
+          });
+        }
+        setSchoolSubmissionStatus("idle");
+      })
+      .catch(() => {
+        setSchoolSubmissionStatus("error");
+      });
+  }, [client, user, viewingStudentId]);
 
   useEffect(() => {
     if (!user) {
@@ -347,71 +433,11 @@ export function CabinetPage() {
     const nextProfile = buildProfileFromUser(user);
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
-    setCityLookupEnabled(false);
-    setSchoolLookupEnabled(false);
   }, [client, user, viewingStudentId]);
 
   useEffect(() => {
-    if (!cityLookupEnabled) {
-      setCitySuggestions([]);
-      return;
-    }
-    const query = profileForm.city.trim();
-    if (cityLookupTimer.current !== null) {
-      window.clearTimeout(cityLookupTimer.current);
-    }
-    if (!query) {
-      setCitySuggestions([]);
-      setSchoolSuggestions([]);
-      return;
-    }
-    cityLookupTimer.current = window.setTimeout(async () => {
-      try {
-        const cities = await client.lookup.cities({ query, limit: 20 });
-        setCitySuggestions(cities);
-      } catch {
-        setCitySuggestions([]);
-      }
-    }, 250);
-    return () => {
-      if (cityLookupTimer.current !== null) {
-        window.clearTimeout(cityLookupTimer.current);
-      }
-    };
-  }, [client, profileForm.city, cityLookupEnabled]);
-
-  useEffect(() => {
-    if (!schoolLookupEnabled) {
-      setSchoolSuggestions([]);
-      return;
-    }
-    const cityValue = profileForm.city.trim();
-    const query = profileForm.school.trim();
-    if (schoolLookupTimer.current !== null) {
-      window.clearTimeout(schoolLookupTimer.current);
-    }
-    if (!cityValue) {
-      setSchoolSuggestions([]);
-      return;
-    }
-    schoolLookupTimer.current = window.setTimeout(async () => {
-      try {
-        const schools = await client.lookup.schools({ city: cityValue, query, limit: 50 });
-        setSchoolSuggestions(schools);
-      } catch {
-        setSchoolSuggestions([]);
-      }
-    }, 250);
-    return () => {
-      if (schoolLookupTimer.current !== null) {
-        window.clearTimeout(schoolLookupTimer.current);
-      }
-    };
-  }, [client, profileForm.city, profileForm.school, schoolLookupEnabled]);
-
-  useEffect(() => {
     if (!attemptView) {
-      setAttemptImageUrls({});
+      setAttemptImageUrls((current) => (Object.keys(current).length > 0 ? {} : current));
       return;
     }
     const missingKeys = attemptView.tasks
@@ -591,8 +617,6 @@ export function CabinetPage() {
     const nextProfile = buildProfileFromUser(viewedStudent);
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
-    setCityLookupEnabled(false);
-    setSchoolLookupEnabled(false);
   }, [viewedStudent]);
 
   useEffect(() => {
@@ -691,6 +715,9 @@ export function CabinetPage() {
     return <div className="cabinet-page">Загрузка...</div>;
   }
 
+  const isSelectedSchoolProfileLocked =
+    activeUser?.school_status === "selected" && user.role !== "admin";
+
   const validateProfile = (form: ProfileForm) => {
     const errors: ProfileErrors = {};
     const profileRole = activeUser?.role ?? user.role;
@@ -710,19 +737,25 @@ export function CabinetPage() {
     if (form.fatherName && !FATHER_NAME_REGEX.test(form.fatherName)) {
       errors.fatherName = "Только русские буквы, каждая часть с заглавной, можно пробел.";
     }
-    if (!form.city) {
-      errors.city = "Введите город.";
-    } else if (!RU_CITY_REGEX.test(form.city)) {
-      errors.city = "Первая буква заглавная, можно пробел и дефис.";
-    }
-    if (!form.school) {
-      errors.school = "Введите школу.";
+    if (!isSelectedSchoolProfileLocked && form.regionId === null) {
+      errors.regionId = "Выберите регион.";
     }
     if (!form.gender) {
       errors.gender = "Выберите пол.";
     }
     if (profileRole === "student" && !form.classGrade) {
       errors.classGrade = "Выберите класс.";
+    }
+    const schoolRequired = !(profileRole === "student" && form.classGrade === "0");
+    if (
+      !isSelectedSchoolProfileLocked &&
+      schoolRequired &&
+      !form.schoolNotFound &&
+      form.schoolId === null
+    ) {
+      errors.schoolQuery = form.schoolQuery
+        ? "Выберите школу из предложенного списка."
+        : "Выберите школу или отметьте, что её нет в списке.";
     }
     if (profileRole === "teacher") {
       if (!form.subject) {
@@ -737,18 +770,17 @@ export function CabinetPage() {
       ...prev,
       [field]: value
     }));
-    if (field === "city") {
-      setCityLookupEnabled(true);
-    }
-    if (field === "school") {
-      setSchoolLookupEnabled(true);
-    }
     if (profileErrors[field]) {
       setProfileErrors((prev) => ({
         ...prev,
         [field]: undefined
       }));
     }
+  };
+
+  const handleProfileSchoolChange = (selection: SchoolSelectionValue) => {
+    setProfileForm((prev) => ({ ...prev, ...selection }));
+    setProfileErrors((prev) => ({ ...prev, regionId: undefined, schoolQuery: undefined }));
   };
 
   const handleProfileSave = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -771,9 +803,13 @@ export function CabinetPage() {
           surname: normalizedProfileForm.surname,
           name: normalizedProfileForm.name,
           father_name: normalizedProfileForm.fatherName ? normalizedProfileForm.fatherName : null,
-          country: normalizedProfileForm.country,
-          city: normalizedProfileForm.city,
-          school: normalizedProfileForm.school,
+          ...(isSelectedSchoolProfileLocked
+            ? {}
+            : {
+                region_id: normalizedProfileForm.regionId,
+                school_id: normalizedProfileForm.schoolId,
+                school_not_found: normalizedProfileForm.schoolNotFound
+              }),
           class_grade: normalizedProfileForm.classGrade ? Number(normalizedProfileForm.classGrade) : null,
           gender: normalizedProfileForm.gender || null,
           subject: normalizedProfileForm.subject ? normalizedProfileForm.subject : null
@@ -787,8 +823,6 @@ export function CabinetPage() {
       const nextProfile = buildProfileFromUser(updated);
       setProfileForm(nextProfile);
       setSavedProfile(nextProfile);
-      setCityLookupEnabled(false);
-      setSchoolLookupEnabled(false);
       setProfileStatus("idle");
       setProfileMessage("Данные сохранены.");
     } catch {
@@ -804,8 +838,63 @@ export function CabinetPage() {
     setProfileForm(savedProfile);
     setProfileErrors({});
     setProfileMessage(null);
-    setCityLookupEnabled(false);
-    setSchoolLookupEnabled(false);
+  };
+
+  const openSchoolSubmission = () => {
+    setSchoolSubmissionMessage(null);
+    setIsSchoolSubmissionOpen(true);
+  };
+
+  const updateSchoolSubmissionField = (field: keyof SchoolSubmissionForm, value: string) => {
+    setSchoolSubmissionForm((prev) => ({ ...prev, [field]: value }));
+    setSchoolSubmissionMessage(null);
+  };
+
+  const handleSchoolSubmissionSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalized = Object.fromEntries(
+      Object.entries(schoolSubmissionForm).map(([key, value]) => [key, value.trim()])
+    ) as SchoolSubmissionForm;
+    setSchoolSubmissionForm(normalized);
+    if (!normalized.cityName || !normalized.schoolShortName) {
+      setSchoolSubmissionMessage("Укажите город и краткое название школы.");
+      return;
+    }
+    if (activeRegionIsOther && (!normalized.countryName || !normalized.regionName)) {
+      setSchoolSubmissionMessage("Для другой страны укажите страну и регион.");
+      return;
+    }
+
+    const payload: SchoolSubmissionCreate = {
+      country_name: normalized.countryName || null,
+      region_name: normalized.regionName || null,
+      city_name: normalized.cityName,
+      school_short_name: normalized.schoolShortName,
+      school_full_name: normalized.schoolFullName || null,
+      address: normalized.address || null,
+      url: normalized.url || null,
+      email: normalized.email || null
+    };
+    setSchoolSubmissionStatus("saving");
+    try {
+      const submission = await client.schoolSubmissions.create(payload);
+      setSchoolSubmission(submission);
+      setIsSchoolSubmissionOpen(false);
+      setSchoolSubmissionStatus("idle");
+      setSchoolSubmissionMessage(null);
+      if (tokens) {
+        const refreshedUser = await client.auth.me();
+        setSession(tokens, refreshedUser);
+      }
+    } catch (error) {
+      const apiError = error as ApiError;
+      setSchoolSubmissionStatus("error");
+      setSchoolSubmissionMessage(
+        apiError?.code === "school_submission_exists"
+          ? "Заявка уже отправлена и ожидает рассмотрения."
+          : apiError?.message || "Не удалось отправить заявку. Попробуйте ещё раз."
+      );
+    }
   };
 
   const handleUserMenuToggle = () => {
@@ -994,6 +1083,10 @@ export function CabinetPage() {
   };
 
   const handleDiplomaDownload = async (attempt: AttemptResult) => {
+    if (!diplomaAllowed) {
+      setPendingResultsMessage("Диплом станет доступен после подтверждения школы администратором.");
+      return;
+    }
     if (!attempt.results_released) {
       setPendingResultsMessage("Диплом в процессе изготовления.");
       return;
@@ -1028,6 +1121,17 @@ export function CabinetPage() {
       if (response.status === 404) {
         diplomaWindow.close();
         setPendingResultsMessage("Диплом будет загружен позже");
+        return;
+      }
+
+      if (response.status === 403) {
+        const payload = (await response.json().catch(() => null)) as { error?: { code?: string } } | null;
+        diplomaWindow.close();
+        setPendingResultsMessage(
+          payload?.error?.code === "diploma_school_pending"
+            ? "Диплом станет доступен после подтверждения школы администратором."
+            : "Недостаточно прав для скачивания диплома."
+        );
         return;
       }
 
@@ -1311,6 +1415,40 @@ export function CabinetPage() {
             </section>
           </div>
 
+          {activeSchoolStatus === "missing" ||
+          activeSchoolStatus === "submission_pending" ||
+          activeSchoolStatus === "submission_rejected" ? (
+            <section
+              className={`cabinet-school-banner cabinet-school-banner-${activeSchoolStatus}`}
+              aria-live="polite"
+            >
+              <div>
+                <h2>
+                  {activeSchoolStatus === "missing"
+                    ? "Укажите свою школу"
+                    : activeSchoolStatus === "submission_pending"
+                      ? "Заявка на школу рассматривается"
+                      : "Заявка на школу отклонена"}
+                </h2>
+                <p>
+                  {activeSchoolStatus === "missing"
+                    ? "Вы можете выбрать школу в личных данных или отправить заявку на её добавление. До этого начать новую олимпиаду нельзя."
+                    : activeSchoolStatus === "submission_pending"
+                      ? "Вы можете участвовать в олимпиадах, но диплом станет доступен после подтверждения школы администратором."
+                      : schoolSubmission?.admin_comment
+                        ? `Комментарий администратора: ${schoolSubmission.admin_comment}`
+                        : "Исправьте сведения и отправьте заявку повторно."}
+                </p>
+              </div>
+              {!viewingStudentId && activeSchoolStatus !== "submission_pending" ? (
+                <Button type="button" onClick={openSchoolSubmission}>
+                  {activeSchoolStatus === "submission_rejected" ? "Исправить заявку" : "Добавить школу"}
+                </Button>
+              ) : null}
+              {schoolSubmissionStatus === "loading" ? <span className="cabinet-hint">Загрузка заявки…</span> : null}
+            </section>
+          ) : null}
+
           {activeUser?.role === "student" && !viewingStudentId ? (
             <div className="cabinet-section-scroll">
               <section className="cabinet-section" id="announcements">
@@ -1391,22 +1529,29 @@ export function CabinetPage() {
                             <button
                               type="button"
                               className="cabinet-link"
-                              disabled={diplomaDownloadAttemptId === item.attempt_id}
+                              disabled={!diplomaAllowed || diplomaDownloadAttemptId === item.attempt_id}
+                              title={!diplomaAllowed ? "Школа ещё не подтверждена" : undefined}
                               onClick={() => {
                                 void handleDiplomaDownload(item);
                               }}
                             >
-                              {diplomaDownloadAttemptId === item.attempt_id ? "Загрузка..." : "Диплом"}
+                              {!diplomaAllowed
+                                ? "Недоступен"
+                                : diplomaDownloadAttemptId === item.attempt_id
+                                  ? "Загрузка..."
+                                  : "Диплом"}
                             </button>
                           ) : (
                             <button
                               type="button"
                               className="cabinet-link"
+                              disabled={!diplomaAllowed}
+                              title={!diplomaAllowed ? "Школа ещё не подтверждена" : undefined}
                               onClick={() =>
                                 setPendingResultsMessage("Диплом в процессе изготовления.")
                               }
                             >
-                              Диплом
+                              {diplomaAllowed ? "Диплом" : "Недоступен"}
                             </button>
                           )}
                         </td>
@@ -1587,33 +1732,6 @@ export function CabinetPage() {
                   <span className="field-helper field-helper-error">{profileErrors.gender}</span>
                 ) : null}
               </div>
-              <TextInput
-                label="Город"
-                name="city"
-                value={profileForm.city}
-                onChange={(event) => handleProfileChange("city", event.target.value)}
-                error={profileErrors.city}
-                helperText="С заглавной буквы на русском языке."
-                list="profile-city-suggestions"
-              />
-              <datalist id="profile-city-suggestions">
-                {citySuggestions.map((city) => (
-                  <option key={city} value={city} />
-                ))}
-              </datalist>
-              <TextInput
-                label="Школа"
-                name="school"
-                value={profileForm.school}
-                onChange={(event) => handleProfileChange("school", event.target.value)}
-                error={profileErrors.school}
-                list="profile-school-suggestions"
-              />
-              <datalist id="profile-school-suggestions">
-                {schoolSuggestions.map((school) => (
-                  <option key={school} value={school} />
-                ))}
-              </datalist>
               {activeUser?.role === "student" ? (
                 <label className="field">
                   <span className="field-label">Класс</span>
@@ -1636,6 +1754,28 @@ export function CabinetPage() {
                     <span className="field-helper">Обязательно для ученика.</span>
                   )}
                 </label>
+              ) : null}
+              <SchoolDirectoryPicker
+                client={client}
+                value={{
+                  regionId: profileForm.regionId,
+                  schoolId: profileForm.schoolId,
+                  schoolQuery: profileForm.schoolQuery,
+                  schoolCity: profileForm.schoolCity,
+                  schoolNotFound: profileForm.schoolNotFound
+                }}
+                onChange={handleProfileSchoolChange}
+                role={activeUser?.role === "teacher" ? "teacher" : "student"}
+                classGrade={profileForm.classGrade}
+                regionError={profileErrors.regionId}
+                schoolError={profileErrors.schoolQuery}
+                idPrefix={viewingStudentId ? `student-${viewingStudentId}` : "profile"}
+                disabled={isSelectedSchoolProfileLocked}
+              />
+              {isSelectedSchoolProfileLocked ? (
+                <p className="school-picker-note">
+                  Регион и школа подтверждены. Изменить их может только администратор.
+                </p>
               ) : null}
               {activeUser?.role === "teacher" ? (
                 <TextInput
@@ -2057,6 +2197,88 @@ export function CabinetPage() {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={isSchoolSubmissionOpen}
+        onClose={() => {
+          setIsSchoolSubmissionOpen(false);
+          setSchoolSubmissionMessage(null);
+        }}
+        title="Добавление школы"
+        className="cabinet-school-submission-modal"
+      >
+        <form className="cabinet-form" onSubmit={handleSchoolSubmissionSubmit}>
+          <p className="cabinet-hint">
+            Заявка не создаёт школу автоматически. Сведения проверит администратор.
+          </p>
+          {activeRegionIsOther ? (
+            <>
+              <TextInput
+                label="Страна"
+                name="submissionCountry"
+                value={schoolSubmissionForm.countryName}
+                onChange={(event) => updateSchoolSubmissionField("countryName", event.target.value)}
+              />
+              <TextInput
+                label="Регион"
+                name="submissionRegion"
+                value={schoolSubmissionForm.regionName}
+                onChange={(event) => updateSchoolSubmissionField("regionName", event.target.value)}
+              />
+            </>
+          ) : null}
+          <TextInput
+            label="Город"
+            name="submissionCity"
+            value={schoolSubmissionForm.cityName}
+            onChange={(event) => updateSchoolSubmissionField("cityName", event.target.value)}
+          />
+          <TextInput
+            label="Краткое название школы"
+            name="submissionShortName"
+            value={schoolSubmissionForm.schoolShortName}
+            onChange={(event) => updateSchoolSubmissionField("schoolShortName", event.target.value)}
+          />
+          <TextInput
+            label="Полное название школы"
+            name="submissionFullName"
+            value={schoolSubmissionForm.schoolFullName}
+            onChange={(event) => updateSchoolSubmissionField("schoolFullName", event.target.value)}
+          />
+          <TextInput
+            label="Адрес"
+            name="submissionAddress"
+            value={schoolSubmissionForm.address}
+            onChange={(event) => updateSchoolSubmissionField("address", event.target.value)}
+          />
+          <TextInput
+            label="Сайт"
+            name="submissionUrl"
+            value={schoolSubmissionForm.url}
+            onChange={(event) => updateSchoolSubmissionField("url", event.target.value)}
+          />
+          <TextInput
+            label="Email школы"
+            name="submissionEmail"
+            type="email"
+            value={schoolSubmissionForm.email}
+            onChange={(event) => updateSchoolSubmissionField("email", event.target.value)}
+          />
+          {schoolSubmissionMessage ? (
+            <div className="cabinet-alert" role="alert">
+              {schoolSubmissionMessage}
+            </div>
+          ) : null}
+          <div className="cabinet-modal-actions">
+            <Button type="submit" isLoading={schoolSubmissionStatus === "saving"}>
+              Отправить заявку
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setIsSchoolSubmissionOpen(false)}>
+              Отмена
+            </Button>
+          </div>
+        </form>
       </Modal>
 
       {verifySuccessModal}

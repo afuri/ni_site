@@ -16,9 +16,9 @@ async def test_register_and_login_flow(client, db_session):
         "surname": "Иванов",
         "name": "Иван",
         "father_name": "Иванович",
-        "country": "Россия",
-        "city": "Москва",
-        "school": "Школа",
+        "region_id": 1,
+        "school_id": 1,
+        "school_not_found": False,
         "class_grade": 7,
         "subject": "Math",
     }

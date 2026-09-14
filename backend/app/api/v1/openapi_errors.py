@@ -71,6 +71,22 @@ ERROR_EXAMPLES = {
     codes.NOT_A_STUDENT: {"error": {"code": codes.NOT_A_STUDENT, "message": codes.NOT_A_STUDENT}},
 }
 
+for _code in (
+    codes.REGION_NOT_FOUND,
+    codes.REGION_INACTIVE,
+    codes.SCHOOL_NOT_FOUND,
+    codes.SCHOOL_INACTIVE,
+    codes.SCHOOL_REGION_MISMATCH,
+    codes.SCHOOL_SELECTION_REQUIRED,
+    codes.SCHOOL_PROFILE_LOCKED,
+    codes.SCHOOL_SUBMISSION_EXISTS,
+    codes.SCHOOL_SUBMISSION_NOT_FOUND,
+    codes.SCHOOL_SUBMISSION_NOT_PENDING,
+    codes.SCHOOL_PROFILE_REQUIRED,
+    codes.DIPLOMA_SCHOOL_PENDING,
+):
+    ERROR_EXAMPLES[_code] = {"error": {"code": _code, "message": _code}}
+
 
 def _with_request_id(payload: dict) -> dict:
     return {**payload, "request_id": REQUEST_ID_EXAMPLE}

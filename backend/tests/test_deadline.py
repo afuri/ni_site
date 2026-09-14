@@ -24,6 +24,34 @@ class FakeRepo:
         self.expired_called = True
         self.attempt.status = AttemptStatus.expired
 
+    async def get_olympiad(self, olympiad_id: int):
+        now = datetime.now(timezone.utc)
+        return SimpleNamespace(
+            id=olympiad_id,
+            title="Deadline test",
+            is_published=True,
+            age_group="3-4",
+            available_from=now - timedelta(days=1),
+            available_to=now + timedelta(days=1),
+            duration_sec=60,
+            pass_percent=60,
+            attempts_limit=1,
+            results_released=False,
+        )
+
+    async def list_tasks_full(self, olympiad_id: int):
+        return []
+
+    async def list_answers(self, attempt_id: int):
+        return []
+
+    async def delete_grades(self, attempt_id: int):
+        return None
+
+    async def mark_expired_with_grade(self, *, attempt_id: int, **_kwargs) -> None:
+        self.expired_called = True
+        self.attempt.status = AttemptStatus.expired
+
 
 @pytest.mark.asyncio
 async def test_submit_expired_attempt_marks_expired():

@@ -140,11 +140,11 @@ def public_url_for_key(key: str) -> str | None:
 
 
 def presign_put(prefix: str, content_type: str) -> PresignPutResult:
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        raise ValueError(codes.CONTENT_TYPE_NOT_ALLOWED)
     client = _get_s3_client()
     if client is None:
         raise RuntimeError("storage_not_configured")
-    if content_type not in ALLOWED_CONTENT_TYPES:
-        raise ValueError(codes.CONTENT_TYPE_NOT_ALLOWED)
 
     key = _build_key(prefix, content_type)
     params = {
@@ -167,11 +167,11 @@ def presign_put(prefix: str, content_type: str) -> PresignPutResult:
 
 
 def presign_post(prefix: str, content_type: str, max_size_bytes: int) -> PresignPostResult:
+    if content_type not in ALLOWED_CONTENT_TYPES:
+        raise ValueError(codes.CONTENT_TYPE_NOT_ALLOWED)
     client = _get_s3_client()
     if client is None:
         raise RuntimeError("storage_not_configured")
-    if content_type not in ALLOWED_CONTENT_TYPES:
-        raise ValueError(codes.CONTENT_TYPE_NOT_ALLOWED)
 
     key = _build_key(prefix, content_type)
     conditions = [

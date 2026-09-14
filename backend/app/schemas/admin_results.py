@@ -4,6 +4,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict
 from app.models.task import TaskType
 from app.schemas.attempt import AttemptRead
+from app.models.user import SchoolStatus
 
 
 class AdminOlympiadAttemptRow(BaseModel):
@@ -15,6 +16,10 @@ class AdminOlympiadAttemptRow(BaseModel):
     class_grade: Optional[int] = None
     city: Optional[str] = None
     school: Optional[str] = None
+    region_id: int | None = None
+    region_name: str | None = None
+    school_id: int | None = None
+    school_status: SchoolStatus | None = None
     teachers: Optional[str] = None
     linked_teachers: Optional[str] = None
     started_at: datetime

@@ -136,6 +136,59 @@
   justify-content: flex-end;
 }
 
+.admin-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.admin-check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 16px 0;
+}
+
+.admin-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.admin-check input {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-submission-review {
+  margin-top: 20px;
+}
+
+.admin-candidate-list {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+
+.admin-candidate-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 60, 122, 0.2);
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-candidate-list button.is-selected {
+  border-color: var(--color-primary-600);
+  background: rgba(0, 86, 210, 0.08);
+}
+
 .admin-form {
   display: grid;
   gap: var(--space-4);

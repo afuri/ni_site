@@ -117,13 +117,13 @@ describe("api client", () => {
 
   it("refreshes token on 401 and retries request", async () => {
     const initialTokens: TokenPair = {
-      access_token: "access-old",
-      refresh_token: "refresh-old",
+      access_token: "access-old-token-value",
+      refresh_token: "refresh-old-token-value",
       token_type: "bearer"
     };
     const refreshedTokens: TokenPair = {
-      access_token: "access-new",
-      refresh_token: "refresh-new",
+      access_token: "access-new-token-value",
+      refresh_token: "refresh-new-token-value",
       token_type: "bearer"
     };
     const setTokensSpy = vi.fn();
@@ -156,7 +156,7 @@ describe("api client", () => {
     const secureCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/secure"));
     expect(secureCalls).toHaveLength(2);
     const headers = secureCalls[1][1]?.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer access-new");
+    expect(headers.Authorization).toBe("Bearer access-new-token-value");
   });
 
   it("calls onAuthError when refresh fails", async () => {
@@ -190,5 +190,72 @@ describe("api client", () => {
 
     const result = await client.auth.refresh();
     expect(result).toBeNull();
+  });
+
+  it("uses region-scoped school lookup and forwards cancellation signals", async () => {
+    const client = createApiClient({ baseUrl: BASE_URL, storage: createStorage(null) });
+    const controller = new AbortController();
+    fetchMock.mockResolvedValueOnce(makeResponse(200, []));
+
+    await client.lookup.schools({
+      regionId: 7,
+      query: "лицей",
+      limit: 20,
+      signal: controller.signal
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe(`${BASE_URL}/lookup/schools?region_id=7&query=%D0%BB%D0%B8%D1%86%D0%B5%D0%B9&limit=20`);
+    expect(init.signal).toBe(controller.signal);
+    expect(String(url)).not.toContain("city=");
+  });
+
+  it("registers users with canonical region and school fields", async () => {
+    const client = createApiClient({ baseUrl: BASE_URL, storage: createStorage(null) });
+    fetchMock.mockResolvedValueOnce(makeResponse(201, { id: 1 }));
+
+    await client.auth.register({
+      login: "student-1",
+      password: "Strong-password-123",
+      role: "student",
+      email: "student@example.com",
+      gender: "male",
+      surname: "Иванов",
+      name: "Иван",
+      father_name: null,
+      region_id: 7,
+      school_id: null,
+      school_not_found: true,
+      class_grade: 5,
+      subject: null
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(init.body));
+    expect(url).toBe(`${BASE_URL}/auth/register`);
+    expect(body).toMatchObject({
+      region_id: 7,
+      school_id: null,
+      school_not_found: true,
+      class_grade: 5,
+      subscription: 0
+    });
+    expect(body).not.toHaveProperty("country");
+    expect(body).not.toHaveProperty("city");
+    expect(body).not.toHaveProperty("school");
+  });
+
+  it("sends school submissions through authenticated user endpoints", async () => {
+    const client = createApiClient({ baseUrl: BASE_URL, storage: createStorage(null) });
+    fetchMock
+      .mockResolvedValueOnce(makeResponse(200, null))
+      .mockResolvedValueOnce(makeResponse(201, { id: 3, status: "pending" }));
+
+    await client.schoolSubmissions.getMine();
+    await client.schoolSubmissions.create({ city_name: "Москва", school_short_name: "Лицей" });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/users/me/school-submission`);
+    expect(fetchMock.mock.calls[1][0]).toBe(`${BASE_URL}/users/me/school-submissions`);
+    expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
   });
 });

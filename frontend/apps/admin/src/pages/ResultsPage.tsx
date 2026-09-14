@@ -127,6 +127,10 @@ type AttemptRow = {
   class_grade: number | null;
   city: string | null;
   school: string | null;
+  region_id: number | null;
+  region_name: string | null;
+  school_id: number | null;
+  school_status: "selected" | "missing" | "submission_pending" | "submission_rejected" | "not_required" | null;
   teachers: string | null;
   linked_teachers?: string | null;
   started_at: string;
@@ -312,7 +316,7 @@ export function ResultsPage() {
 
   useEffect(() => {
     if (!attemptView) {
-      setAttemptImageUrls({});
+      setAttemptImageUrls((current) => (Object.keys(current).length > 0 ? {} : current));
       return;
     }
     const missingKeys = attemptView.tasks
@@ -404,8 +408,12 @@ export function ResultsPage() {
       "ФИО пользователя",
       "Пол",
       "Класс",
+      "ID региона",
+      "Регион",
+      "ID школы",
       "Город",
       "Школа",
+      "Статус школы",
       "Учителя пользователя",
       "Баллы",
       "Проценты",
@@ -423,12 +431,18 @@ export function ResultsPage() {
       item.user_full_name ?? "—",
       formatGender(item.gender),
       item.class_grade ?? "—",
+      item.region_id ?? "—",
+      item.region_name ?? "—",
+      item.school_id ?? "—",
       item.city ?? "—",
       item.school ?? "—",
+      item.school_status ?? "—",
       item.teachers ?? item.linked_teachers ?? "—",
       `${item.score_total}/${item.score_max}`,
       `${item.percent}%`,
-      `${API_BASE_URL}/attempts/${item.id}/diploma`
+      item.school_status === "selected" || item.school_status === "not_required"
+        ? `${API_BASE_URL}/attempts/${item.id}/diploma`
+        : "Недоступен"
     ]);
     const csvBody = [header, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\r\n");
     const csv = `\ufeff${csvBody}`;
@@ -496,8 +510,12 @@ export function ResultsPage() {
                 <th>ФИО пользователя</th>
                 <th>Пол</th>
                 <th>Класс</th>
+                <th>ID региона</th>
+                <th>Регион</th>
+                <th>ID школы</th>
                 <th>Город</th>
                 <th>Школа</th>
+                <th>Статус школы</th>
                 <th>Учителя пользователя</th>
                 <th>Баллы</th>
                 <th>Проценты</th>
@@ -507,11 +525,11 @@ export function ResultsPage() {
             <tbody>
               {attemptsStatus === "loading" ? (
                 <tr>
-                  <td colSpan={17}>Загрузка...</td>
+                  <td colSpan={21}>Загрузка...</td>
                 </tr>
               ) : attempts.length === 0 ? (
                 <tr>
-                  <td colSpan={17}>Нет попыток.</td>
+                  <td colSpan={21}>Нет попыток.</td>
                 </tr>
               ) : (
                 attempts.map((item, index) => (
@@ -540,22 +558,21 @@ export function ResultsPage() {
                     <td>{item.user_full_name ?? "—"}</td>
                     <td>{formatGender(item.gender)}</td>
                     <td>{item.class_grade ?? "—"}</td>
+                    <td>{item.region_id ?? "—"}</td>
+                    <td>{item.region_name ?? "—"}</td>
+                    <td>{item.school_id ?? "—"}</td>
                     <td>{item.city ?? "—"}</td>
                     <td>{item.school ?? "—"}</td>
+                    <td>{item.school_status ?? "—"}</td>
                     <td>{item.teachers ?? item.linked_teachers ?? "—"}</td>
                     <td>
                       {item.score_total} / {item.score_max}
                     </td>
                     <td>{item.percent}%</td>
                     <td>
-                      <a
-                        className="admin-link"
-                        href={`${API_BASE_URL}/attempts/${item.id}/diploma`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Скачать
-                      </a>
+                      {item.school_status === "selected" || item.school_status === "not_required" ? (
+                        <a className="admin-link" href={`${API_BASE_URL}/attempts/${item.id}/diploma`} target="_blank" rel="noreferrer">Скачать</a>
+                      ) : <span className="admin-hint">Недоступен</span>}
                     </td>
                   </tr>
                 ))

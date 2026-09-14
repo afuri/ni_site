@@ -120,7 +120,12 @@ async def test_admin_update_user_and_temp_password_flow(client, create_user):
     assert resp.status_code == 200
     user_id = resp.json()["id"]
 
-    update_payload = {"login": "studenttemp2", "school": "School 99"}
+    update_payload = {
+        "login": "studenttemp2",
+        "region_id": 1,
+        "school_id": 1,
+        "school_not_found": False,
+    }
     resp = await client.put(
         f"/api/v1/admin/users/{user_id}",
         json=update_payload,
@@ -129,7 +134,7 @@ async def test_admin_update_user_and_temp_password_flow(client, create_user):
     assert resp.status_code == 200
     assert resp.json()["login"] == "studenttemp2"
     assert resp.json()["email"] == "studenttemp@example.com"
-    assert resp.json()["school"] == "School 99"
+    assert resp.json()["school_short_name"] == "Школа № 1"
 
     temp_payload = {"temp_password": "TempPass1"}
     resp = await client.post(
@@ -217,14 +222,14 @@ async def test_service_token_allows_admin_update(client, create_user):
     try:
         resp = await client.put(
             f"/api/v1/admin/users/{student_id}",
-            json={"school": "School 1"},
+            json={"region_id": 1, "school_id": 1, "school_not_found": False},
             headers={"X-Service-Token": "svc-token"},
         )
     finally:
         settings.SERVICE_TOKENS = old_tokens
 
     assert resp.status_code == 200
-    assert resp.json()["school"] == "School 1"
+    assert resp.json()["school_short_name"] == "Школа № 1"
 
 
 @pytest.mark.asyncio
@@ -299,10 +304,10 @@ async def test_service_token_can_update_user(client, create_user):
 
         resp = await client.put(
             f"/api/v1/admin/users/{user_id}",
-            json={"school": "Service School"},
+            json={"region_id": 1, "school_id": 1, "school_not_found": False},
             headers={"X-Service-Token": "svc-token"},
         )
         assert resp.status_code == 200
-        assert resp.json()["school"] == "Service School"
+        assert resp.json()["school_short_name"] == "Школа № 1"
     finally:
         settings.SERVICE_TOKENS = old_tokens

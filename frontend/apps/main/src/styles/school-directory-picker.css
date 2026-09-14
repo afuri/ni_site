@@ -1,0 +1,88 @@
+.school-picker {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.school-picker-combobox {
+  position: relative;
+}
+
+.school-picker-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid rgba(15, 60, 122, 0.22);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+}
+
+.school-picker-list button {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-900);
+  text-align: left;
+  cursor: pointer;
+}
+
+.school-picker-list button:hover,
+.school-picker-list button:focus-visible {
+  background: rgba(0, 86, 210, 0.08);
+  outline: none;
+}
+
+.school-picker-list span,
+.school-picker-list small {
+  color: rgba(31, 59, 99, 0.76);
+}
+
+.school-picker-list small {
+  line-height: 1.3;
+}
+
+.school-picker-empty {
+  padding: 10px 12px;
+  color: rgba(31, 59, 99, 0.72);
+}
+
+.school-picker-missing {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: rgba(31, 59, 99, 0.92);
+  cursor: pointer;
+}
+
+.school-picker-missing input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+
+.school-picker-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 86, 210, 0.07);
+  color: rgba(31, 59, 99, 0.9);
+}
+
+@media (max-width: 640px) {
+  .school-picker-list {
+    max-height: 220px;
+  }
+}

@@ -9,6 +9,13 @@ export type {
   ApiError,
   ApiErrorResponse,
   AuthStorage,
+  ManualTeacher,
+  RegionLookup,
+  SchoolLookup,
+  SchoolStatus,
+  SchoolSubmission,
+  SchoolSubmissionCreate,
+  SchoolSubmissionStatus,
   TokenPair,
   UserRead,
   UserRole

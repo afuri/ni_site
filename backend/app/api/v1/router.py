@@ -19,6 +19,8 @@ from app.api.v1.uploads import router as uploads_router
 from app.api.v1.lookup import router as lookup_router
 from app.api.v1.admin_schools import router as admin_schools_router
 from app.api.v1.admin_announcements import router as admin_announcements_router
+from app.api.v1.school_submissions import router as school_submissions_router
+from app.api.v1.admin_school_submissions import router as admin_school_submissions_router
 
 
 
@@ -42,6 +44,8 @@ router.include_router(admin_stats_router, tags=["admin"])
 router.include_router(admin_olympiad_pools_router, tags=["admin"])
 router.include_router(admin_schools_router, tags=["admin"])
 router.include_router(admin_announcements_router, tags=["admin"])
+router.include_router(school_submissions_router)
+router.include_router(admin_school_submissions_router, tags=["admin"])
 router.include_router(content_router, tags=["content"])
 router.include_router(admin_content_router, tags=["content"])
 router.include_router(uploads_router, tags=["uploads"])

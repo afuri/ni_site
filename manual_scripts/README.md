@@ -23,6 +23,8 @@ cd /Users/alexfedosov/Documents/ni_site_v2
 - `bulk_update_user_geo.sh` — массовое обновление географии пользователей.
 - `import_final_round_attempts.sh` — импорт результатов очного этапа.
 - `promote_student_grades.sh` — ежегодный перевод учеников на один класс вверх с dry-run, аудитом и защитой от повторного запуска.
+- `import_school_directory.sh` — транзакционный импорт Region → City → School и перенос пользователей; dry-run используется по умолчанию, целевой каталог обязан быть пустым, повторный `batch_id` запрещён.
+- `verify_school_directory.sql` — read-only контроль количеств, FK и согласованности статусов после импорта. Production-порядок и ожидаемые значения описаны в `../PRODUCTION_SCHOOL_MIGRATION.md`.
 - `regrade_task37_words.sh` — переоценка ответов для задания 37.
 - `regrade_task50_51_words.sh` — переоценка выбранных текстовых заданий.
 - `regrade_task_units_3class.sh` — переоценка ответов с единицами измерения.

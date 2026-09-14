@@ -22,11 +22,26 @@ Filtering uses explicit query params per endpoint. Common patterns:
 - `subject`, `task_type` for tasks
 - `age_group`, `mine` for olympiads
 - `from_dt`, `to_dt`, `status_code` for audit logs
+- `region_id`, `school_id`, `school_status` for users
+- `region_id`, `city_id`, `query`, `is_active` and boolean group flags for schools
 
 Example:
 ```
 GET /admin/content?content_type=article&status=published
 ```
+
+## School directory lookup
+
+- `GET /lookup/regions`: `query` optional, `limit` 1..100.
+- `GET /lookup/schools`: required `region_id` and `query` (minimum two non-space
+  characters), `limit` 1..50.
+- Поиск школы выполняется как регистронезависимое вхождение подстроки только
+  внутри выбранного региона. Символы `%` и `_` трактуются буквально.
+- Публичный ответ школы содержит только `id`, `short_name`, `full_name`, `city`.
+- `GET /lookup/cities` оставлен временно как deprecated compatibility endpoint.
+
+Admin-списки школ и заявок используют `limit` + `offset`; каталог из 54 517 школ
+не загружается одним запросом.
 
 ## Sorting
 

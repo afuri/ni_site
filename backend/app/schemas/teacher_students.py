@@ -39,10 +39,12 @@ class CreateStudentRequest(BaseModel):
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)
     father_name: str | None = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
-    country: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    city: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    school: str = Field(max_length=255)
-    class_grade: int
+    region_id: int = Field(gt=0)
+    school_id: int | None = Field(default=None, gt=0)
+    school_not_found: bool = False
+    class_grade: int = Field(ge=0, le=11)
+
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("login", mode="before")
     @classmethod

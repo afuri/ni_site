@@ -13,16 +13,20 @@ set -Eeuo pipefail
 
 MODE="dry-run"
 BATCH_ID=""
+COMPOSE_FILE="docker-compose.local.yml"
+DATABASE_NAME="ni_site"
 
 usage() {
   cat <<'EOF'
 Usage:
-  promote_student_grades.sh --batch-id <id> [--dry-run|--apply]
+  promote_student_grades.sh --batch-id <id> [--dry-run|--apply] [--compose-file <path>] [--database <name>]
 
 Options:
   --batch-id <id>  Unique promotion label, for example 2026-2027 (required).
   --dry-run        Show the planned changes and roll them back (default).
   --apply          Apply the changes and write audit rows to user_changes.
+  --compose-file   Compose file containing the db service.
+  --database       PostgreSQL database name (default: ni_site).
   -h, --help       Show this help.
 
 Behavior:
@@ -45,6 +49,14 @@ while [[ $# -gt 0 ]]; do
     --apply)
       MODE="apply"
       shift
+      ;;
+    --compose-file)
+      COMPOSE_FILE="${2:-}"
+      shift 2
+      ;;
+    --database)
+      DATABASE_NAME="${2:-}"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -69,12 +81,22 @@ if [[ ! "${BATCH_ID}" =~ ^[A-Za-z0-9._-]+$ ]]; then
   exit 2
 fi
 
+if [[ ! "${DATABASE_NAME}" =~ ^[A-Za-z0-9_]+$ ]]; then
+  echo "Invalid database name." >&2
+  exit 2
+fi
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker not found in PATH." >&2
   exit 2
 fi
 
-DB_CID="$(docker compose ps -q db)"
+if [[ ! -f "${COMPOSE_FILE}" ]]; then
+  echo "Compose file not found: ${COMPOSE_FILE}" >&2
+  exit 2
+fi
+
+DB_CID="$(docker compose -f "${COMPOSE_FILE}" ps -q db)"
 if [[ -z "${DB_CID}" ]]; then
   echo "The docker compose db service is not running." >&2
   exit 2
@@ -89,9 +111,9 @@ echo "Mode: ${MODE}"
 echo "Batch ID: ${BATCH_ID}"
 echo "Students in grade 11, with NULL grade, or with an invalid grade will be skipped."
 
-docker compose exec -T db psql \
+docker compose -f "${COMPOSE_FILE}" exec -T db psql \
   -U postgres \
-  -d ni_site \
+  -d "${DATABASE_NAME}" \
   -v ON_ERROR_STOP=1 \
   -v batch_id="${BATCH_ID}" \
   -v apply_mode="${APPLY_MODE}" <<'SQL'
@@ -144,10 +166,20 @@ CREATE TEMP TABLE promotion_targets ON COMMIT DROP AS
 SELECT
   id AS user_id,
   class_grade AS old_grade,
-  class_grade + 1 AS new_grade
+  class_grade + 1 AS new_grade,
+  school_status AS old_school_status,
+  CASE
+    WHEN class_grade = 0 AND school_status = 'not_required' THEN 'missing'::school_status_enum
+    ELSE school_status
+  END AS new_school_status
 FROM users
 WHERE role = 'student'
   AND class_grade BETWEEN 0 AND 10;
+
+SELECT COUNT(*) AS preschool_status_changes
+FROM promotion_targets
+WHERE old_school_status = 'not_required'
+  AND new_school_status = 'missing';
 
 -- Lock exactly the rows represented by the preview above without printing IDs.
 DO $do$
@@ -161,12 +193,13 @@ $do$;
 
 WITH updated AS (
   UPDATE users u
-  SET class_grade = t.new_grade
+  SET class_grade = t.new_grade,
+      school_status = t.new_school_status
   FROM promotion_targets t
   WHERE u.id = t.user_id
     AND u.role = 'student'
     AND u.class_grade = t.old_grade
-  RETURNING u.id, t.old_grade, t.new_grade
+  RETURNING u.id, t.old_grade, t.new_grade, t.old_school_status, t.new_school_status
 ), audited AS (
   INSERT INTO user_changes (
     actor_user_id,
@@ -183,6 +216,8 @@ WITH updated AS (
       'batch_id', (SELECT batch_id FROM promotion_params),
       'old_grade', updated.old_grade,
       'new_grade', updated.new_grade,
+      'old_school_status', updated.old_school_status,
+      'new_school_status', updated.new_school_status,
       'source', 'manual_scripts/promote_student_grades.sh'
     ),
     NOW()

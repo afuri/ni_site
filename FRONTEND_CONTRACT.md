@@ -38,14 +38,18 @@ Error schema (все ошибки включают `request_id`):
     "surname": "Иванов",
     "name": "Иван",
     "father_name": null,
-    "country": "Россия",
-    "city": "Москва",
-    "school": "Школа",
+    "region_id": 77,
+    "school_id": 12345,
+    "school_not_found": false,
     "class_grade": 7,
     "subject": null
   }
   ```
   Response: `UserRead`
+
+  Если школы нет в справочнике, передаются `school_id: null` и
+  `school_not_found: true`. Для student с `class_grade: 0` школа не требуется;
+  достаточно `region_id`. Клиент не может передавать `school_status` или `coins`.
 - `POST /auth/login`
   ```json
   { "login": "student01", "password": "StrongPass1" }
@@ -89,9 +93,45 @@ Error schema (все ошибки включают `request_id`):
 - `GET /users/me` → `UserRead`
 - `PUT /users/me`
   ```json
-  { "surname": "Иванов", "name": "Иван", "city": "Казань" }
+  { "surname": "Иванов", "name": "Иван", "region_id": 16, "school_id": 6789 }
   ```
   Response: `UserRead`
+
+  При `school_status=selected` обычный пользователь не может изменить
+  `region_id`/`school_id`; сервер вернёт `409 school_profile_locked`. Остальные
+  поля профиля можно сохранить, не включая географию в payload. Администратор
+  может менять географию через `/admin/users/{id}`.
+
+## School directory
+
+- `GET /lookup/regions?query=&limit=100` →
+  `list[{id,name,country_code,is_other}]`
+- `GET /lookup/schools?region_id=77&query=лицей&limit=20` →
+  `list[{id,short_name,full_name,city}]`
+- `GET /lookup/cities` — deprecated, не использовать в новых формах.
+
+Поиск школы начинается с двух символов, всегда ограничен `region_id` и не
+возвращает адрес или административные признаки школы.
+
+## School submissions
+
+- `GET /users/me/school-submission` → последняя заявка или `null`
+- `POST /users/me/school-submissions` → создать заявку пользователя без школы
+  ```json
+  {
+    "city_name": "Москва",
+    "school_short_name": "Школа № 1",
+    "school_full_name": null,
+    "address": null,
+    "url": null,
+    "email": null
+  }
+  ```
+
+Статусы пользователя: `selected`, `missing`, `submission_pending`,
+`submission_rejected`, `not_required`. Новая попытка доступна для `selected`,
+`submission_pending`, `not_required`; диплом — только для `selected` и
+`not_required`.
 
 ## Olympiads (student)
 
@@ -178,12 +218,26 @@ Error schema (все ошибки включают `request_id`):
 
 ## Admin: Users
 
-- `GET /admin/users` → `list[UserRead]`
-- `PUT /admin/users/{id}` → `UserRead`
+- `GET /admin/users` → `list[UserRead]`; поддерживаются `region_id`, `school_id`,
+  `school_status` и канонические строковые фильтры региона/города/школы
+- `PUT /admin/users/{id}` → `UserRead`; admin может менять `region_id` и `school_id`
 - `POST /admin/users/{id}/temp-password`
   ```json
   { "temp_password": "TempPass1" }
   ```
+
+## Admin: Schools and submissions
+
+- `GET /admin/schools/summary` → `{ "total_count": 54517 }`
+- `GET /admin/schools` → страница школ; фильтры `region_id`, `city_id`, `query`,
+  `is_active`, `is_sirius`, `is_consortium`, `is_peterson`, `is_partner`,
+  `is_platform`, `limit`, `offset`
+- `GET /admin/schools/cities?region_id=...`
+- `POST /admin/schools`, `PATCH /admin/schools/{id}`
+- `GET /admin/school-submissions?status=pending|approved|rejected`
+- `POST /admin/school-submissions/{id}/duplicate-candidates`
+- `POST /admin/school-submissions/{id}/approve`
+- `POST /admin/school-submissions/{id}/reject`
 
 ## Admin: Audit
 
@@ -202,5 +256,9 @@ Error schema (все ошибки включают `request_id`):
 - `task_not_found`, `task_in_olympiad`, `olympiad_not_found`, `olympiad_age_group_mismatch`
 - `attempt_not_found`, `attempt_expired`, `attempt_not_active`
 - `content_not_found`, `publish_forbidden`
+- `region_not_found`, `region_inactive`, `school_not_found`, `school_inactive`
+- `school_region_mismatch`, `school_profile_required`, `school_profile_locked`
+- `school_submission_exists`, `school_submission_not_found`, `school_submission_not_pending`
+- `diploma_school_pending`
 
 Details and full examples: `UI_ENDPOINTS.md`

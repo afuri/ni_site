@@ -1,6 +1,6 @@
 import re
 from typing import Optional, Literal
-from pydantic import BaseModel, Field, EmailStr, model_validator, field_validator, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, model_validator, field_validator, TypeAdapter
 from app.core import error_codes as codes
 
 LOGIN_RE = r"^[A-Za-z][A-Za-z0-9]{4,}$"
@@ -21,12 +21,14 @@ class RegisterRequest(BaseModel):
     name: str = Field(max_length=120, pattern=CYRILLIC_RE)
     father_name: Optional[str] = Field(default=None, max_length=120, pattern=FATHER_NAME_RE)
 
-    country: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    city: str = Field(max_length=120, pattern=CYRILLIC_RE)
-    school: str | None = None
+    region_id: int = Field(gt=0)
+    school_id: int | None = Field(default=None, gt=0)
+    school_not_found: bool = False
 
     class_grade: Optional[int] = None
     subject: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("login", mode="before")
     @classmethod
