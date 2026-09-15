@@ -715,8 +715,9 @@ export function CabinetPage() {
     return <div className="cabinet-page">Загрузка...</div>;
   }
 
-  const isSelectedSchoolProfileLocked =
-    activeUser?.school_status === "selected" && user.role !== "admin";
+  const isSelectedSchoolProfileLocked = Boolean(
+    viewingStudentId && activeUser?.school_status === "selected" && user.role !== "admin"
+  );
 
   const validateProfile = (form: ProfileForm) => {
     const errors: ProfileErrors = {};
@@ -856,8 +857,15 @@ export function CabinetPage() {
       Object.entries(schoolSubmissionForm).map(([key, value]) => [key, value.trim()])
     ) as SchoolSubmissionForm;
     setSchoolSubmissionForm(normalized);
-    if (!normalized.cityName || !normalized.schoolShortName) {
-      setSchoolSubmissionMessage("Укажите город и краткое название школы.");
+    if (
+      !normalized.cityName ||
+      !normalized.schoolShortName ||
+      !normalized.schoolFullName ||
+      !normalized.url
+    ) {
+      setSchoolSubmissionMessage(
+        "Укажите город, краткое и полное названия школы, а также сайт."
+      );
       return;
     }
     if (activeRegionIsOther && (!normalized.countryName || !normalized.regionName)) {
@@ -870,9 +878,9 @@ export function CabinetPage() {
       region_name: normalized.regionName || null,
       city_name: normalized.cityName,
       school_short_name: normalized.schoolShortName,
-      school_full_name: normalized.schoolFullName || null,
+      school_full_name: normalized.schoolFullName,
       address: normalized.address || null,
-      url: normalized.url || null,
+      url: normalized.url,
       email: normalized.email || null
     };
     setSchoolSubmissionStatus("saving");
@@ -2205,13 +2213,19 @@ export function CabinetPage() {
           setIsSchoolSubmissionOpen(false);
           setSchoolSubmissionMessage(null);
         }}
+        closeOnBackdrop={false}
         title="Добавление школы"
         className="cabinet-school-submission-modal"
       >
         <form className="cabinet-form" onSubmit={handleSchoolSubmissionSubmit}>
-          <p className="cabinet-hint">
-            Заявка не создаёт школу автоматически. Сведения проверит администратор.
-          </p>
+          <div className="cabinet-school-submission-instructions">
+            <p>
+              Информацию для заполнения можно найти на официальном сайте школы в разделе
+              {" "}&lt;Сведения об образовательной организации&gt;.
+            </p>
+            <p>Наименования населенного пункта указываем без слов &quot;город, поселок, село&quot;.</p>
+            <p>Заявка не создаёт школу автоматически. Сведения проверит администратор.</p>
+          </div>
           {activeRegionIsOther ? (
             <>
               <TextInput
@@ -2231,18 +2245,23 @@ export function CabinetPage() {
           <TextInput
             label="Город"
             name="submissionCity"
+            required
             value={schoolSubmissionForm.cityName}
             onChange={(event) => updateSchoolSubmissionField("cityName", event.target.value)}
           />
           <TextInput
             label="Краткое название школы"
             name="submissionShortName"
+            required
+            placeholder="ГБОУ СОШ №1"
             value={schoolSubmissionForm.schoolShortName}
             onChange={(event) => updateSchoolSubmissionField("schoolShortName", event.target.value)}
           />
           <TextInput
             label="Полное название школы"
             name="submissionFullName"
+            required
+            placeholder="Государственное бюджетное общеобразовательное учреждение средняя общеобразовательная школа №1"
             value={schoolSubmissionForm.schoolFullName}
             onChange={(event) => updateSchoolSubmissionField("schoolFullName", event.target.value)}
           />
@@ -2255,6 +2274,8 @@ export function CabinetPage() {
           <TextInput
             label="Сайт"
             name="submissionUrl"
+            required
+            placeholder="www.school.ru"
             value={schoolSubmissionForm.url}
             onChange={(event) => updateSchoolSubmissionField("url", event.target.value)}
           />
@@ -2262,6 +2283,7 @@ export function CabinetPage() {
             label="Email школы"
             name="submissionEmail"
             type="email"
+            placeholder="mail@mail.ru"
             value={schoolSubmissionForm.email}
             onChange={(event) => updateSchoolSubmissionField("email", event.target.value)}
           />
@@ -2273,9 +2295,6 @@ export function CabinetPage() {
           <div className="cabinet-modal-actions">
             <Button type="submit" isLoading={schoolSubmissionStatus === "saving"}>
               Отправить заявку
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setIsSchoolSubmissionOpen(false)}>
-              Отмена
             </Button>
           </div>
         </form>

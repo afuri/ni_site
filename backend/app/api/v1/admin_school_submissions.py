@@ -42,6 +42,14 @@ async def list_school_submissions(
     return await SchoolSubmissionsRepo(db).list(status=status, limit=limit, offset=offset)
 
 
+@router.get("/count", response_model=int)
+async def count_school_submissions(
+    status: SchoolSubmissionStatus | None = None,
+    db: AsyncSession = Depends(get_read_db),
+) -> int:
+    return await SchoolSubmissionsRepo(db).count(status=status)
+
+
 @router.post("/{submission_id}/duplicate-candidates", response_model=list[int])
 async def preview_duplicate_candidates(
     submission_id: int,

@@ -295,12 +295,14 @@ describe("CabinetPage", () => {
       ([args]) => args.path === "/users/me" && args.method === "PUT"
     );
     expect(updateCall?.[0].body.gender).toBe("female");
-    expect(updateCall?.[0].body).not.toHaveProperty("region_id");
-    expect(updateCall?.[0].body).not.toHaveProperty("school_id");
-    expect(updateCall?.[0].body).not.toHaveProperty("school_not_found");
+    expect(updateCall?.[0].body).toMatchObject({
+      region_id: 1,
+      school_id: 10,
+      school_not_found: false
+    });
   });
 
-  it("locks confirmed region and school in the personal cabinet", async () => {
+  it("allows changing confirmed region and school in the personal cabinet", async () => {
     mockUser = {
       ...baseUser,
       is_email_verified: true,
@@ -317,11 +319,11 @@ describe("CabinetPage", () => {
     const userEventApi = userEvent.setup();
     await userEventApi.click(screen.getByRole("button", { name: /Личные данные/i }));
 
-    expect(await screen.findByLabelText("Регион")).toBeDisabled();
-    expect(screen.getByLabelText("Школа")).toBeDisabled();
+    expect(await screen.findByLabelText("Регион")).toBeEnabled();
+    expect(screen.getByLabelText("Школа")).toBeEnabled();
     expect(
-      screen.getByText("Регион и школа подтверждены. Изменить их может только администратор.")
-    ).toBeInTheDocument();
+      screen.queryByText("Регион и школа подтверждены. Изменить их может только администратор.")
+    ).toBeNull();
   });
 
   it("shows the missing-school banner and opens a separate submission form", async () => {
@@ -347,13 +349,37 @@ describe("CabinetPage", () => {
 
     expect(await screen.findByText("Укажите свою школу")).toBeInTheDocument();
     await userEventApi.click(screen.getByRole("button", { name: "Добавить школу" }));
-    expect(screen.getByRole("dialog", { name: "Добавление школы" })).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Добавление школы" });
+    expect(dialog).toBeInTheDocument();
+    await userEventApi.click(dialog.parentElement as HTMLElement);
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("ГБОУ СОШ №1")).toBeRequired();
+    expect(
+      screen.getByPlaceholderText(
+        "Государственное бюджетное общеобразовательное учреждение средняя общеобразовательная школа №1"
+      )
+    ).toBeRequired();
+    expect(screen.getByPlaceholderText("www.school.ru")).toBeRequired();
+    expect(screen.getByPlaceholderText("mail@mail.ru")).not.toBeRequired();
+    expect(
+      screen.getByText(/Информацию для заполнения можно найти на официальном сайте школы/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Наименования населенного пункта указываем без слов/)
+    ).toBeInTheDocument();
     await userEventApi.type(screen.getByLabelText("Город"), "Москва");
     await userEventApi.type(screen.getByLabelText("Краткое название школы"), "Лицей");
+    await userEventApi.type(screen.getByLabelText("Полное название школы"), "ГБОУ Лицей");
+    await userEventApi.type(screen.getByLabelText("Сайт"), "www.school.ru");
     await userEventApi.click(screen.getByRole("button", { name: "Отправить заявку" }));
 
     expect(mockCreateSchoolSubmission).toHaveBeenCalledWith(
-      expect.objectContaining({ city_name: "Москва", school_short_name: "Лицей" })
+      expect.objectContaining({
+        city_name: "Москва",
+        school_short_name: "Лицей",
+        school_full_name: "ГБОУ Лицей",
+        url: "www.school.ru"
+      })
     );
   });
 

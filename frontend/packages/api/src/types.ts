@@ -28,13 +28,15 @@ export type SchoolSubmissionCreate = {
   region_name?: string | null;
   city_name: string;
   school_short_name: string;
-  school_full_name?: string | null;
+  school_full_name: string;
   address?: string | null;
-  url?: string | null;
+  url: string;
   email?: string | null;
 };
 
-export type SchoolSubmission = SchoolSubmissionCreate & {
+export type SchoolSubmission = Omit<SchoolSubmissionCreate, "school_full_name" | "url"> & {
+  school_full_name: string | null;
+  url: string | null;
   id: number;
   user_id: number;
   region_id: number;

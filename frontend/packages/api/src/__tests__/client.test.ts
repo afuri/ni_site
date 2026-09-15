@@ -252,7 +252,12 @@ describe("api client", () => {
       .mockResolvedValueOnce(makeResponse(201, { id: 3, status: "pending" }));
 
     await client.schoolSubmissions.getMine();
-    await client.schoolSubmissions.create({ city_name: "Москва", school_short_name: "Лицей" });
+    await client.schoolSubmissions.create({
+      city_name: "Москва",
+      school_short_name: "Лицей",
+      school_full_name: "ГБОУ Лицей",
+      url: "www.school.ru"
+    });
 
     expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/users/me/school-submission`);
     expect(fetchMock.mock.calls[1][0]).toBe(`${BASE_URL}/users/me/school-submissions`);

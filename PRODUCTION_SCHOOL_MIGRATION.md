@@ -9,7 +9,8 @@
 
 - изменения этапов 0–6 зафиксированы в релизе и этот релиз доступен серверу;
 - `git status --short` на сервере пустой, а точный commit релиза записан оператором;
-- `temporary/ni_schools.csv` и `temporary/user_school.csv` доставлены на сервер отдельно;
+- `temporary/ni_schools.csv`, `temporary/user_school.csv` и
+  `temporary/user_region_overrides.csv` доставлены на сервер отдельно;
 - есть свободное место минимум для двух полных dump БД;
 - локальный прогон из `temporary/stage6_report_20260914.md` принят;
 - назначено окно обслуживания и запрещены новые регистрации.
@@ -26,6 +27,7 @@
 ```text
 ni_schools.csv  ed05bb73359900f013f90b14c1548456fac8e47e57780b0e6918809424c896c0
 user_school.csv c906efb7f2d864c643219a43cf11f3e0b948e92c619182eacf583a097ed49351
+user_region_overrides.csv 8bfaf1e0a4485029b6338a09e10aee28848104a55779fc7b939fc00e7d5cac20
 ```
 
 Если к моменту остановки в production не ровно `17279` пользователей либо после
@@ -42,7 +44,7 @@ git branch --show-current
 git status --short
 git rev-parse HEAD
 docker compose ps
-sha256sum temporary/ni_schools.csv temporary/user_school.csv
+sha256sum temporary/ni_schools.csv temporary/user_school.csv temporary/user_region_overrides.csv
 ```
 
 Ожидается ветка production-релиза, пустой статус, работающие `db`, `redis`,
@@ -127,6 +129,7 @@ set -o pipefail
   --compose-file docker-compose.yml \
   --schools temporary/ni_schools.csv \
   --users temporary/user_school.csv \
+  --region-overrides temporary/user_region_overrides.csv \
   --batch-id "${STAGE7_BATCH}-dry-run" \
   --dry-run \
   --review-output temporary/production_user_region_review.csv \
@@ -174,6 +177,7 @@ set -o pipefail
   --compose-file docker-compose.yml \
   --schools temporary/ni_schools.csv \
   --users temporary/user_school.csv \
+  --region-overrides temporary/user_region_overrides.csv \
   --batch-id "$STAGE7_BATCH" \
   --apply \
   --review-output temporary/production_user_region_review.csv \
