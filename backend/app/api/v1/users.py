@@ -41,7 +41,6 @@ async def get_me(user: User = Depends(get_current_user)):
         200: response_model_example(UserRead, EXAMPLE_USER_READ),
         401: response_example(codes.MISSING_TOKEN),
         404: response_example(codes.USER_NOT_FOUND),
-        409: response_example(codes.SCHOOL_PROFILE_LOCKED),
         422: response_example(codes.VALIDATION_ERROR),
     },
 )
@@ -66,7 +65,11 @@ async def update_me(
         raise http_error(404, codes.USER_NOT_FOUND)
 
     try:
-        data = await SchoolProfileService(db).apply_profile_fields(user, data)
+        data = await SchoolProfileService(db).apply_profile_fields(
+            user,
+            data,
+            allow_selected_geography_change=True,
+        )
         if any(data.get(field, getattr(user, field)) != getattr(user, field) for field in ("region_id", "school_id", "school_status")):
             db.add(
                 UserChange(
@@ -90,12 +93,6 @@ async def update_me(
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
         }:
             raise http_error(422, code)
-        if code == codes.SCHOOL_PROFILE_LOCKED:
-            raise http_error(
-                409,
-                code,
-                "Подтверждённые регион и школу может изменить только администратор.",
-            )
         raise
     return updated
 

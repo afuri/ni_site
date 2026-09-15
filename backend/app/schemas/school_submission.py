@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.models.school_submission import SchoolSubmissionStatus
 
@@ -10,15 +10,28 @@ class SchoolSubmissionCreate(BaseModel):
     region_name: str | None = Field(default=None, min_length=1, max_length=120)
     city_name: str = Field(min_length=1, max_length=120)
     school_short_name: str = Field(min_length=1, max_length=255)
-    school_full_name: str | None = Field(default=None, max_length=512)
+    school_full_name: str = Field(min_length=1, max_length=512)
     address: str | None = Field(default=None, max_length=512)
-    url: str | None = Field(default=None, max_length=2048)
+    url: str = Field(min_length=1, max_length=2048)
     email: EmailStr | None = None
 
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("city_name", "school_short_name", "school_full_name", "url")
+    @classmethod
+    def strip_required_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("field cannot be blank")
+        return value
+
 
 class SchoolSubmissionRead(SchoolSubmissionCreate):
+    # Historical applications may predate the stricter create contract.
+    school_full_name: str | None
+    url: str | None
     id: int
     user_id: int
     region_id: int
@@ -37,6 +50,7 @@ class SubmissionNewSchool(BaseModel):
     city_id: int | None = Field(default=None, gt=0)
     region_id: int | None = Field(default=None, gt=0)
     country_code: str | None = Field(default=None, min_length=2, max_length=2)
+    country_name: str | None = Field(default=None, min_length=1, max_length=120)
     region_name: str | None = Field(default=None, min_length=1, max_length=120)
     city_name: str | None = Field(default=None, min_length=1, max_length=120)
     full_name: str = Field(min_length=1, max_length=512)
@@ -57,7 +71,10 @@ class SubmissionNewSchool(BaseModel):
     @model_validator(mode="after")
     def validate_location(self):
         if self.city_id is not None:
-            if any(value is not None for value in (self.region_id, self.region_name, self.city_name, self.country_code)):
+            if any(
+                value is not None
+                for value in (self.region_id, self.region_name, self.city_name, self.country_code, self.country_name)
+            ):
                 raise ValueError("city_id cannot be combined with new location fields")
             return self
         if not self.city_name:

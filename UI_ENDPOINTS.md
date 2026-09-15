@@ -170,9 +170,9 @@ Uploads limits/types: `API_CONVENTIONS.md`
   { "surname": "Иванов", "name": "Иван", "region_id": 16, "school_id": 6789 }
   ```
 
-  При `school_status=selected` изменение `region_id`, `school_id`, установка
-  `school_not_found` и дошкольный обход запрещены: `409 school_profile_locked`.
-  Неизменённую географию лучше не включать в payload.
+  Пользователь может изменить собственные `region_id` и `school_id`, в том числе
+  при `school_status=selected`. Ограничение `school_profile_locked` сохраняется
+  для изменения подтверждённой географии ученика его учителем.
 
 ## School directory and submissions
 
@@ -191,13 +191,12 @@ Uploads limits/types: `API_CONVENTIONS.md`
   {
     "city_name": "Москва",
     "school_short_name": "Школа № 1",
-    "school_full_name": null,
+    "school_full_name": "ГБОУ Школа № 1",
     "address": null,
-    "url": null,
+    "url": "www.school.ru",
     "email": null
   }
   ```
-
 `submission_pending` разрешает участие, но не выдачу диплома. `missing` и
 `submission_rejected` запрещают новую попытку. Дошкольник имеет
 `school_status=not_required` и `school_id=null`.
@@ -548,6 +547,8 @@ Uploads limits/types: `API_CONVENTIONS.md`
 ### School submissions
 
 - `GET /admin/school-submissions?status=pending&limit=100&offset=0`.
+- `GET /admin/school-submissions/count?status=pending` — количество заявок для
+  пагинации; без `status` возвращает количество заявок всех статусов.
 - `POST /admin/school-submissions/{id}/duplicate-candidates` — кандидаты-дубли
   перед созданием новой школы.
 - `POST /admin/school-submissions/{id}/approve` — ровно один вариант:

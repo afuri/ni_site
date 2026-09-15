@@ -97,10 +97,10 @@ Error schema (все ошибки включают `request_id`):
   ```
   Response: `UserRead`
 
-  При `school_status=selected` обычный пользователь не может изменить
-  `region_id`/`school_id`; сервер вернёт `409 school_profile_locked`. Остальные
-  поля профиля можно сохранить, не включая географию в payload. Администратор
-  может менять географию через `/admin/users/{id}`.
+  Пользователь может изменить собственные `region_id`/`school_id`, даже если
+  текущий `school_status=selected`. Учитель по-прежнему не может изменить
+  подтверждённую географию ученика; администратор может сделать это через
+  `/admin/users/{id}`.
 
 ## School directory
 

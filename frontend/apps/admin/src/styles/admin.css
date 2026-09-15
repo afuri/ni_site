@@ -160,8 +160,24 @@
   height: 18px;
 }
 
-.admin-submission-review {
-  margin-top: 20px;
+.admin-submission-review,
+.admin-school-form {
+  box-shadow: none;
+  padding: 0;
+}
+
+.admin-school-form-modal,
+.admin-school-submission-modal {
+  width: min(900px, 100%);
+  max-height: calc(100vh - 2 * var(--space-6));
+}
+
+.admin-school-form-modal .modal-body,
+.admin-school-submission-modal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--space-2);
 }
 
 .admin-candidate-list {
@@ -534,6 +550,68 @@
 
 .admin-table-scroll {
   width: 100%;
+}
+
+.admin-schools-page {
+  display: grid;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin-schools-page > .admin-toolbar {
+  margin-bottom: 0;
+}
+
+.admin-schools-page .admin-section,
+.admin-schools-table-scroll,
+.admin-submissions-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin-schools-page .admin-report-filters {
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+}
+
+.admin-schools-page .admin-toolbar-actions {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.admin-schools-page .admin-table-pagination {
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.admin-schools-page .admin-schools-table-scroll .table-wrap,
+.admin-schools-page .admin-submissions-table-scroll .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.admin-schools-page .table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f8fafc;
+  box-shadow: 0 1px rgba(31, 59, 99, 0.1);
+}
+
+.admin-schools-page .admin-action-column {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #ffffff;
+  box-shadow: 1px 0 rgba(31, 59, 99, 0.08);
+}
+
+.admin-schools-page .table-wrap thead th.admin-action-column {
+  z-index: 4;
+  background: #f8fafc;
 }
 
 .admin-users-wide {

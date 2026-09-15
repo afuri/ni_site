@@ -99,7 +99,7 @@ async def test_registration_validates_school_region_and_preschool_exception(clie
 
 
 @pytest.mark.asyncio
-async def test_selected_school_profile_is_locked_for_user_but_editable_by_admin(client, db_session, create_user):
+async def test_selected_school_profile_can_be_changed_by_user_and_admin(client, db_session, create_user):
     second_region = Region(
         country_code="RU",
         name="Тестовая область",
@@ -134,7 +134,7 @@ async def test_selected_school_profile_is_locked_for_user_but_editable_by_admin(
     )
     student_headers = _headers(login.json()["access_token"])
 
-    locked = await client.put(
+    changed_by_user = await client.put(
         "/api/v1/users/me",
         json={
             "region_id": second_region.id,
@@ -143,28 +143,30 @@ async def test_selected_school_profile_is_locked_for_user_but_editable_by_admin(
         },
         headers=student_headers,
     )
-    assert locked.status_code == 409
-    assert locked.json()["error"]["code"] == codes.SCHOOL_PROFILE_LOCKED
+    assert changed_by_user.status_code == 200
+    assert changed_by_user.json()["region_id"] == second_region.id
+    assert changed_by_user.json()["school_id"] == second_school.id
+    assert changed_by_user.json()["school_status"] == "selected"
 
     school_not_found = await client.put(
         "/api/v1/users/me",
         json={"school_id": None, "school_not_found": True},
         headers=student_headers,
     )
-    assert school_not_found.status_code == 409
-    assert school_not_found.json()["error"]["code"] == codes.SCHOOL_PROFILE_LOCKED
+    assert school_not_found.status_code == 200
+    assert school_not_found.json()["school_status"] == "missing"
 
     preschool_bypass = await client.put(
         "/api/v1/users/me",
         json={"class_grade": 0},
         headers=student_headers,
     )
-    assert preschool_bypass.status_code == 409
-    assert preschool_bypass.json()["error"]["code"] == codes.SCHOOL_PROFILE_LOCKED
+    assert preschool_bypass.status_code == 200
+    assert preschool_bypass.json()["school_status"] == "not_required"
 
     unchanged_geography = await client.put(
         "/api/v1/users/me",
-        json={"region_id": 1, "school_id": 1, "school_not_found": False, "gender": "female"},
+        json={"region_id": 1, "school_id": 1, "school_not_found": False, "class_grade": 5, "gender": "female"},
         headers=student_headers,
     )
     assert unchanged_geography.status_code == 200
@@ -212,7 +214,12 @@ async def test_school_submission_is_unique_and_admin_can_approve_existing_school
     )
     token = login.json()["access_token"]
 
-    payload = {"city_name": "Москва", "school_short_name": "Новая школа"}
+    payload = {
+        "city_name": "Москва",
+        "school_short_name": "Новая школа",
+        "school_full_name": "ГБОУ Новая школа",
+        "url": "www.school.ru",
+    }
     response = await client.post("/api/v1/users/me/school-submissions", json=payload, headers=_headers(token))
     assert response.status_code == 201
     submission_id = response.json()["id"]
@@ -235,6 +242,12 @@ async def test_school_submission_is_unique_and_admin_can_approve_existing_school
         json={"login": "schooladmin", "password": "AdminPass1"},
     )
     admin_token = admin_login.json()["access_token"]
+    pending_count = await client.get(
+        "/api/v1/admin/school-submissions/count?status=pending",
+        headers=_headers(admin_token),
+    )
+    assert pending_count.status_code == 200
+    assert pending_count.json() == 1
     approved = await client.post(
         f"/api/v1/admin/school-submissions/{submission_id}/approve",
         json={"existing_school_id": 1},
@@ -246,6 +259,110 @@ async def test_school_submission_is_unique_and_admin_can_approve_existing_school
     user = await UsersRepo(db_session).get_by_login("missingschool01")
     assert user.school_status == SchoolStatus.selected
     assert user.school_id == 1
+
+
+@pytest.mark.asyncio
+async def test_new_city_is_created_only_on_approval_and_reused_by_normalized_name(
+    client, db_session, create_user
+):
+    registered = await client.post(
+        "/api/v1/auth/register",
+        json=_register_payload("newcitystudent01", school_id=None, missing=True),
+    )
+    assert registered.status_code == 201
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"login": "newcitystudent01", "password": "StrongPass1"},
+    )
+    submission = await client.post(
+        "/api/v1/users/me/school-submissions",
+        json={
+            "city_name": "Новый Город",
+            "school_short_name": "Новая школа",
+            "school_full_name": "ГБОУ Новая школа",
+            "url": "www.school.ru",
+        },
+        headers=_headers(login.json()["access_token"]),
+    )
+    assert submission.status_code == 201
+    city_count_before = await db_session.scalar(
+        select(func.count(City.id)).where(City.normalized_name == "новый город")
+    )
+    assert city_count_before == 0
+
+    await create_user(
+        login="newcityadmin",
+        email="newcityadmin@example.com",
+        password="AdminPass1",
+        role=UserRole.admin,
+        class_grade=None,
+        subject=None,
+    )
+    admin_login = await client.post(
+        "/api/v1/auth/login",
+        json={"login": "newcityadmin", "password": "AdminPass1"},
+    )
+    approved = await client.post(
+        f"/api/v1/admin/school-submissions/{submission.json()['id']}/approve",
+        json={
+            "new_school": {
+                "region_id": 1,
+                "country_name": "Россия",
+                "city_name": "  новый   город ",
+                "full_name": "ГБОУ Новая школа",
+                "short_name": "Новая школа",
+                "address": "Школьная улица, 1",
+                "url": "www.school.ru",
+            }
+        },
+        headers=_headers(admin_login.json()["access_token"]),
+    )
+    assert approved.status_code == 200
+    assert approved.json()["submission"]["country_name"] == "Россия"
+    city_count_after = await db_session.scalar(
+        select(func.count(City.id)).where(City.normalized_name == "новый город")
+    )
+    assert city_count_after == 1
+
+    second_registered = await client.post(
+        "/api/v1/auth/register",
+        json=_register_payload("newcitystudent02", school_id=None, missing=True),
+    )
+    assert second_registered.status_code == 201
+    second_login = await client.post(
+        "/api/v1/auth/login",
+        json={"login": "newcitystudent02", "password": "StrongPass1"},
+    )
+    second_submission = await client.post(
+        "/api/v1/users/me/school-submissions",
+        json={
+            "city_name": "НОВЫЙ ГОРОД",
+            "school_short_name": "Новая школа № 2",
+            "school_full_name": "ГБОУ Новая школа № 2",
+            "url": "www.school2.ru",
+        },
+        headers=_headers(second_login.json()["access_token"]),
+    )
+    second_approved = await client.post(
+        f"/api/v1/admin/school-submissions/{second_submission.json()['id']}/approve",
+        json={
+            "new_school": {
+                "region_id": 1,
+                "country_name": "Россия",
+                "city_name": "НОВЫЙ ГОРОД",
+                "full_name": "ГБОУ Новая школа № 2",
+                "short_name": "Новая школа № 2",
+                "address": "Школьная улица, 2",
+                "url": "www.school2.ru",
+            }
+        },
+        headers=_headers(admin_login.json()["access_token"]),
+    )
+    assert second_approved.status_code == 200
+    reused_city_count = await db_session.scalar(
+        select(func.count(City.id)).where(City.normalized_name == "новый город")
+    )
+    assert reused_city_count == 1
 
 
 @pytest.mark.asyncio
@@ -386,7 +503,12 @@ async def test_admin_rejection_changes_user_status_and_requires_comment(client, 
     user_headers = _headers(login.json()["access_token"])
     submission = await client.post(
         "/api/v1/users/me/school-submissions",
-        json={"city_name": "Москва", "school_short_name": "Несуществующая школа"},
+        json={
+            "city_name": "Москва",
+            "school_short_name": "Несуществующая школа",
+            "school_full_name": "ГБОУ Несуществующая школа",
+            "url": "www.school.ru",
+        },
         headers=user_headers,
     )
 

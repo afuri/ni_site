@@ -107,12 +107,18 @@ class SchoolSubmissionsService:
             school_data = {
                 key: value
                 for key, value in new_school.items()
-                if key not in {"region_id", "country_code", "region_name", "city_name"}
+                if key not in {"region_id", "country_code", "country_name", "region_name", "city_name"}
             }
             school_data["city_id"] = city.id
             school_data["is_active"] = True
             school = await self.schools.create(school_data, actor_user_id=admin.id)
             school.city = city
+
+            submission.country_name = (
+                new_school.get("country_name")
+                or ("Россия" if city.region.country_code == "RU" else submission.country_name)
+            )
+            submission.city_name = city.name
 
         now = datetime.now(timezone.utc)
         submission.status = SchoolSubmissionStatus.approved

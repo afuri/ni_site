@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.school_submission import SchoolSubmission, SchoolSubmissionStatus
@@ -28,6 +28,12 @@ class SchoolSubmissionsRepo:
             stmt = stmt.where(SchoolSubmission.status == status)
         stmt = stmt.order_by(SchoolSubmission.created_at.desc(), SchoolSubmission.id.desc()).offset(offset).limit(limit)
         return list((await self.db.execute(stmt)).scalars().all())
+
+    async def count(self, *, status: SchoolSubmissionStatus | None) -> int:
+        stmt = select(func.count(SchoolSubmission.id))
+        if status is not None:
+            stmt = stmt.where(SchoolSubmission.status == status)
+        return int((await self.db.scalar(stmt)) or 0)
 
     async def create(self, *, user_id: int, region_id: int, data: dict) -> SchoolSubmission:
         submission = SchoolSubmission(user_id=user_id, region_id=region_id, status=SchoolSubmissionStatus.pending, **data)
