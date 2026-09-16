@@ -830,7 +830,7 @@ export function HomePage() {
       errors.gender = "Выберите пол.";
     }
     if (form.regionId === null) {
-      errors.regionId = "Выберите регион.";
+      errors.regionId = "Выберите регион школы.";
     }
     if (form.role === "student") {
       if (!form.classGrade) {
