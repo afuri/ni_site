@@ -739,7 +739,7 @@ export function CabinetPage() {
       errors.fatherName = "Только русские буквы, каждая часть с заглавной, можно пробел.";
     }
     if (!isSelectedSchoolProfileLocked && form.regionId === null) {
-      errors.regionId = "Выберите регион.";
+      errors.regionId = "Выберите регион школы.";
     }
     if (!form.gender) {
       errors.gender = "Выберите пол.";
@@ -2235,7 +2235,7 @@ export function CabinetPage() {
                 onChange={(event) => updateSchoolSubmissionField("countryName", event.target.value)}
               />
               <TextInput
-                label="Регион"
+                label="Регион школы"
                 name="submissionRegion"
                 value={schoolSubmissionForm.regionName}
                 onChange={(event) => updateSchoolSubmissionField("regionName", event.target.value)}

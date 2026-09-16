@@ -218,7 +218,7 @@ export function SchoolDirectoryPicker({
   return (
     <div className="school-picker">
       <label className="field" htmlFor={`${idPrefix}-region`}>
-        <span className="field-label">Регион</span>
+        <span className="field-label">Регион школы</span>
         <select
           id={`${idPrefix}-region`}
           name="regionId"
@@ -227,7 +227,7 @@ export function SchoolDirectoryPicker({
           onChange={(event) => handleRegionChange(event.target.value)}
           disabled={disabled || regionsStatus === "loading"}
         >
-          <option value="">Выберите регион</option>
+          <option value="">Выберите регион школы</option>
           {regions.map((region) => (
             <option key={region.id} value={region.id}>
               {region.name}

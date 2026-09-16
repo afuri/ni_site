@@ -58,12 +58,17 @@ describe("SchoolsPage", () => {
     Object.defineProperty(HTMLAnchorElement.prototype, "click", { configurable: true, value: vi.fn() });
     mockRequest.mockReset();
     mockRequest.mockImplementation(async ({ path, method, body }) => {
-      if (path.startsWith("/lookup/regions")) return [{ id: 1, name: "Москва", country_code: "RU", is_other: false }];
+      if (path.startsWith("/lookup/regions")) return [
+        { id: 1, name: "Москва", country_code: "RU", is_other: false },
+        { id: 2, name: "Московская область", country_code: "RU", is_other: false }
+      ];
       if (path.startsWith("/admin/schools/cities")) return [{ id: 2, region_id: 1, name: "Москва", is_active: true }];
       if (path.startsWith("/admin/schools/summary")) return { total_count: 101 };
       if (path.startsWith("/admin/school-submissions/count")) return 1;
       if (path.startsWith("/admin/school-submissions?") && method === "GET") return [submission];
-      if (path.startsWith("/lookup/schools?")) return [{ id: 10, short_name: "Лицей № 1", full_name: "ГБОУ Лицей № 1", city: "Москва" }];
+      if (path.startsWith("/lookup/schools?")) return path.includes("region_id=2")
+        ? [{ id: 20, short_name: "Лицей № 2", full_name: "ГБОУ Лицей № 2", city: "Химки" }]
+        : [{ id: 10, short_name: "Лицей № 1", full_name: "ГБОУ Лицей № 1", city: "Москва" }];
       if (path === "/admin/schools" && method === "POST") return school;
       if (path.startsWith("/admin/schools?") && method === "GET") return [school];
       if (path === "/admin/schools/10" && method === "PATCH") return { ...school, ...body };
@@ -167,6 +172,31 @@ describe("SchoolsPage", () => {
       path: "/admin/school-submissions/5/approve",
       method: "POST",
       body: { existing_school_id: 10 }
+    })));
+  });
+
+  it("lets the administrator correct the user region before selecting a school", async () => {
+    const user = userEvent.setup();
+    render(<SchoolsPage />);
+    await user.click(await screen.findByRole("button", { name: "Открыть" }));
+    const dialog = await screen.findByRole("dialog", { name: "Заявка #5" });
+
+    expect(within(dialog).getByText("Регион, выбранный пользователем: Москва")).toBeInTheDocument();
+    await user.selectOptions(within(dialog).getByLabelText("Регион пользователя и школы"), "2");
+
+    const candidate = await within(dialog).findByRole(
+      "button",
+      { name: /#20 Лицей № 2.*Химки/i },
+      { timeout: 1200 }
+    );
+    expect(mockRequest.mock.calls.some(([args]) => args.path.includes("/lookup/schools?region_id=2"))).toBe(true);
+    await user.click(candidate);
+    await user.click(within(dialog).getByRole("button", { name: "Одобрить" }));
+
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+      path: "/admin/school-submissions/5/approve",
+      method: "POST",
+      body: { existing_school_id: 20 }
     })));
   });
 
