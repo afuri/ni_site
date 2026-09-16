@@ -106,6 +106,7 @@ export function SchoolsPage() {
   const [existingCandidates, setExistingCandidates] = useState<SchoolLookup[]>([]);
   const [existingSchoolId, setExistingSchoolId] = useState<number | null>(null);
   const [newSchoolForm, setNewSchoolForm] = useState<SchoolForm>(emptySchoolForm);
+  const [reviewRegionId, setReviewRegionId] = useState("");
   const [reviewCountryName, setReviewCountryName] = useState("");
   const [reviewCityName, setReviewCityName] = useState("");
   const [rejectComment, setRejectComment] = useState("");
@@ -149,11 +150,11 @@ export function SchoolsPage() {
   useEffect(() => { loadCities(filters.regionId).then(setFilterCities).catch(() => setFilterCities([])); }, [filters.regionId]);
   useEffect(() => { loadCities(form.regionId).then(setFormCities).catch(() => setFormCities([])); }, [form.regionId]);
   useEffect(() => {
-    if (!selectedSubmission || approvalMode !== "existing" || existingQuery.trim().length < 2) { setExistingCandidates([]); return; }
+    if (!selectedSubmission || !reviewRegionId || approvalMode !== "existing" || existingQuery.trim().length < 2) { setExistingCandidates([]); return; }
     const controller = new AbortController();
-    const timer = window.setTimeout(() => adminApiClient.request<SchoolLookup[]>({ path: `/lookup/schools?region_id=${selectedSubmission.region_id}&query=${encodeURIComponent(existingQuery.trim())}&limit=20`, method: "GET", signal: controller.signal }).then(setExistingCandidates).catch((error) => { if ((error as Error)?.name !== "AbortError") setExistingCandidates([]); }), 250);
+    const timer = window.setTimeout(() => adminApiClient.request<SchoolLookup[]>({ path: `/lookup/schools?region_id=${encodeURIComponent(reviewRegionId)}&query=${encodeURIComponent(existingQuery.trim())}&limit=20`, method: "GET", signal: controller.signal }).then(setExistingCandidates).catch((error) => { if ((error as Error)?.name !== "AbortError") setExistingCandidates([]); }), 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [approvalMode, existingQuery, selectedSubmission]);
+  }, [approvalMode, existingQuery, reviewRegionId, selectedSubmission]);
 
   const setField = <K extends keyof SchoolForm>(field: K, value: SchoolForm[K]) => setForm((current) => ({ ...current, [field]: value }));
   const payloadFrom = (value: SchoolForm) => ({ city_id: Number(value.cityId), full_name: value.fullName.trim(), short_name: value.shortName.trim(), address: value.address.trim(), url: value.url.trim() || null, email: value.email.trim() || null, curator: value.curator.trim() || null, info: value.info.trim() || null, is_sirius: value.isSirius, is_consortium: value.isConsortium, is_peterson: value.isPeterson, is_partner: value.isPartner, is_platform: value.isPlatform, is_active: value.isActive });
@@ -202,6 +203,7 @@ export function SchoolsPage() {
     setSelectedSubmission(submission); setApprovalMode("existing"); setExistingQuery(submission.school_short_name);
     setExistingSchoolId(null); setRejectComment(submission.admin_comment ?? ""); setDuplicateIds(null); setSubmissionMessage(null);
     const submissionRegion = regions.find((region) => region.id === submission.region_id);
+    setReviewRegionId(String(submission.region_id));
     setReviewCountryName(submission.country_name ?? (submissionRegion?.country_code === "RU" ? "Россия" : ""));
     setReviewCityName(submission.city_name);
     setNewSchoolForm({ ...emptySchoolForm, regionId: String(submission.region_id), fullName: submission.school_full_name || submission.school_short_name, shortName: submission.school_short_name, address: submission.address ?? "", url: submission.url ?? "", email: submission.email ?? "" });
@@ -210,7 +212,7 @@ export function SchoolsPage() {
     const { city_id: _cityId, is_active: _isActive, ...fields } = payloadFrom(newSchoolForm);
     return {
       ...fields,
-      region_id: selectedSubmission?.region_id,
+      region_id: Number(reviewRegionId),
       country_name: reviewCountryName.trim(),
       city_name: reviewCityName.trim()
     };
@@ -219,6 +221,7 @@ export function SchoolsPage() {
   const approveSubmission = async () => {
     if (!selectedSubmission) return; setSubmissionStatus("saving"); setSubmissionMessage(null);
     try {
+      if (!reviewRegionId) { setSubmissionStatus("error"); setSubmissionMessage("Выберите регион пользователя и школы."); return; }
       if (approvalMode === "existing") {
         if (!existingSchoolId) { setSubmissionStatus("error"); setSubmissionMessage("Выберите существующую школу."); return; }
         await adminApiClient.request({ path: `/admin/school-submissions/${selectedSubmission.id}/approve`, method: "POST", body: { existing_school_id: existingSchoolId } });
@@ -293,7 +296,7 @@ export function SchoolsPage() {
       className="admin-school-submission-modal"
     >
     {selectedSubmission ? <div className="admin-form admin-submission-review">
-      {selectedSubmission.status === "pending" ? <><div className="admin-check-grid"><label className="admin-check"><input type="radio" checked={approvalMode === "existing"} onChange={() => { setApprovalMode("existing"); setDuplicateIds(null); }} /><span>Связать с существующей</span></label><label className="admin-check"><input type="radio" checked={approvalMode === "new"} onChange={() => { setApprovalMode("new"); setDuplicateIds(null); }} /><span>Создать новую</span></label></div>
+      {selectedSubmission.status === "pending" ? <><p className="admin-hint">Регион, выбранный пользователем: {regions.find((region) => region.id === selectedSubmission.region_id)?.name ?? selectedSubmission.region_name ?? `#${selectedSubmission.region_id}`}</p><label className="field"><span className="field-label">Регион пользователя и школы</span><select className="field-input" value={reviewRegionId} onChange={(event) => { const regionId = event.target.value; const region = regions.find((item) => item.id === Number(regionId)); setReviewRegionId(regionId); setExistingSchoolId(null); setExistingCandidates([]); setDuplicateIds(null); setNewSchoolForm((current) => ({ ...current, regionId, cityId: "" })); setReviewCountryName(region?.country_code === "RU" ? "Россия" : ""); }}><option value="">Выберите регион</option>{regions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label><div className="admin-check-grid"><label className="admin-check"><input type="radio" checked={approvalMode === "existing"} onChange={() => { setApprovalMode("existing"); setDuplicateIds(null); }} /><span>Связать с существующей</span></label><label className="admin-check"><input type="radio" checked={approvalMode === "new"} onChange={() => { setApprovalMode("new"); setDuplicateIds(null); }} /><span>Создать новую</span></label></div>
       {approvalMode === "existing" ? <div><TextInput label="Поиск существующей школы" name="existingSchoolQuery" value={existingQuery} onChange={(event) => { setExistingQuery(event.target.value); setExistingSchoolId(null); }} /><div className="admin-candidate-list">{existingCandidates.map((candidate) => <button type="button" key={candidate.id} className={existingSchoolId === candidate.id ? "is-selected" : ""} onClick={() => setExistingSchoolId(candidate.id)}><strong>#{candidate.id} {candidate.short_name}</strong><span>{candidate.city}</span></button>)}</div></div> : <><div className="admin-form-grid"><TextInput label="Страна" name="newSubmissionCountry" required value={reviewCountryName} onChange={(event) => { setReviewCountryName(event.target.value); setDuplicateIds(null); }} /><TextInput label="Город" name="newSubmissionCity" required value={reviewCityName} onChange={(event) => { setReviewCityName(event.target.value); setDuplicateIds(null); }} /><TextInput label="Краткое название" name="newSubmissionShortName" value={newSchoolForm.shortName} onChange={(event) => setNewSchoolForm((current) => ({ ...current, shortName: event.target.value }))} /><TextInput label="Полное название" name="newSubmissionFullName" value={newSchoolForm.fullName} onChange={(event) => setNewSchoolForm((current) => ({ ...current, fullName: event.target.value }))} /><TextInput label="Адрес" name="newSubmissionAddress" value={newSchoolForm.address} onChange={(event) => setNewSchoolForm((current) => ({ ...current, address: event.target.value }))} /><TextInput label="Сайт" name="newSubmissionUrl" value={newSchoolForm.url} onChange={(event) => setNewSchoolForm((current) => ({ ...current, url: event.target.value }))} /><TextInput label="Email" name="newSubmissionEmail" value={newSchoolForm.email} onChange={(event) => setNewSchoolForm((current) => ({ ...current, email: event.target.value }))} /><TextInput label="Куратор" name="newSubmissionCurator" value={newSchoolForm.curator} onChange={(event) => setNewSchoolForm((current) => ({ ...current, curator: event.target.value }))} /></div><label className="field"><span className="field-label">Информация</span><textarea className="field-input admin-textarea" value={newSchoolForm.info} onChange={(event) => setNewSchoolForm((current) => ({ ...current, info: event.target.value }))} /></label><div className="admin-check-grid"><Flag label="Consortium" checked={newSchoolForm.isConsortium} onChange={(value) => setNewSchoolForm((current) => ({ ...current, isConsortium: value }))} /><Flag label="Peterson" checked={newSchoolForm.isPeterson} onChange={(value) => setNewSchoolForm((current) => ({ ...current, isPeterson: value }))} /><Flag label="Sirius" checked={newSchoolForm.isSirius} onChange={(value) => setNewSchoolForm((current) => ({ ...current, isSirius: value }))} /><Flag label="Партнёр" checked={newSchoolForm.isPartner} onChange={(value) => setNewSchoolForm((current) => ({ ...current, isPartner: value }))} /><Flag label="Платформа" checked={newSchoolForm.isPlatform} onChange={(value) => setNewSchoolForm((current) => ({ ...current, isPlatform: value }))} /></div>{duplicateIds ? <p className="admin-hint">Возможные дубли: {duplicateIds.length ? duplicateIds.map((id) => `#${id}`).join(", ") : "не найдены"}</p> : null}</>}
       <div className="admin-toolbar-actions"><Button type="button" onClick={approveSubmission} isLoading={submissionStatus === "saving"}>{approvalMode === "new" && duplicateIds === null ? "Проверить и одобрить" : "Одобрить"}</Button></div><TextInput label="Комментарий при отклонении" name="submissionRejectComment" value={rejectComment} onChange={(event) => setRejectComment(event.target.value)} /><Button type="button" variant="outline" onClick={rejectSubmission} disabled={submissionStatus === "saving"}>Отклонить заявку</Button></> : <p className="admin-hint">Комментарий: {selectedSubmission.admin_comment ?? "—"}; школа: {selectedSubmission.resolved_school_id ?? "—"}</p>}
       {submissionMessage ? <div className={submissionStatus === "error" ? "admin-error" : "admin-alert"}>{submissionMessage}</div> : null}</div> : null}
