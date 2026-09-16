@@ -201,11 +201,12 @@ describe("api client", () => {
       regionId: 7,
       query: "лицей",
       limit: 20,
+      offset: 40,
       signal: controller.signal
     });
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe(`${BASE_URL}/lookup/schools?region_id=7&query=%D0%BB%D0%B8%D1%86%D0%B5%D0%B9&limit=20`);
+    expect(String(url)).toBe(`${BASE_URL}/lookup/schools?region_id=7&query=%D0%BB%D0%B8%D1%86%D0%B5%D0%B9&limit=20&offset=40`);
     expect(init.signal).toBe(controller.signal);
     expect(String(url)).not.toContain("city=");
   });

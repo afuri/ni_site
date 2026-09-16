@@ -58,6 +58,31 @@
   color: rgba(31, 59, 99, 0.72);
 }
 
+.school-picker-more {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(15, 60, 122, 0.12);
+}
+
+.school-picker-more button {
+  display: block;
+  color: var(--color-primary, #0056d2);
+  text-align: center;
+  font-weight: 700;
+}
+
+.school-picker-more button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.school-picker-more-error {
+  padding: 8px 12px;
+  color: #b42318;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
 .school-picker-missing {
   display: flex;
   align-items: flex-start;
