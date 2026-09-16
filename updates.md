@@ -3739,3 +3739,41 @@ chart-3-results.png
 - Добавлена кнопка «Скачать CSV».
 - CSV включает весь справочник без учёта активных фильтров: регионы, города, названия, адреса, контакты, признаки групп, активность и количество пользователей.
 - Файл скачивается как schools_full.csv.
+
+2.1.5 new_school_database_fix_records
+
+Создан скрипт [replace_user_school_ids.sh](/Users/alexfedosov/Documents/ni_site_v2/manual_scripts/replace_user_school_ids.sh).
+
+Замены:
+
+- `110768 → 163553`
+- `135458 → 163563`
+- `139386 → 163554`
+
+Изменяется только `users.school_id`. Регион, статус школы и остальные поля остаются прежними.
+
+Локальная проверка:
+
+```bash
+./manual_scripts/replace_user_school_ids.sh --dry-run
+```
+
+Применение локально:
+
+```bash
+./manual_scripts/replace_user_school_ids.sh --apply
+```
+
+На production:
+
+```bash
+./manual_scripts/replace_user_school_ids.sh \
+  --dry-run \
+  --compose-file docker-compose.yml
+
+./manual_scripts/replace_user_school_ids.sh \
+  --apply \
+  --compose-file docker-compose.yml
+```
+
+Синтаксис скрипта проверен. Пробный запуск с БД сейчас не состоялся, потому что Docker Desktop выключен. Документация в [README.md](/Users/alexfedosov/Documents/ni_site_v2/manual_scripts/README.md) обновлена.
