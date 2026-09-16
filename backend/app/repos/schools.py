@@ -35,7 +35,7 @@ class SchoolsRepo:
         stmt = stmt.order_by(City.is_active.desc(), func.lower(City.name), City.id).limit(limit)
         return list((await self.db.execute(stmt)).scalars().all())
 
-    async def search_public(self, *, region_id: int, query: str, limit: int) -> list[School]:
+    async def search_public(self, *, region_id: int, query: str, limit: int, offset: int = 0) -> list[School]:
         normalized = normalize_directory_name(query)
         pattern = _escaped_contains(normalized)
         prefix = normalized.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
@@ -66,6 +66,7 @@ class SchoolsRepo:
                 school.id,
             )
             .options(selectinload(school.city))
+            .offset(offset)
             .limit(limit)
         )
         result = await self.db.execute(stmt)

@@ -63,7 +63,7 @@ type ApiClient = {
   };
   lookup: {
     regions: (options?: { query?: string; limit?: number; signal?: AbortSignal }) => Promise<RegionLookup[]>;
-    schools: (options: { regionId: number; query: string; limit?: number; signal?: AbortSignal }) => Promise<SchoolLookup[]>;
+    schools: (options: { regionId: number; query: string; limit?: number; offset?: number; signal?: AbortSignal }) => Promise<SchoolLookup[]>;
   };
   schoolSubmissions: {
     getMine: () => Promise<SchoolSubmission | null>;
@@ -283,7 +283,8 @@ export function createApiClient(options: ClientOptions): ApiClient {
           path: `/lookup/schools${buildQuery({
             region_id: options.regionId,
             query: options.query,
-            limit: options.limit
+            limit: options.limit,
+            offset: options.offset
           })}`,
           method: "GET",
           auth: false,

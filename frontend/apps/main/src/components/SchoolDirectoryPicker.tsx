@@ -28,6 +28,8 @@ const EMPTY_SCHOOL = {
   schoolCity: ""
 };
 
+const SCHOOL_PAGE_SIZE = 20;
+
 export function SchoolDirectoryPicker({
   client,
   value,
@@ -43,8 +45,11 @@ export function SchoolDirectoryPicker({
   const [regionsStatus, setRegionsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [schools, setSchools] = useState<SchoolLookup[]>([]);
   const [schoolsStatus, setSchoolsStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [hasMoreSchools, setHasMoreSchools] = useState(false);
+  const [moreSchoolsStatus, setMoreSchoolsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [isListOpen, setIsListOpen] = useState(false);
   const requestSequence = useRef(0);
+  const moreSchoolsController = useRef<AbortController | null>(null);
   const isPreschool = role === "student" && classGrade === "0";
   const selectedRegion = regions.find((region) => region.id === value.regionId) ?? null;
   const searchDisabled = disabled || isPreschool || value.schoolNotFound || selectedRegion?.is_other === true;
@@ -70,6 +75,10 @@ export function SchoolDirectoryPicker({
   useEffect(() => {
     requestSequence.current += 1;
     const sequence = requestSequence.current;
+    moreSchoolsController.current?.abort();
+    moreSchoolsController.current = null;
+    setHasMoreSchools(false);
+    setMoreSchoolsStatus("idle");
     const query = value.schoolQuery.trim();
     if (searchDisabled || value.regionId === null || value.schoolId !== null || query.length < 2) {
       setSchools([]);
@@ -82,12 +91,19 @@ export function SchoolDirectoryPicker({
     const timer = window.setTimeout(() => {
       setSchoolsStatus("loading");
       client.lookup
-        .schools({ regionId: value.regionId as number, query, limit: 20, signal: controller.signal })
+        .schools({
+          regionId: value.regionId as number,
+          query,
+          limit: SCHOOL_PAGE_SIZE + 1,
+          offset: 0,
+          signal: controller.signal
+        })
         .then((items) => {
           if (requestSequence.current !== sequence) {
             return;
           }
-          setSchools(items);
+          setSchools(items.slice(0, SCHOOL_PAGE_SIZE));
+          setHasMoreSchools(items.length > SCHOOL_PAGE_SIZE);
           setSchoolsStatus("idle");
           setIsListOpen(true);
         })
@@ -96,6 +112,7 @@ export function SchoolDirectoryPicker({
             return;
           }
           setSchools([]);
+          setHasMoreSchools(false);
           setSchoolsStatus("error");
           setIsListOpen(true);
         });
@@ -107,6 +124,51 @@ export function SchoolDirectoryPicker({
     };
   }, [client, searchDisabled, value.regionId, value.schoolId, value.schoolQuery]);
 
+  const loadMoreSchools = () => {
+    const query = value.schoolQuery.trim();
+    if (
+      moreSchoolsStatus === "loading" ||
+      !hasMoreSchools ||
+      value.regionId === null ||
+      query.length < 2
+    ) {
+      return;
+    }
+
+    const sequence = requestSequence.current;
+    const controller = new AbortController();
+    moreSchoolsController.current?.abort();
+    moreSchoolsController.current = controller;
+    setMoreSchoolsStatus("loading");
+
+    client.lookup
+      .schools({
+        regionId: value.regionId,
+        query,
+        limit: SCHOOL_PAGE_SIZE + 1,
+        offset: schools.length,
+        signal: controller.signal
+      })
+      .then((items) => {
+        if (requestSequence.current !== sequence) {
+          return;
+        }
+        const nextSchools = items.slice(0, SCHOOL_PAGE_SIZE);
+        setSchools((current) => {
+          const currentIds = new Set(current.map((school) => school.id));
+          return [...current, ...nextSchools.filter((school) => !currentIds.has(school.id))];
+        });
+        setHasMoreSchools(items.length > SCHOOL_PAGE_SIZE);
+        setMoreSchoolsStatus("idle");
+      })
+      .catch((error) => {
+        if ((error as Error)?.name === "AbortError" || requestSequence.current !== sequence) {
+          return;
+        }
+        setMoreSchoolsStatus("error");
+      });
+  };
+
   const handleRegionChange = (rawValue: string) => {
     const regionId = rawValue ? Number(rawValue) : null;
     const region = regions.find((item) => item.id === regionId);
@@ -116,6 +178,7 @@ export function SchoolDirectoryPicker({
       schoolNotFound: region?.is_other === true
     });
     setSchools([]);
+    setHasMoreSchools(false);
     setIsListOpen(false);
   };
 
@@ -137,6 +200,7 @@ export function SchoolDirectoryPicker({
       schoolNotFound: false
     });
     setSchools([]);
+    setHasMoreSchools(false);
     setIsListOpen(false);
   };
 
@@ -147,6 +211,7 @@ export function SchoolDirectoryPicker({
       schoolNotFound: checked
     });
     setSchools([]);
+    setHasMoreSchools(false);
     setIsListOpen(false);
   };
 
@@ -222,6 +287,22 @@ export function SchoolDirectoryPicker({
                   ))}
                   {schools.length === 0 && schoolsStatus === "idle" ? <li className="school-picker-empty">Ничего не найдено.</li> : null}
                   {schoolsStatus === "error" ? <li className="school-picker-empty">Ошибка поиска. Попробуйте ещё раз.</li> : null}
+                  {hasMoreSchools ? (
+                    <li className="school-picker-more" role="presentation">
+                      <button
+                        type="button"
+                        onClick={loadMoreSchools}
+                        disabled={moreSchoolsStatus === "loading"}
+                      >
+                        {moreSchoolsStatus === "loading" ? "Загрузка…" : "Показать еще"}
+                      </button>
+                    </li>
+                  ) : null}
+                  {moreSchoolsStatus === "error" ? (
+                    <li className="school-picker-more-error" role="presentation">
+                      Не удалось загрузить школы. Попробуйте ещё раз.
+                    </li>
+                  ) : null}
                 </ul>
               ) : null}
             </div>

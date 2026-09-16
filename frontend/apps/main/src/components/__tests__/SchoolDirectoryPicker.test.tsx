@@ -98,6 +98,34 @@ describe("SchoolDirectoryPicker", () => {
     expect(screen.getByTestId("selection")).toHaveTextContent('"schoolId":null');
   });
 
+  it("loads the next page when more matching schools are available", async () => {
+    const matchingSchools = Array.from({ length: 22 }, (_, index): SchoolLookup => ({
+      id: index + 1,
+      short_name: `Школа № ${index + 1}`,
+      full_name: `ГБОУ Школа № ${index + 1}`,
+      city: "Москва"
+    }));
+    const schools = vi.fn(({ offset = 0 }: { offset?: number }) =>
+      Promise.resolve(matchingSchools.slice(offset, offset + 21))
+    );
+    render(<Harness client={makeClient(schools)} />);
+
+    fireEvent.change(await screen.findByLabelText("Регион"), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Школа" }), { target: { value: "шк" } });
+
+    const showMore = await screen.findByRole("button", { name: "Показать еще" }, { timeout: 1200 });
+    expect(screen.queryByText("Школа № 21")).toBeNull();
+    fireEvent.click(showMore);
+
+    expect(await screen.findByText("Школа № 21")).toBeInTheDocument();
+    expect(screen.getByText("Школа № 22")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Показать еще" })).toBeNull();
+    expect(schools).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ limit: 21, offset: 20, query: "шк", regionId: 1 })
+    );
+  });
+
   it("hides school controls for a preschooler", async () => {
     render(<Harness client={makeClient()} classGrade="0" />);
     await screen.findByLabelText("Регион");

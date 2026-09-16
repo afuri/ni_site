@@ -30,6 +30,7 @@ async def lookup_schools(
     region_id: int = Query(..., gt=0),
     query: str = Query(..., max_length=255),
     limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_read_db),
 ) -> list[SchoolLookupRead]:
     query_value = query.strip()
@@ -42,7 +43,12 @@ async def lookup_schools(
         raise http_error(409, codes.REGION_INACTIVE)
     if region.is_other:
         return []
-    schools = await SchoolsRepo(db).search_public(region_id=region_id, query=query_value, limit=limit)
+    schools = await SchoolsRepo(db).search_public(
+        region_id=region_id,
+        query=query_value,
+        limit=limit,
+        offset=offset,
+    )
     return [
         SchoolLookupRead(id=school.id, short_name=school.short_name, full_name=school.full_name, city=school.city.name)
         for school in schools

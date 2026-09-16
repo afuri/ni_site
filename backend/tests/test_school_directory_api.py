@@ -53,6 +53,13 @@ async def test_public_lookup_is_region_scoped_and_does_not_leak_admin_fields(cli
     assert response.status_code == 200
     assert response.json() == []
 
+    response = await client.get(
+        "/api/v1/lookup/schools",
+        params={"region_id": 1, "query": "шк", "offset": 1},
+    )
+    assert response.status_code == 200
+    assert response.json() == []
+
 
 @pytest.mark.asyncio
 async def test_registration_validates_school_region_and_preschool_exception(client, db_session):
