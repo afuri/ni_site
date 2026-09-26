@@ -456,7 +456,7 @@ export function ResultsPage() {
   };
 
   return (
-    <section className="admin-section">
+    <section className="admin-section admin-results-page">
       <div className="admin-toolbar">
         <div>
           <h1>Результаты</h1>
@@ -495,7 +495,7 @@ export function ResultsPage() {
       {attemptsStatus === "error" && attemptsError ? <div className="admin-alert">{attemptsError}</div> : null}
 
       {selectedId ? (
-        <div className="admin-table-scroll admin-results-scroll">
+        <div className="admin-table-scroll admin-results-scroll admin-directory-table" role="region" aria-label="Таблица результатов">
           <Table>
             <thead>
               <tr>

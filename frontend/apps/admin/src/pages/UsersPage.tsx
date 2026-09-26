@@ -139,9 +139,12 @@ export function UsersPage() {
   const [exportStatus, setExportStatus] = useState<"idle" | "loading" | "error">("idle");
   const [exportError, setExportError] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState("");
+  const [tempUserId, setTempUserId] = useState("");
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [tempResult, setTempResult] = useState<string | null>(null);
   const [tempStatus, setTempStatus] = useState<"idle" | "saving" | "error">("idle");
-  const [managedUsers, setManagedUsers] = useState<UserRead[]>([]);
+  const [verifyingId, setVerifyingId] = useState<number | null>(null);
+  const [verificationMessage, setVerificationMessage] = useState<{ error: boolean; text: string } | null>(null);
   const [usersList, setUsersList] = useState<UserRead[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [page, setPage] = useState(1);
@@ -390,13 +393,8 @@ export function UsersPage() {
         method: "PUT",
         body: payload
       });
-      setManagedUsers((prev) => {
-        const existing = prev.find((item) => item.id === updated.id);
-        if (!existing) {
-          return [updated, ...prev];
-        }
-        return prev.map((item) => (item.id === updated.id ? updated : item));
-      });
+      setUsersList((prev) => prev.map((item) => item.id === updated.id ? updated : item));
+      void loadUsers(page);
       setStatus("idle");
       setMessage("Пользователь обновлен.");
     } catch (error) {
@@ -420,55 +418,82 @@ export function UsersPage() {
   };
 
   const handleGenerateTemp = async () => {
-    if (!form.userId) {
-      setMessage("Укажите ID пользователя для генерации пароля.");
+    if (tempStatus === "saving") return;
+    const userId = Number(tempUserId);
+    if (!/^[1-9]\d*$/.test(tempUserId) || !Number.isSafeInteger(userId)) {
+      setTempResult("Укажите положительный целочисленный ID пользователя для генерации пароля.");
       setTempStatus("error");
       return;
     }
     setTempStatus("saving");
     setTempResult(null);
+    setGeneratedPassword(null);
     try {
       const response = await adminApiClient.request<{ temp_password: string }>({
-        path: `/admin/users/${form.userId}/temp-password/generate`,
+        path: `/admin/users/${userId}/temp-password/generate`,
         method: "POST"
       });
-      setTempResult(response.temp_password);
+      setGeneratedPassword(response.temp_password);
+      setTempResult(`Временный пароль сгенерирован и установлен пользователю #${userId}. При следующем входе потребуется сменить пароль.`);
       setTempStatus("idle");
-    } catch {
+      void loadUsers(page);
+    } catch (error) {
       setTempStatus("error");
-      setTempResult("Не удалось сгенерировать пароль.");
+      setTempResult((error as ApiError)?.code === "user_not_found" ? "Пользователь с таким ID не найден." : "Не удалось сгенерировать и установить пароль.");
     }
   };
 
   const handleSetTemp = async () => {
-    if (!form.userId || !tempPassword) {
-      setMessage("Укажите ID пользователя и временный пароль.");
+    if (tempStatus === "saving") return;
+    const userId = Number(tempUserId);
+    if (!/^[1-9]\d*$/.test(tempUserId) || !Number.isSafeInteger(userId) || !tempPassword) {
+      setTempResult("Укажите положительный целочисленный ID пользователя и временный пароль.");
       setTempStatus("error");
       return;
     }
     setTempStatus("saving");
     setTempResult(null);
+    setGeneratedPassword(null);
     try {
       await adminApiClient.request({
-        path: `/admin/users/${form.userId}/temp-password`,
+        path: `/admin/users/${userId}/temp-password`,
         method: "POST",
         body: { temp_password: tempPassword }
       });
       setTempStatus("idle");
-      setTempResult("Пароль установлен.");
-    } catch {
+      setTempPassword("");
+      setTempResult(`Временный пароль установлен пользователю #${userId}. При следующем входе потребуется сменить пароль.`);
+      void loadUsers(page);
+    } catch (error) {
       setTempStatus("error");
-      setTempResult("Не удалось установить пароль.");
+      const messages: Record<string, string> = {
+        user_not_found: "Пользователь с таким ID не найден.",
+        weak_password: "Пароль должен содержать не менее 8 символов, заглавную и строчную латинские буквы и цифру."
+      };
+      setTempResult(messages[(error as ApiError)?.code ?? ""] ?? "Не удалось установить пароль.");
+    }
+  };
+
+  const handleVerifyEmail = async (target: UserRead) => {
+    if (target.is_email_verified || verifyingId !== null) return;
+    setVerifyingId(target.id);
+    setVerificationMessage(null);
+    try {
+      const updated = await adminApiClient.request<UserRead>({
+        path: `/admin/users/${target.id}`, method: "PUT", body: { is_email_verified: true }
+      });
+      setUsersList((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setVerificationMessage({ error: false, text: `Email пользователя #${target.id} (${target.login}) подтверждён.` });
+      await loadUsers(page);
+    } catch {
+      setVerificationMessage({ error: true, text: `Не удалось подтвердить email пользователя #${target.id}. Попробуйте ещё раз.` });
+    } finally {
+      setVerifyingId(null);
     }
   };
 
   return (
-    <section className="admin-section">
-      <AccountDeletionPanel onDeleted={(id) => {
-        setManagedUsers((current) => current.filter((item) => item.id !== id));
-        setUsersList((current) => current.filter((item) => item.id !== id));
-        void loadUsers(page);
-      }} />
+    <section className="admin-section admin-users-page">
       <div className="admin-users-wide">
         <div className="admin-toolbar">
           <div>
@@ -655,13 +680,13 @@ export function UsersPage() {
         {message ? <p className={status === "error" ? "admin-error" : "admin-hint"}>{message}</p> : null}
         </form>
 
-        <div className="admin-section" style={{ marginTop: "24px" }}>
+        <div className="admin-section">
             <h2>Список пользователей</h2>
             <p className="admin-hint">Фильтруйте список по роли, статусам и логину.</p>
             <div className="admin-report-filters">
           <TextInput
             label="ID"
-            name="userId"
+            name="userIdFilter"
             value={filters.userId}
             onChange={(event) => setFilters((prev) => ({ ...prev, userId: event.target.value }))}
           />
@@ -828,7 +853,7 @@ export function UsersPage() {
               </Button>
             </div>
             {exportStatus === "error" && exportError ? <div className="admin-alert">{exportError}</div> : null}
-            <div className="admin-toolbar-actions">
+            <div className="admin-toolbar-actions admin-table-pagination">
               <span className="admin-hint">
                 Показано {usersList.length} из {totalUsers}.
               </span>
@@ -872,10 +897,12 @@ export function UsersPage() {
               </Button>
             </div>
             {listStatus === "error" && listError ? <div className="admin-alert">{listError}</div> : null}
-            <div className="admin-table-scroll admin-table-wide">
+            {verificationMessage ? <p role={verificationMessage.error ? "alert" : "status"} className={verificationMessage.error ? "admin-error" : "admin-hint"}>{verificationMessage.text}</p> : null}
+            <div className="admin-table-scroll admin-table-wide admin-directory-table" role="region" aria-label="Таблица пользователей">
               <Table>
                 <thead>
                   <tr>
+                    <th className="admin-action-column">Email</th>
                     <th>ID</th>
                     <th>Логин</th>
                     <th>Email</th>
@@ -905,15 +932,23 @@ export function UsersPage() {
                 <tbody>
                   {listStatus === "loading" ? (
                     <tr>
-                      <td colSpan={24}>Загрузка...</td>
+                      <td colSpan={25}>Загрузка...</td>
                     </tr>
                   ) : usersList.length === 0 ? (
                     <tr>
-                      <td colSpan={24}>Пользователи не найдены.</td>
+                      <td colSpan={25}>Пользователи не найдены.</td>
                     </tr>
                   ) : (
                     usersList.map((item) => (
                       <tr key={item.id}>
+                        <td className="admin-action-column">
+                          <Button type="button" size="sm" variant="outline"
+                            aria-label={`Ver.email: ${item.login} (#${item.id})`}
+                            title={item.is_email_verified ? "Email уже подтверждён" : "Подтвердить email вручную"}
+                            disabled={item.is_email_verified || verifyingId !== null}
+                            isLoading={verifyingId === item.id}
+                            onClick={() => void handleVerifyEmail(item)}>Ver.email</Button>
+                        </td>
                         <td>{item.id}</td>
                         <td>{item.login}</td>
                         <td>{item.email}</td>
@@ -946,12 +981,19 @@ export function UsersPage() {
             </div>
         </div>
 
-        <div className="admin-section" style={{ marginTop: "24px" }}>
+        <section className="admin-section admin-temp-password" aria-label="Временный пароль">
             <h2>Временный пароль</h2>
+            <p className="admin-hint">Укажите ID в этом блоке. Генерация сразу устанавливает новый временный пароль и требует его смены при входе. Старый пароль перестанет работать.</p>
             <div className="admin-form-grid">
+              <TextInput label="ID пользователя для временного пароля" name="tempUserId" inputMode="numeric"
+                value={tempUserId} disabled={tempStatus === "saving"}
+                onChange={(event) => { setTempUserId(event.target.value.trim()); setGeneratedPassword(null); setTempResult(null); setTempPassword(""); setTempStatus("idle"); }} />
               <TextInput
                 label="Новый временный пароль"
                 name="tempPassword"
+                type="password"
+                autoComplete="new-password"
+                disabled={tempStatus === "saving"}
                 value={tempPassword}
                 onChange={(event) => setTempPassword(event.target.value)}
               />
@@ -963,52 +1005,22 @@ export function UsersPage() {
                 onClick={handleGenerateTemp}
                 disabled={tempStatus === "saving"}
               >
-                Сгенерировать
+                Сгенерировать и установить
               </Button>
               <Button type="button" onClick={handleSetTemp} disabled={tempStatus === "saving"}>
                 Установить
               </Button>
             </div>
+            {generatedPassword ? <TextInput label="Сгенерированный временный пароль" name="generatedTempPassword" value={generatedPassword} readOnly autoComplete="off" /> : null}
             {tempResult ? (
-              <p className={tempStatus === "error" ? "admin-error" : "admin-hint"}>{tempResult}</p>
+              <p role={tempStatus === "error" ? "alert" : "status"} className={tempStatus === "error" ? "admin-error" : "admin-hint"}>{tempResult}</p>
             ) : null}
-        </div>
-
-        <div className="admin-section" style={{ marginTop: "24px" }}>
-            <h2>Последние изменения</h2>
-            <p className="admin-hint">Здесь отображаются пользователи, которых вы изменяли в текущей сессии.</p>
-            <Table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Логин</th>
-                  <th>Роль</th>
-                  <th>Email</th>
-                  <th>Активен</th>
-                  <th>Модератор</th>
-                </tr>
-              </thead>
-              <tbody>
-                {managedUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={6}>Пока нет обновленных пользователей.</td>
-                  </tr>
-                ) : (
-                  managedUsers.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.id}</td>
-                      <td>{item.login}</td>
-                      <td>{item.role}</td>
-                      <td>{item.email}</td>
-                      <td>{item.is_active ? "Да" : "Нет"}</td>
-                      <td>{item.is_moderator ? "Да" : "Нет"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-        </div>
+        </section>
       </div>
+      <AccountDeletionPanel onDeleted={(id) => {
+        setUsersList((current) => current.filter((item) => item.id !== id));
+        void loadUsers(page);
+      }} />
     </section>
   );
 }

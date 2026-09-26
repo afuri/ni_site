@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Button, Modal, useAuth } from "@ui";
-import { createApiClient, type ApiError, type AttemptResult, type AttemptView, type OlympiadPublic } from "@api";
+import { useAuth } from "@ui";
+import { createApiClient, type AttemptResult, type AttemptView } from "@api";
 import { PlatformShell, type PlatformSection } from "../platform/PlatformShell";
 import { PlatformContent } from "../platform/PlatformContent";
 import { createPlatformApi } from "../platform/platformApi";
 import { usePlatformOverview } from "../platform/usePlatformOverview";
 import { AttemptReviewModal } from "../platform/AttemptReviewModal";
-import { resolveOlympiadAction, type OlympiadAction } from "../platform/olympiadAction";
+import type { OlympiadAction } from "../platform/olympiadAction";
 import { downloadAttemptDiploma } from "../platform/diploma";
 import { StudentProfile } from "../platform/StudentProfile";
 import { CoinsBalance } from "../platform/CoinsBalance";
@@ -38,8 +38,6 @@ export function StudentPlatformPage() {
   );
   const platformApi = useMemo(() => createPlatformApi(client), [client]);
   const overview = usePlatformOverview(platformApi, user?.role === "student", user?.class_grade ?? null);
-  const [pendingOlympiad, setPendingOlympiad] = useState<OlympiadPublic | null>(null);
-  const [startingOlympiadId, setStartingOlympiadId] = useState<number | null>(null);
   const [viewingAttemptId, setViewingAttemptId] = useState<number | null>(null);
   const [viewingResult, setViewingResult] = useState<AttemptResult | null>(null);
   const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
@@ -72,51 +70,7 @@ export function StudentPlatformPage() {
       setActionMessage(action.reason);
       return;
     }
-    setPendingOlympiad(action.olympiad);
-  };
-
-  const handleConfirmStart = async () => {
-    if (!pendingOlympiad || !user) return;
-    const currentAction = resolveOlympiadAction({
-      olympiad: pendingOlympiad,
-      results: overview.results.data,
-      resultsStatus: overview.results.status,
-      user
-    });
-    if (currentAction.kind === "continue") {
-      setPendingOlympiad(null);
-      continueAttempt(currentAction.attemptId);
-      return;
-    }
-    if (currentAction.kind !== "start") {
-      setPendingOlympiad(null);
-      setActionMessage(currentAction.kind === "disabled" ? currentAction.reason : "Эта олимпиада уже завершена.");
-      return;
-    }
-    setStartingOlympiadId(pendingOlympiad.id);
-    setActionMessage(null);
-    try {
-      const attempt = await platformApi.startAttempt(pendingOlympiad.id);
-      setPendingOlympiad(null);
-      continueAttempt(attempt.id);
-    } catch (error) {
-      const code = (error as ApiError)?.code;
-      const messages: Record<string, string> = {
-        active_attempt_exists: "У вас уже есть активная попытка. Сначала завершите её.",
-        olympiad_not_assigned: "Назначенный вариант изменился. Обновите список олимпиад.",
-        email_not_verified: "Подтвердите email, чтобы участвовать в олимпиаде.",
-        school_profile_required: "Выберите школу или отправьте заявку на её добавление.",
-        olympiad_age_group_mismatch: "Олимпиада недоступна для вашего класса.",
-        olympiad_not_available: "Сейчас олимпиада недоступна по времени.",
-        olympiad_not_published: "Олимпиада ещё не опубликована.",
-        olympiad_has_no_tasks: "В олимпиаде пока нет заданий. Сообщите администратору."
-      };
-      setActionMessage(messages[code] ?? "Не удалось начать олимпиаду. Попробуйте позже.");
-      overview.refresh();
-      setPendingOlympiad(null);
-    } finally {
-      setStartingOlympiadId(null);
-    }
+    navigate("/", { state: { startOlympiadId: action.olympiad.id } });
   };
 
   async function handleViewAttempt(result: AttemptResult) {
@@ -181,7 +135,7 @@ export function StudentPlatformPage() {
         announcements={overview.announcements}
         schoolNotifications={schoolNotifications}
         activeAttempt={overview.activeAttempt}
-        startingOlympiadId={startingOlympiadId}
+        startingOlympiadId={null}
         viewingAttemptId={viewingAttemptId}
         downloadingAttemptId={downloadingAttemptId}
         onOlympiadAction={handleOlympiadAction}
@@ -198,20 +152,6 @@ export function StudentPlatformPage() {
           />
         )}
       />
-      <Modal
-        isOpen={Boolean(pendingOlympiad)}
-        onClose={() => setPendingOlympiad(null)}
-        title="Начать олимпиаду?"
-        description="После старта включится серверный таймер. Повторная попытка не создаётся."
-        footer={(
-          <>
-            <Button variant="outline" onClick={() => setPendingOlympiad(null)}>Отмена</Button>
-            <Button isLoading={startingOlympiadId !== null} onClick={() => void handleConfirmStart()}>Начать</Button>
-          </>
-        )}
-      >
-        <p>{pendingOlympiad?.title}</p>
-      </Modal>
       <AttemptReviewModal
         client={client}
         view={attemptView}

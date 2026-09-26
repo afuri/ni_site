@@ -70,7 +70,7 @@ export function AccountDeletionPanel({ onDeleted }: { onDeleted: (id: number) =>
     } catch (error) { setMessage(explain(error)); }
     finally { saving.current = false; setBusy(false); }
   };
-  return <section className="admin-card" aria-label="Удаление пользователей">
+  return <section className="admin-section admin-account-deletion-panel" aria-label="Удаление пользователей">
     <h2>Удаление пользователей</h2>
     <p>Безвозвратное удаление аккаунта, связей, попыток, ответов, результатов и дипломов. Школы и общие учебные материалы сохраняются. Администраторов удалить нельзя.</p>
     <form className="admin-toolbar-actions" onSubmit={(event) => { event.preventDefault(); void inspect(Number(id)); }}>
@@ -80,13 +80,13 @@ export function AccountDeletionPanel({ onDeleted }: { onDeleted: (id: number) =>
     <h3>Заявки на удаление</h3>
     {listError ? <p role="alert">{listError}</p> : null}
     <Button type="button" disabled={busy} variant="outline" onClick={() => void load()}>Обновить заявки и очередь</Button>
-    <div className="admin-table-scroll"><Table><thead><tr><th>Действие</th><th>ID пользователя</th><th>Логин</th><th>Дата заявки</th></tr></thead><tbody>{rows.slice(0, 50).map((row) => <tr key={row.id}><td><Button type="button" disabled={busy} onClick={() => void inspect(row.user_id, row.id)}>Рассмотреть удаление</Button></td><td>{row.user_id}</td><td>{row.login}</td><td>{new Date(row.created_at).toLocaleString("ru-RU")}</td></tr>)}</tbody></Table></div>
+    <div className="admin-table-scroll admin-directory-table"><Table><thead><tr><th>Действие</th><th>ID пользователя</th><th>Логин</th><th>Дата заявки</th></tr></thead><tbody>{rows.slice(0, 50).map((row) => <tr key={row.id}><td><Button type="button" disabled={busy} onClick={() => void inspect(row.user_id, row.id)}>Рассмотреть удаление</Button></td><td>{row.user_id}</td><td>{row.login}</td><td>{new Date(row.created_at).toLocaleString("ru-RU")}</td></tr>)}</tbody></Table></div>
     {!rows.length && !listError ? <p>Заявок нет.</p> : null}
     <div className="admin-toolbar-actions"><Button type="button" disabled={busy || page === 0} onClick={() => setPage(page - 1)}>Предыдущие заявки</Button><span>Страница {page + 1}</span><Button type="button" disabled={busy || rows.length <= 50} onClick={() => setPage(page + 1)}>Следующие заявки</Button></div>
     {jobs.length ? <><h3>Файлы ожидают удаления</h3><p>Показаны первые 100 записей. Аккаунты уже удалены; автоматическая очистка требует запущенных worker и beat.</p>{jobs.map((target) => <p key={target}>Пользователь #{target} <Button type="button" disabled={busy} onClick={() => void retry(target)}>Повторить очистку #{target}</Button></p>)}</> : null}
     {message ? <p role="status">{message}</p> : null}
     <Modal isOpen={preview !== null} title="Подтверждение удаления пользователя" closeOnBackdrop={false} onClose={() => { if (!busy) { setPreview(null); setMessage(""); } }}>
-      {preview ? <><p>#{preview.user_id}: {preview.full_name} — {preview.login}, {preview.email}. Роль: {preview.role}.</p><p>Попыток: {preview.attempts}. Связей: {preview.links}. Все данные аккаунта и дипломы будут удалены. Отменить выполненное удаление нельзя.</p><TextInput label="Для подтверждения введите ID пользователя" name="confirmDeleteId" value={confirmation} disabled={busy} onChange={(event) => setConfirmation(event.target.value)} /><Button type="button" variant="outline" disabled={busy} onClick={() => setPreview(null)}>Отмена</Button><Button type="button" isLoading={busy} disabled={confirmation !== String(preview.user_id)} onClick={() => void remove()}>Удалить пользователя навсегда</Button>{message ? <p role="alert">{message}</p> : null}</> : null}
+      {preview ? <><p>#{preview.user_id}: {preview.full_name} — {preview.login}, {preview.email}. Роль: {preview.role}.</p><p>Попыток: {preview.attempts}. Связей: {preview.links}. Все данные аккаунта и дипломы будут удалены. Отменить выполненное удаление нельзя.</p><TextInput label="Для подтверждения введите ID пользователя" name="confirmDeleteId" value={confirmation} disabled={busy} onChange={(event) => setConfirmation(event.target.value)} /><div className="admin-modal-actions"><Button type="button" variant="outline" disabled={busy} onClick={() => setPreview(null)}>Отмена</Button><Button type="button" isLoading={busy} disabled={confirmation !== String(preview.user_id)} onClick={() => void remove()}>Удалить пользователя навсегда</Button></div>{message ? <p role="alert">{message}</p> : null}</> : null}
     </Modal>
   </section>;
 }

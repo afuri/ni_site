@@ -5,6 +5,7 @@ import pytest
 from app.models.user import UserRole
 from app.core.config import settings
 from app.core import error_codes as codes
+from app.core.security import validate_password_policy
 
 
 def _auth_headers(token: str) -> dict:
@@ -273,6 +274,11 @@ async def test_admin_generate_temp_password_flow(client, create_user):
     temp_password = resp.json()["temp_password"]
     assert isinstance(temp_password, str)
     assert len(temp_password) >= 8
+    validate_password_policy(temp_password)
+
+    resp = await client.post("/api/v1/auth/login", json={"login": "studentgen", "password": "StrongPass1"})
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == codes.INVALID_CREDENTIALS
 
     resp = await client.post("/api/v1/auth/login", json={"login": "studentgen", "password": temp_password})
     assert resp.status_code == 200
@@ -311,3 +317,50 @@ async def test_service_token_can_update_user(client, create_user):
         assert resp.json()["school_short_name"] == "Школа № 1"
     finally:
         settings.SERVICE_TOKENS = old_tokens
+
+
+@pytest.mark.asyncio
+async def test_admin_can_manually_verify_email_without_changing_other_profile_fields(client, create_user, db_session):
+    await create_user(
+        login="adminverify", email="adminverify@example.com", password="AdminPass1",
+        role=UserRole.admin, class_grade=None,
+    )
+    student = await create_user(
+        login="studentverify", email="studentverify@example.com", password="StrongPass1",
+        role=UserRole.student, is_verified=False, class_grade=5,
+    )
+    await create_user(
+        login="teacherverify", email="teacherverify@example.com", password="StrongPass1",
+        role=UserRole.teacher, subject="Математика", class_grade=None,
+    )
+    path = f"/api/v1/admin/users/{student.id}"
+    patch = {"is_email_verified": True}
+    old_password_hash = student.password_hash
+    old_school_status = student.school_status
+
+    assert (await client.put(path, json=patch)).status_code == 401
+    for login in ("studentverify", "teacherverify"):
+        signed_in = await client.post("/api/v1/auth/login", json={"login": login, "password": "StrongPass1"})
+        assert signed_in.status_code == 200
+        response = await client.put(path, json=patch, headers=_auth_headers(signed_in.json()["access_token"]))
+        assert response.status_code == 403
+    await db_session.refresh(student)
+    assert student.is_email_verified is False
+
+    signed_in = await client.post("/api/v1/auth/login", json={"login": "adminverify", "password": "AdminPass1"})
+    assert signed_in.status_code == 200
+    headers = _auth_headers(signed_in.json()["access_token"])
+    response = await client.put(path, json=patch, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["is_email_verified"] is True
+    assert response.json()["email"] == "studentverify@example.com"
+    await db_session.refresh(student)
+    assert student.is_email_verified is True
+    assert student.password_hash == old_password_hash
+    assert student.school_status == old_school_status
+    assert student.role == UserRole.student
+    assert student.class_grade == 5
+    # A repeated click must be safe and must not reverse verification.
+    response = await client.put(path, json=patch, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["is_email_verified"] is True
