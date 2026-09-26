@@ -67,6 +67,9 @@ class AttemptResult(BaseModel):
     attempt_id: int
     olympiad_id: int
     olympiad_title: str | None = None
+    olympiad_available_from: datetime | None = Field(
+        default=None, description="Дата начала олимпиады для группировки по учебным сезонам"
+    )
     status: AttemptStatus
     score_total: int
     score_max: int

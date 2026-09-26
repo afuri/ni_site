@@ -7,7 +7,7 @@ type AuthContextValue = {
   status: AuthStatus;
   user: UserRead | null;
   tokens: TokenPair | null;
-  signIn: (payload: { login: string; password: string }) => Promise<void>;
+  signIn: (payload: { login: string; password: string }) => Promise<UserRead>;
   signOut: () => Promise<void>;
   refresh: () => Promise<boolean>;
   setSession: (tokens: TokenPair, user: UserRead | null) => void;
@@ -83,6 +83,7 @@ export function AuthProvider({ client, storage, children }: AuthProviderProps) {
         storage.setUser?.(me);
         setUser(me);
         setStatus("authenticated");
+        return me;
       } catch (error) {
         setStatus("error");
         throw error;

@@ -116,7 +116,7 @@ describe("CabinetPage", () => {
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -154,7 +154,7 @@ describe("CabinetPage", () => {
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -194,7 +194,7 @@ describe("CabinetPage", () => {
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -235,7 +235,7 @@ describe("CabinetPage", () => {
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -279,7 +279,7 @@ describe("CabinetPage", () => {
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -311,7 +311,7 @@ describe("CabinetPage", () => {
     mockRequest.mockResolvedValue([]);
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -319,7 +319,7 @@ describe("CabinetPage", () => {
     const userEventApi = userEvent.setup();
     await userEventApi.click(screen.getByRole("button", { name: /Личные данные/i }));
 
-    expect(await screen.findByLabelText("Регион")).toBeEnabled();
+    expect(await screen.findByLabelText("Регион школы")).toBeEnabled();
     expect(screen.getByLabelText("Школа")).toBeEnabled();
     expect(
       screen.queryByText("Регион и школа подтверждены. Изменить их может только администратор.")
@@ -342,7 +342,7 @@ describe("CabinetPage", () => {
     mockCreateSchoolSubmission.mockResolvedValue({ id: 9, status: "pending" });
     const userEventApi = userEvent.setup();
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -417,7 +417,7 @@ describe("CabinetPage", () => {
         : Promise.resolve([])
     );
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -447,7 +447,7 @@ describe("CabinetPage", () => {
     });
     mockRequest.mockResolvedValue([]);
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );
@@ -471,7 +471,7 @@ describe("CabinetPage", () => {
     };
     mockRequest.mockResolvedValue([]);
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <CabinetPage />
       </MemoryRouter>
     );

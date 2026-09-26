@@ -5,6 +5,7 @@ import logoImage from "../assets/logo2.png";
 import vkLink from "../assets/vk_link.png";
 import "../styles/home.css";
 import "../styles/results-archive.css";
+import { getAccountHomePath, LOGIN_REDIRECT_KEY } from "../routes/accountHome";
 
 type YearEntry = {
   label: string;
@@ -13,7 +14,6 @@ type YearEntry = {
 };
 
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
-const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
@@ -192,7 +192,7 @@ export function ResultsArchivePage() {
             </a>
             {isAuthenticated && user ? (
               <div className="home-user-menu">
-                <Link to="/cabinet" className="home-user-link">
+                <Link to={getAccountHomePath(user)} className="home-user-link">
                   {user.login}
                 </Link>
                 <Button type="button" onClick={handleLogout}>

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Button, Table, TextInput } from "@ui";
-import type { UserRead } from "@api";
+import type { ApiError, UserRead } from "@api";
 import { adminApiClient } from "../lib/adminClient";
 import { formatDate } from "../lib/formatters";
+import { AccountDeletionPanel } from "../components/AccountDeletionPanel";
 
 type UserUpdateForm = {
   userId: string;
@@ -372,7 +373,7 @@ export function UsersPage() {
     if (form.schoolId) payload.school_id = Number(form.schoolId);
     const schoolNotFound = parseBoolean(form.schoolNotFound);
     if (schoolNotFound !== undefined) payload.school_not_found = schoolNotFound;
-    if (form.classGrade) payload.class_grade = Number(form.classGrade);
+    if (form.classGrade && form.role !== "teacher" && form.role !== "admin") payload.class_grade = Number(form.classGrade);
     if (form.gender) payload.gender = form.gender;
     if (form.subscription) {
       const parsedSub = Number(form.subscription);
@@ -380,7 +381,7 @@ export function UsersPage() {
         payload.subscription = Math.min(5, Math.max(0, parsedSub));
       }
     }
-    if (form.subject) payload.subject = form.subject;
+    if (form.subject && form.role !== "student" && form.role !== "admin") payload.subject = form.subject.trim();
     if (form.adminOtp) payload.admin_otp = form.adminOtp;
 
     try {
@@ -398,9 +399,23 @@ export function UsersPage() {
       });
       setStatus("idle");
       setMessage("Пользователь обновлен.");
-    } catch {
+    } catch (error) {
       setStatus("error");
-      setMessage("Не удалось обновить пользователя.");
+      const messages: Record<string, string> = {
+        role_transition_not_allowed: "Дошкольник может перейти только в ученика: укажите класс 1–11 и школу.",
+        class_grade_required: "Укажите класс ученика от 0 до 11. При переходе из учителя — от 1 до 11.",
+        subject_required: "Укажите предмет учителя.",
+        school_selection_required: "Для перехода укажите ID существующей школы и её регион. Вариант «Школа отсутствует» недоступен.",
+        school_region_mismatch: "Школа не относится к указанному региону.",
+        school_not_found: "Школа с таким ID не найдена.",
+        region_not_found: "Укажите существующий регион.",
+        school_inactive: "Выбранная школа или её город неактивны.",
+        region_inactive: "Выбранный регион неактивен.",
+        validation_error: "Проверьте поля. Предмет при смене роли должен быть указан кириллицей с заглавной буквы.",
+        subject_not_allowed_for_student: "Поле «Предмет» не заполняется для ученика.",
+        class_grade_not_allowed_for_teacher: "Поле «Класс» не заполняется для учителя."
+      };
+      setMessage(messages[(error as ApiError)?.code ?? ""] ?? "Не удалось обновить пользователя.");
     }
   };
 
@@ -449,11 +464,16 @@ export function UsersPage() {
 
   return (
     <section className="admin-section">
+      <AccountDeletionPanel onDeleted={(id) => {
+        setManagedUsers((current) => current.filter((item) => item.id !== id));
+        setUsersList((current) => current.filter((item) => item.id !== id));
+        void loadUsers(page);
+      }} />
       <div className="admin-users-wide">
         <div className="admin-toolbar">
           <div>
             <h1>Управление пользователями</h1>
-            <p className="admin-hint">Редактируйте пользователей и управляйте доступом.</p>
+            <p className="admin-hint">При смене роли укажите класс 1–11 для ученика или предмет для учителя. Нужна действующая школа: существующая сохраняется, если не указан другой ID. Дошкольник (класс 0) может перейти только в ученика с обязательным выбором школы. Несовместимые поля и связи с учителями/учениками будут очищены; результаты олимпиад сохранятся.</p>
           </div>
         </div>
 
@@ -476,7 +496,11 @@ export function UsersPage() {
             <select
               className="field-input"
               value={form.role}
-              onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value,
+                classGrade: event.target.value === "teacher" || event.target.value === "admin" ? "" : prev.classGrade,
+                subject: event.target.value === "student" || event.target.value === "admin" ? "" : prev.subject,
+                isModerator: "", moderatorRequested: ""
+              }))}
             >
               <option value="">Не менять</option>
               <option value="student">Ученик</option>
@@ -575,12 +599,16 @@ export function UsersPage() {
               <option value="">Не менять</option><option value="true">Да</option><option value="false">Нет</option>
             </select>
           </label>
-          <TextInput
+          {form.role !== "teacher" && form.role !== "admin" ? <TextInput
             label="Класс"
             name="classGrade"
+            type="number"
+            min={0}
+            max={11}
+            required={form.role === "student"}
             value={form.classGrade}
             onChange={(event) => setForm((prev) => ({ ...prev, classGrade: event.target.value }))}
-          />
+          /> : null}
           <label className="field">
             <span className="field-label">Пол</span>
             <select
@@ -602,12 +630,13 @@ export function UsersPage() {
             value={form.subscription}
             onChange={(event) => setForm((prev) => ({ ...prev, subscription: event.target.value }))}
           />
-          <TextInput
+          {form.role !== "student" && form.role !== "admin" ? <TextInput
             label="Предмет"
             name="subject"
+            required={form.role === "teacher"}
             value={form.subject}
             onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
-          />
+          /> : null}
           <TextInput
             label="OTP"
             name="adminOtp"

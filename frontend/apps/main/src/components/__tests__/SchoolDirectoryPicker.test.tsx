@@ -57,7 +57,7 @@ describe("SchoolDirectoryPicker", () => {
     const client = makeClient();
     render(<Harness client={client} />);
 
-    const region = await screen.findByLabelText("Регион");
+    const region = await screen.findByLabelText("Регион школы");
     fireEvent.change(region, { target: { value: "1" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Школа" }), { target: { value: "ли" } });
 
@@ -71,7 +71,7 @@ describe("SchoolDirectoryPicker", () => {
 
   it("clears the selected school when the region changes", async () => {
     render(<Harness client={makeClient()} />);
-    const region = await screen.findByLabelText("Регион");
+    const region = await screen.findByLabelText("Регион школы");
     fireEvent.change(region, { target: { value: "1" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Школа" }), { target: { value: "ли" } });
     fireEvent.click(await screen.findByRole("button", { name: /Лицей № 1.*Москва/i }, { timeout: 1200 }));
@@ -88,7 +88,7 @@ describe("SchoolDirectoryPicker", () => {
       return new Promise<SchoolLookup[]>(() => undefined);
     });
     render(<Harness client={makeClient(schools)} />);
-    fireEvent.change(await screen.findByLabelText("Регион"), { target: { value: "1" } });
+    fireEvent.change(await screen.findByLabelText("Регион школы"), { target: { value: "1" } });
     const input = screen.getByRole("combobox", { name: "Школа" });
     fireEvent.change(input, { target: { value: "ли" } });
     await waitFor(() => expect(schools).toHaveBeenCalledTimes(1), { timeout: 1200 });
@@ -110,7 +110,7 @@ describe("SchoolDirectoryPicker", () => {
     );
     render(<Harness client={makeClient(schools)} />);
 
-    fireEvent.change(await screen.findByLabelText("Регион"), { target: { value: "1" } });
+    fireEvent.change(await screen.findByLabelText("Регион школы"), { target: { value: "1" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Школа" }), { target: { value: "шк" } });
 
     const showMore = await screen.findByRole("button", { name: "Показать еще" }, { timeout: 1200 });
@@ -128,7 +128,7 @@ describe("SchoolDirectoryPicker", () => {
 
   it("hides school controls for a preschooler", async () => {
     render(<Harness client={makeClient()} classGrade="0" />);
-    await screen.findByLabelText("Регион");
+    await screen.findByLabelText("Регион школы");
     expect(screen.queryByRole("combobox", { name: "Школа" })).toBeNull();
     expect(screen.queryByText("Моей школы нет в списке")).toBeNull();
     expect(screen.getByText("Для дошкольника выбор школы не требуется.")).toBeInTheDocument();

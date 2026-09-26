@@ -4,6 +4,7 @@ from app.schemas.errors import ErrorResponse
 REQUEST_ID_EXAMPLE = "req-123e4567-e89b-12d3-a456-426614174000"
 
 ERROR_EXAMPLES = {
+    codes.ROLE_TRANSITION_NOT_ALLOWED: {"error": {"code": codes.ROLE_TRANSITION_NOT_ALLOWED, "message": codes.ROLE_TRANSITION_NOT_ALLOWED}},
     codes.MISSING_TOKEN: {"error": {"code": codes.MISSING_TOKEN, "message": codes.MISSING_TOKEN}},
     codes.INVALID_TOKEN: {"error": {"code": codes.INVALID_TOKEN, "message": codes.INVALID_TOKEN, "details": {}}},
     codes.INVALID_CREDENTIALS: {"error": {"code": codes.INVALID_CREDENTIALS, "message": codes.INVALID_CREDENTIALS}},

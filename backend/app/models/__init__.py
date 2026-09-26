@@ -1,4 +1,5 @@
 from app.models.city import City
+from app.models.account_deletion import AccountDeletionRequest, AccountDeletionCleanup
 from app.models.region import Region
 from app.models.school import School
 from app.models.school_import import SchoolImportBatch, SchoolSourceMap

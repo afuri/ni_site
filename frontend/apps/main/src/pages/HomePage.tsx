@@ -3,6 +3,7 @@ import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient, type ApiError } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
 import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
+import { getAccountHomePath, LOGIN_REDIRECT_KEY } from "../routes/accountHome";
 import { Link, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -34,7 +35,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
-const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
 const RESET_TOKEN_STORAGE_KEY = "ni_password_reset_token";
 
@@ -1103,7 +1103,7 @@ export function HomePage() {
     }
     setLoginStatus("loading");
     try {
-      await signIn({ login: loginForm.login, password: loginForm.password });
+      const signedInUser = await signIn({ login: loginForm.login, password: loginForm.password });
       setLoginStatus("idle");
       setIsLoginOpen(false);
       if (typeof window !== "undefined") {
@@ -1114,7 +1114,7 @@ export function HomePage() {
           return;
         }
       }
-      navigate("/cabinet");
+      navigate(getAccountHomePath(signedInUser));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Ошибка входа.";
       setLoginErrorMessage(message);
@@ -1282,7 +1282,7 @@ export function HomePage() {
                 </button>
                 {isUserMenuOpen ? (
                   <div className="home-user-popup" role="menu">
-                    <Link to="/cabinet" role="menuitem" onClick={handleUserMenuClose}>
+                    <Link to={getAccountHomePath(user)} role="menuitem" onClick={handleUserMenuClose}>
                       Войти
                     </Link>
                     <button type="button" onClick={handleLogout} role="menuitem">

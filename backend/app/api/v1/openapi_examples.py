@@ -145,6 +145,7 @@ EXAMPLE_ATTEMPT_RESULT: dict = {
     "attempt_id": 7,
     "olympiad_id": 5,
     "olympiad_title": "Олимпиада по математике",
+    "olympiad_available_from": "2026-01-05T09:00:00Z",
     "status": "submitted",
     "score_total": 1,
     "score_max": 1,

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.core import error_codes as codes
@@ -83,18 +83,55 @@ class SchoolSubmissionsService:
         )
         return [school.id for school in rows]
 
-    async def approve(self, *, submission_id: int, admin: User, existing_school_id: int | None, new_school: dict | None):
+    async def approve(self, *, submission_id: int, admin: User, existing_school_id: int | None, new_school: dict | None, update_school: dict | None = None):
         submission = await self.submissions.get(submission_id, for_update=True)
         if submission is None:
             raise ValueError(codes.SCHOOL_SUBMISSION_NOT_FOUND)
         if submission.status != SchoolSubmissionStatus.pending:
             raise ValueError(codes.SCHOOL_SUBMISSION_NOT_PENDING)
+        # Lock the shared school before any user row in the update branch.
+        # Two simultaneous applications for one school must not lock each other's users.
+        replacement_school = None
+        if update_school is not None:
+            replacement_school = await self.schools.get(update_school["school_id"], for_update=True)
+            if replacement_school is None:
+                raise ValueError(codes.SCHOOL_NOT_FOUND)
+            if replacement_school.updated_at != update_school["expected_updated_at"]:
+                raise ValueError(codes.SCHOOL_UPDATE_CONFLICT)
+            if not replacement_school.is_active or not replacement_school.city.is_active or not replacement_school.city.region.is_active:
+                raise ValueError(codes.SCHOOL_INACTIVE)
         target_user = await self.users.get_by_id(submission.user_id, for_update=True)
         if target_user is None:
             raise ValueError(codes.USER_NOT_FOUND)
 
         duplicate_ids: list[int] = []
-        if existing_school_id is not None:
+        if replacement_school is not None:
+            school = replacement_school
+            city = await self._resolve_city(
+                {"region_id": school.city.region_id, "city_name": update_school["city_name"]},
+                create=True,
+            )
+            if not city.is_active:
+                raise ValueError(codes.REGION_INACTIVE)
+            patch = {key: update_school[key] for key in ("full_name", "short_name", "address", "url", "email")}
+            patch["city_id"] = city.id
+            before = {key: getattr(school, key) for key in patch}
+            await self.schools.update(school, patch, actor_user_id=admin.id)
+            school.city = city
+            # Preserve linked users and their canonical status, while keeping legacy labels in sync.
+            affected = await self.db.execute(
+                update(User).where(User.school_id == school.id).values(city=city.name, school=school.short_name)
+            )
+            submission.city_name = city.name
+            add_audit_event(
+                self.db,
+                actor_user_id=admin.id,
+                action="school_updated_from_submission",
+                method="POST",
+                path=f"/api/v1/admin/school-submissions/{submission.id}/approve",
+                details={"submission_id": submission.id, "school_id": school.id, "before": before, "after": patch, "linked_users_updated": affected.rowcount},
+            )
+        elif existing_school_id is not None:
             school = await self.schools.get(existing_school_id)
             if school is None:
                 raise ValueError(codes.SCHOOL_NOT_FOUND)

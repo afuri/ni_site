@@ -11,14 +11,18 @@ const emptyResponse = async (_input: RequestInfo | URL, _init?: RequestInit) => 
   text: async () => "[]"
 });
 const fetchMock = vi.fn(emptyResponse);
+const authMocks = vi.hoisted(() => ({
+  signIn: vi.fn(),
+  signOut: vi.fn()
+}));
 
 vi.mock("@ui", async () => {
   const actual = await vi.importActual<typeof import("@ui")>("@ui");
   return {
     ...actual,
     useAuth: () => ({
-      signIn: vi.fn(),
-      signOut: vi.fn(),
+      signIn: authMocks.signIn,
+      signOut: authMocks.signOut,
       user: null,
       status: "unauthenticated"
     })
@@ -42,24 +46,26 @@ describe("HomePage", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     fetchMock.mockImplementation(emptyResponse);
+    authMocks.signIn.mockReset();
+    authMocks.signOut.mockReset();
     vi.stubGlobal("fetch", fetchMock);
   });
 
   it("renders the maintenance hero content", () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
 
     expect(screen.getByRole("heading", { level: 1, name: /Олимпиада/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "На сайте проводятся технические работы" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "До старта нового сезона:" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Об олимпиаде" })).toBeInTheDocument();
   });
 
   it("sets hero background image", () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
@@ -74,7 +80,7 @@ describe("HomePage", () => {
   it("opens and closes the mobile menu dropdown", async () => {
     const user = userEvent.setup();
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
@@ -88,7 +94,7 @@ describe("HomePage", () => {
 
   it("toggles cat quote popover on click", async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
@@ -106,7 +112,7 @@ describe("HomePage", () => {
 
   it("links to the results page", () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
@@ -116,7 +122,7 @@ describe("HomePage", () => {
 
   it("opens the schedule countdown modal", async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
@@ -129,7 +135,7 @@ describe("HomePage", () => {
 
   it("opens registration modal and switches role fields", async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
@@ -143,7 +149,7 @@ describe("HomePage", () => {
     expect(screen.getByLabelText("Пол")).toBeInTheDocument();
     expect(within(screen.getByRole("dialog", { name: "Регистрация" })).getByText("Класс")).toBeInTheDocument();
     expect(document.getElementById("register-class")).toBeInstanceOf(HTMLSelectElement);
-    expect(await screen.findByLabelText("Регион")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Регион школы")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("Роль"), "teacher");
     expect(document.querySelector('input[name="subject"]')).toBeInstanceOf(HTMLInputElement);
@@ -161,14 +167,14 @@ describe("HomePage", () => {
     });
     const user = userEvent.setup();
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
 
     await user.click(screen.getByRole("button", { name: "Регистрация" }));
     await user.selectOptions(screen.getByLabelText("Роль"), "student");
-    await user.selectOptions(await screen.findByLabelText("Регион"), "1");
+    await user.selectOptions(await screen.findByLabelText("Регион школы"), "1");
     await user.type(screen.getByRole("combobox", { name: "Школа" }), "ли");
     await user.click(await screen.findByRole("button", { name: /Лицей № 1.*Москва/i }, { timeout: 1200 }));
 
@@ -180,7 +186,7 @@ describe("HomePage", () => {
   it("hides school selection for a preschooler", async () => {
     const user = userEvent.setup();
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );
@@ -193,9 +199,43 @@ describe("HomePage", () => {
     expect(screen.getByText("Для дошкольника выбор школы не требуется.")).toBeInTheDocument();
   });
 
+  it("does not create an authenticated session after registration", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = url.includes("/lookup/regions")
+        ? [{ id: 1, name: "Москва", country_code: "RU", is_other: false }]
+        : url.includes("/auth/register")
+          ? { id: 10, login: "student10", role: "student" }
+          : [];
+      return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+    });
+    const user = userEvent.setup();
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><HomePage /></MemoryRouter>);
+
+    await user.click(screen.getByRole("button", { name: "Регистрация" }));
+    const dialog = screen.getByRole("dialog", { name: "Регистрация" });
+    await user.type(dialog.querySelector('input[name="login"]')!, "student10");
+    await user.type(dialog.querySelector('input[name="email"]')!, "student10@example.test");
+    await user.type(dialog.querySelector('input[name="password"]')!, "Password10");
+    await user.type(dialog.querySelector('input[name="passwordConfirm"]')!, "Password10");
+    await user.type(dialog.querySelector('input[name="surname"]')!, "Иванов");
+    await user.type(dialog.querySelector('input[name="name"]')!, "Иван");
+    await user.click(within(dialog).getByRole("radio", { name: "Муж" }));
+    await user.selectOptions(dialog.querySelector("#register-class")!, "0");
+    await user.selectOptions(await within(dialog).findByLabelText("Регион школы"), "1");
+    await user.click(within(dialog).getByRole("checkbox", { name: /Даю согласие/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Зарегистрироваться" }));
+
+    expect(await screen.findByRole("dialog", { name: "Поздравляем!" })).toBeInTheDocument();
+    expect(authMocks.signIn).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([url, init]) => (
+      String(url).includes("/auth/register") && init?.method === "POST"
+    ))).toBe(true);
+  });
+
   it("opens login modal from header", async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>
     );

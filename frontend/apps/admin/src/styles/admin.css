@@ -180,6 +180,19 @@
   padding-right: var(--space-2);
 }
 
+.admin-school-update-comparison table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 480px;
+}
+
+.admin-school-update-comparison td,
+.admin-school-update-comparison th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
 .admin-candidate-list {
   display: grid;
   gap: 8px;
