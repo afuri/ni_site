@@ -7,6 +7,8 @@ from app.core import error_codes as codes
 from app.core.age_groups import class_grades_allow
 from app.core.olympiad_pools import normalize_grade_group, normalize_subject
 from app.models.olympiad_pool import OlympiadPool, OlympiadPoolItem, OlympiadAssignment
+from app.models.user import User
+from app.models.olympiad import Olympiad
 from app.repos.olympiad_assignments import OlympiadAssignmentsRepo
 from app.repos.olympiad_pools import OlympiadPoolsRepo
 from app.repos.olympiads import OlympiadsRepo
@@ -22,6 +24,21 @@ class OlympiadPoolsService:
         self.pools_repo = pools_repo
         self.assignments_repo = assignments_repo
         self.olympiads_repo = olympiads_repo
+
+    async def list_for_user(self, user: User) -> list[Olympiad]:
+        rows = await self.pools_repo.list_assigned_available(user.id, datetime.now(timezone.utc))
+        seen: set[int] = set()
+        result: list[Olympiad] = []
+        for pool, olympiad in rows:
+            if olympiad.id in seen:
+                continue
+            if not class_grades_allow(pool.grade_group, user.class_grade):
+                continue
+            if not class_grades_allow(olympiad.age_group, user.class_grade):
+                continue
+            seen.add(olympiad.id)
+            result.append(olympiad)
+        return result
 
     @staticmethod
     def _dedupe_ids(values: list[int]) -> list[int]:

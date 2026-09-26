@@ -81,6 +81,9 @@ export function resolveOlympiadAction({
   if (resultsStatus === "error") {
     return { kind: "disabled", label: "Старт недоступен", reason: "Не удалось проверить предыдущие попытки." };
   }
+  if (results.some((item) => item.status === "active")) {
+    return { kind: "disabled", label: "Начать", reason: "Сначала завершите текущую попытку." };
+  }
   if (!user.is_email_verified) {
     return { kind: "disabled", label: "Подтвердите email", reason: "Для участия необходимо подтвердить email." };
   }

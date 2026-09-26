@@ -22,6 +22,7 @@ from app.models.attempt import AttemptStatus
 from app.models.task import TaskType
 from app.models.user import SchoolStatus, User, UserRole
 from app.repos.attempts import AttemptsRepo
+from app.repos.olympiad_pools import OlympiadPoolsRepo
 from app.core import error_codes as codes
 
 
@@ -351,6 +352,7 @@ class AttemptsService:
         if not user.is_email_verified:
             raise ValueError(codes.EMAIL_NOT_VERIFIED)
 
+        await self.repo.lock_user_for_start(user.id)
         existing = await self.repo.get_attempt_by_user_olympiad(user.id, olympiad_id)
         if existing:
             # идемпотентный старт: возвращаем текущую попытку
@@ -369,13 +371,24 @@ class AttemptsService:
         if not self._age_group_allows(class_grade=user.class_grade, age_group=olympiad.age_group):
             raise ValueError(codes.OLYMPIAD_AGE_GROUP_MISMATCH)
 
+        if await self.repo.has_active_attempt(user.id, now):
+            raise ValueError(codes.ACTIVE_ATTEMPT_EXISTS)
+        if not await OlympiadPoolsRepo(self.repo.db).is_assigned_variant(user.id, olympiad_id):
+            raise ValueError(codes.OLYMPIAD_NOT_ASSIGNED)
+
         cached = await self._get_tasks_cached(olympiad_id)
         tasks = self._inflate_tasks(cached)
         if len(tasks) == 0:
             # защищаемся от "пустой" опубликованной олимпиады
             raise ValueError(codes.OLYMPIAD_HAS_NO_TASKS)
 
+        # Loading task metadata must not let a start slip past the closing time.
+        now = self._now_utc()
+        if now < olympiad.available_from or now > olympiad.available_to:
+            raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
         deadline = now + timedelta(seconds=int(olympiad.duration_sec))
+        await self.repo.expire_overdue_attempts(user.id, now)
+        await OlympiadPoolsRepo(self.repo.db).remember_assignment_for_start(user.id, olympiad_id)
         attempt = await self.repo.create_attempt(
             user_id=user.id,
             olympiad_id=olympiad_id,

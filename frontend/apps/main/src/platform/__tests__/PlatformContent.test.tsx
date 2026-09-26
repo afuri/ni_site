@@ -1,8 +1,9 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { UserRead } from "@api";
+import type { AttemptResult, UserRead } from "@api";
 import { PlatformContent } from "../PlatformContent";
+import { seasonStart } from "../platformSeason";
 
 const user = {
   surname: "Иванов",
@@ -17,6 +18,29 @@ const user = {
 } as UserRead;
 
 describe("PlatformContent", () => {
+  it("shows completed and expired works in the season and results, not the hero", () => {
+    const year = seasonStart(new Date())!;
+    const results = ["submitted", "expired", "active"].map((status, index) => ({
+      attempt_id: index + 10, olympiad_id: index + 1, olympiad_title: `Работа ${status}`,
+      olympiad_available_from: `${year}-09-01T10:00:00Z`, status,
+      results_released: false, score_total: 0, score_max: 1, percent: 0, passed: null, graded_at: null
+    })) as AttemptResult[];
+    const props = {
+      user, olympiads: { status: "ready" as const, data: [] }, results: { status: "ready" as const, data: results },
+      announcements: { status: "ready" as const, data: [] }, activeAttempt: { status: "ready" as const, data: null },
+      schoolNotifications: [], startingOlympiadId: null, viewingAttemptId: null, downloadingAttemptId: null,
+      onOlympiadAction: vi.fn(), onContinueAttempt: vi.fn(), onViewAttempt: vi.fn(), onDownloadDiploma: vi.fn(), profileContent: null
+    };
+    const { rerender } = render(<PlatformContent {...props} section="home" />);
+    const hero = screen.getByRole("region", { name: "Доступные олимпиады" });
+    expect(within(hero).queryByText("Работа submitted")).not.toBeInTheDocument();
+    expect(screen.getByText("Работа submitted")).toBeInTheDocument();
+    expect(screen.getByText("Работа expired")).toBeInTheDocument();
+    expect(screen.queryByText("Работа active")).not.toBeInTheDocument();
+    rerender(<PlatformContent {...props} section="results" />);
+    expect(screen.getByText("Работа submitted")).toBeInTheDocument();
+    expect(screen.getByText("Работа expired")).toBeInTheDocument();
+  });
   it("shows independent loading, empty and error states on the dashboard", () => {
     render(
       <PlatformContent
@@ -27,17 +51,13 @@ describe("PlatformContent", () => {
         announcements={{ status: "error", data: [] }}
         schoolNotifications={[]}
         activeAttempt={{ status: "ready", data: null }}
-        nearestOlympiad={null}
-        recentResults={[]}
         startingOlympiadId={null}
         viewingAttemptId={null}
         downloadingAttemptId={null}
-        assigningSubject={null}
         onOlympiadAction={vi.fn()}
         onContinueAttempt={vi.fn()}
         onViewAttempt={vi.fn()}
         onDownloadDiploma={vi.fn()}
-        onAssignSubject={vi.fn()}
         profileContent={null}
       />
     );
@@ -68,17 +88,13 @@ describe("PlatformContent", () => {
         announcements={{ status: "ready", data: [] }}
         schoolNotifications={[]}
         activeAttempt={{ status: "ready", data: null }}
-        nearestOlympiad={null}
-        recentResults={[]}
         startingOlympiadId={null}
         viewingAttemptId={null}
         downloadingAttemptId={null}
-        assigningSubject={null}
         onOlympiadAction={vi.fn()}
         onContinueAttempt={vi.fn()}
         onViewAttempt={vi.fn()}
         onDownloadDiploma={vi.fn()}
-        onAssignSubject={vi.fn()}
         profileContent={null}
       />
     );
@@ -101,17 +117,13 @@ describe("PlatformContent", () => {
           text: "Диплом станет доступен после подтверждения школы."
         }]}
         activeAttempt={{ status: "ready", data: null }}
-        nearestOlympiad={null}
-        recentResults={[]}
         startingOlympiadId={null}
         viewingAttemptId={null}
         downloadingAttemptId={null}
-        assigningSubject={null}
         onOlympiadAction={vi.fn()}
         onContinueAttempt={vi.fn()}
         onViewAttempt={vi.fn()}
         onDownloadDiploma={vi.fn()}
-        onAssignSubject={vi.fn()}
         profileContent={null}
       />
     );
@@ -139,17 +151,13 @@ describe("PlatformContent", () => {
         }] }}
         schoolNotifications={[]}
         activeAttempt={{ status: "ready", data: null }}
-        nearestOlympiad={null}
-        recentResults={[]}
         startingOlympiadId={null}
         viewingAttemptId={null}
         downloadingAttemptId={null}
-        assigningSubject={null}
         onOlympiadAction={vi.fn()}
         onContinueAttempt={vi.fn()}
         onViewAttempt={vi.fn()}
         onDownloadDiploma={vi.fn()}
-        onAssignSubject={vi.fn()}
         profileContent={null}
       />
     );

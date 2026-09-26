@@ -20,7 +20,7 @@ export function createPlatformApi(client: ApiClient) {
       client.request<UserRead>({ path: "/auth/me", method: "GET", signal }),
     getOlympiads: (signal?: AbortSignal) =>
       client.request<OlympiadPublic[]>({
-        path: "/olympiads?limit=200&offset=0",
+        path: "/olympiads/my",
         method: "GET",
         signal
       }),

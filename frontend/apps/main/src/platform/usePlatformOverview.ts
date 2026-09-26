@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AttemptResult, AttemptView, OlympiadPublic, UserAnnouncement } from "@api";
 import type { PlatformApi } from "./platformApi";
-import { ageGroupAllows } from "./olympiadAction";
 
 export type ResourceStatus = "idle" | "loading" | "ready" | "error";
 
@@ -15,13 +14,9 @@ const listState = <T,>(): ResourceState<T[]> => ({ status: "idle", data: [] });
 const isAbortError = (error: unknown) =>
   error instanceof Error && error.name === "AbortError";
 
-const timestamp = (value: string | null) => {
-  if (!value) return 0;
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? 0 : parsed;
-};
-
 export function usePlatformOverview(api: PlatformApi, enabled: boolean, classGrade: number | null = null) {
+  const [revision, setRevision] = useState(0);
+  const refresh = useCallback(() => setRevision((value) => value + 1), []);
   const [olympiads, setOlympiads] = useState<ResourceState<OlympiadPublic[]>>(listState);
   const [results, setResults] = useState<ResourceState<AttemptResult[]>>(listState);
   const [announcements, setAnnouncements] = useState<ResourceState<UserAnnouncement[]>>(listState);
@@ -75,7 +70,19 @@ export function usePlatformOverview(api: PlatformApi, enabled: boolean, classGra
         setActiveAttempt({ status: "loading", data: null });
         void api.getAttempt(active.attempt_id, controller.signal)
           .then((view) => {
-            if (current) setActiveAttempt({ status: "ready", data: view });
+            if (!current) return;
+            if (view.attempt.status !== "active") {
+              setActiveAttempt({ status: "ready", data: null });
+              // The deadline may pass between reading results and the attempt.
+              // Read the final result once; never loop on a stale list/replica.
+              void api.getAttemptResult(active.attempt_id, controller.signal)
+                .then((result) => {
+                  if (current) setResults({ status: "ready", data: nextResults.map((item) => item.attempt_id === result.attempt_id ? result : item) });
+                })
+                .catch((error) => {
+                  if (current && !isAbortError(error)) setResults({ status: "error", data: nextResults });
+                });
+            } else setActiveAttempt({ status: "ready", data: view });
           })
           .catch((error) => {
             if (current && !isAbortError(error)) setActiveAttempt({ status: "error", data: null });
@@ -92,33 +99,13 @@ export function usePlatformOverview(api: PlatformApi, enabled: boolean, classGra
       current = false;
       controller.abort();
     };
-  }, [api, enabled]);
-
-  const recentResults = useMemo(
-    () => [...results.data]
-      .filter((item) => item.status !== "active")
-      .sort((left, right) => timestamp(right.graded_at) - timestamp(left.graded_at))
-      .slice(0, 4),
-    [results.data]
-  );
-
-  const nearestOlympiad = useMemo(() => {
-    const now = Date.now();
-    return [...olympiads.data]
-      .filter((item) => (
-        item.is_published
-        && ageGroupAllows(item.age_group, classGrade)
-        && timestamp(item.available_to) >= now
-      ))
-      .sort((left, right) => timestamp(left.available_from) - timestamp(right.available_from))[0] ?? null;
-  }, [classGrade, olympiads.data]);
+  }, [api, enabled, classGrade, revision, refresh]);
 
   return {
+    refresh,
     olympiads,
     results,
     announcements,
-    activeAttempt,
-    recentResults,
-    nearestOlympiad
+    activeAttempt
   };
 }

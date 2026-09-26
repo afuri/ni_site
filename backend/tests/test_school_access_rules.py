@@ -11,6 +11,9 @@ class AttemptGateRepo:
     def __init__(self, existing=None):
         self.existing = existing
 
+    async def lock_user_for_start(self, user_id: int):
+        pass
+
     async def get_attempt_by_user_olympiad(self, user_id: int, olympiad_id: int):
         return self.existing
 

@@ -5,7 +5,6 @@ import { createApiClient, type ApiError, type AttemptResult, type AttemptView, t
 import { PlatformShell, type PlatformSection } from "../platform/PlatformShell";
 import { PlatformContent } from "../platform/PlatformContent";
 import { createPlatformApi } from "../platform/platformApi";
-import type { OlympiadSubject } from "../platform/platformApi";
 import { usePlatformOverview } from "../platform/usePlatformOverview";
 import { AttemptReviewModal } from "../platform/AttemptReviewModal";
 import { resolveOlympiadAction, type OlympiadAction } from "../platform/olympiadAction";
@@ -41,7 +40,6 @@ export function StudentPlatformPage() {
   const overview = usePlatformOverview(platformApi, user?.role === "student", user?.class_grade ?? null);
   const [pendingOlympiad, setPendingOlympiad] = useState<OlympiadPublic | null>(null);
   const [startingOlympiadId, setStartingOlympiadId] = useState<number | null>(null);
-  const [assigningSubject, setAssigningSubject] = useState<OlympiadSubject | null>(null);
   const [viewingAttemptId, setViewingAttemptId] = useState<number | null>(null);
   const [viewingResult, setViewingResult] = useState<AttemptResult | null>(null);
   const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
@@ -74,45 +72,7 @@ export function StudentPlatformPage() {
       setActionMessage(action.reason);
       return;
     }
-    setActionMessage("Выберите предмет — система назначит доступный вариант олимпиады.");
-    document.querySelector<HTMLElement>(".student-hero-subjects button")?.focus();
-  };
-
-  const handleAssignSubject = async (subject: OlympiadSubject) => {
-    setActionMessage(null);
-    const active = overview.results.data.find((item) => item.status === "active");
-    if (active) {
-      continueAttempt(active.attempt_id);
-      return;
-    }
-    if (overview.results.status !== "ready") {
-      setActionMessage(overview.results.status === "error" ? "Не удалось проверить предыдущие попытки." : "Дождитесь загрузки попыток.");
-      return;
-    }
-    if (!user.is_email_verified) {
-      setActionMessage("Подтвердите email, чтобы участвовать в олимпиаде.");
-      return;
-    }
-    if (!["selected", "submission_pending", "not_required"].includes(user.school_status)) {
-      setActionMessage("Выберите школу или отправьте заявку на её добавление.");
-      return;
-    }
-    setAssigningSubject(subject);
-    try {
-      setPendingOlympiad(await platformApi.assignOlympiad(subject));
-    } catch (error) {
-      const code = (error as ApiError)?.code;
-      const messages: Record<string, string> = {
-        olympiad_pool_not_active: "По выбранному предмету нет активной олимпиады.",
-        olympiad_pool_empty: "Для выбранного предмета пока нет доступной олимпиады.",
-        olympiad_age_group_mismatch: "Олимпиада недоступна для вашего класса.",
-        olympiad_not_available: "Сейчас олимпиада недоступна по времени.",
-        olympiad_not_published: "Олимпиада ещё не опубликована."
-      };
-      setActionMessage(messages[code] ?? "Не удалось подобрать олимпиаду. Попробуйте позже.");
-    } finally {
-      setAssigningSubject(null);
-    }
+    setPendingOlympiad(action.olympiad);
   };
 
   const handleConfirmStart = async () => {
@@ -142,6 +102,8 @@ export function StudentPlatformPage() {
     } catch (error) {
       const code = (error as ApiError)?.code;
       const messages: Record<string, string> = {
+        active_attempt_exists: "У вас уже есть активная попытка. Сначала завершите её.",
+        olympiad_not_assigned: "Назначенный вариант изменился. Обновите список олимпиад.",
         email_not_verified: "Подтвердите email, чтобы участвовать в олимпиаде.",
         school_profile_required: "Выберите школу или отправьте заявку на её добавление.",
         olympiad_age_group_mismatch: "Олимпиада недоступна для вашего класса.",
@@ -150,6 +112,7 @@ export function StudentPlatformPage() {
         olympiad_has_no_tasks: "В олимпиаде пока нет заданий. Сообщите администратору."
       };
       setActionMessage(messages[code] ?? "Не удалось начать олимпиаду. Попробуйте позже.");
+      overview.refresh();
       setPendingOlympiad(null);
     } finally {
       setStartingOlympiadId(null);
@@ -218,17 +181,14 @@ export function StudentPlatformPage() {
         announcements={overview.announcements}
         schoolNotifications={schoolNotifications}
         activeAttempt={overview.activeAttempt}
-        nearestOlympiad={overview.nearestOlympiad}
-        recentResults={overview.recentResults}
         startingOlympiadId={startingOlympiadId}
         viewingAttemptId={viewingAttemptId}
         downloadingAttemptId={downloadingAttemptId}
-        assigningSubject={assigningSubject}
         onOlympiadAction={handleOlympiadAction}
         onContinueAttempt={continueAttempt}
         onViewAttempt={(result) => void handleViewAttempt(result)}
         onDownloadDiploma={(result) => void handleDownloadDiploma(result)}
-        onAssignSubject={(subject) => void handleAssignSubject(subject)}
+        onRefresh={overview.refresh}
         profileContent={(
           <StudentProfile
             user={user}
@@ -253,6 +213,7 @@ export function StudentPlatformPage() {
         <p>{pendingOlympiad?.title}</p>
       </Modal>
       <AttemptReviewModal
+        client={client}
         view={attemptView}
         result={viewingResult}
         onClose={() => { setAttemptView(null); setViewingResult(null); }}

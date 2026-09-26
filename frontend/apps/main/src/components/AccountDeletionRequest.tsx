@@ -24,15 +24,17 @@ export function AccountDeletionRequest({ client }: { client: ApiClient }) {
     } catch { setError("Не удалось изменить заявку. Обновите её состояние и повторите."); }
     finally { saving.current = false; setBusy(false); }
   };
-  return <section aria-label="Удаление аккаунта">
+  return <section className="account-deletion-section" aria-label="Удаление аккаунта">
     <h3>Удаление аккаунта</h3>
     {request ? <><p role="status">Заявка на удаление отправлена. До её исполнения администратором вы можете её отменить.</p><Button type="button" variant="outline" isLoading={busy} onClick={() => void submit(true)}>Отменить заявку на удаление</Button></>
       : <Button type="button" variant="outline" disabled={!ready || busy} onClick={() => setOpen(true)}>Подать заявку на удаление аккаунта</Button>}
     {error ? <><p role="alert">{error}</p><Button type="button" disabled={busy} onClick={() => void load()}>Обновить состояние заявки</Button></> : null}
     <Modal isOpen={open} title="Удаление аккаунта" closeOnBackdrop={false} onClose={() => { if (!busy) setOpen(false); }}>
       <p>После обработки заявки администратором аккаунт, связи, попытки, ответы, результаты и дипломы будут удалены без возможности восстановления через сайт. Сейчас будет отправлена только заявка.</p>
-      <Button type="button" disabled={busy} variant="outline" onClick={() => setOpen(false)}>Не удалять</Button>
-      <Button type="button" isLoading={busy} onClick={() => void submit(false)}>Подтвердить отправку заявки</Button>
+      <div className="account-deletion-actions">
+        <Button type="button" disabled={busy} variant="outline" onClick={() => setOpen(false)}>Не удалять</Button>
+        <Button type="button" isLoading={busy} onClick={() => void submit(false)}>Подтвердить отправку заявки</Button>
+      </div>
     </Modal>
   </section>;
 }

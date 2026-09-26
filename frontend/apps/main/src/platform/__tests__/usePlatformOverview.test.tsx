@@ -14,13 +14,27 @@ function Probe({ api }: { api: PlatformApi }) {
         announcements: state.announcements.status,
         activeAttempt: state.activeAttempt.status,
         olympiadCount: state.olympiads.data.length,
-        announcementCount: state.announcements.data.length
+        announcementCount: state.announcements.data.length,
+        completedCount: state.results.data.filter((result) => result.status !== "active").length
       })}
     </output>
   );
 }
 
 describe("usePlatformOverview", () => {
+  it("reconciles a deadline passing during loading without repeatedly polling the list", async () => {
+    const active = { attempt_id: 77, olympiad_id: 5, status: "active" };
+    const api = {
+      getOlympiads: vi.fn().mockResolvedValue([]), getAnnouncements: vi.fn().mockResolvedValue([]),
+      getMyResults: vi.fn().mockResolvedValue([active]),
+      getAttempt: vi.fn().mockResolvedValue({ attempt: { status: "expired" }, tasks: [] }),
+      getAttemptResult: vi.fn().mockResolvedValue({ ...active, status: "expired" })
+    } as unknown as PlatformApi;
+    render(<Probe api={api} />);
+    await waitFor(() => expect(screen.getByTestId("state")).toHaveTextContent('"completedCount":1'));
+    expect(api.getMyResults).toHaveBeenCalledOnce();
+    expect(api.getAttemptResult).toHaveBeenCalledOnce();
+  });
   it("keeps successful resources visible when another request fails", async () => {
     const api = {
       getProfile: vi.fn(),

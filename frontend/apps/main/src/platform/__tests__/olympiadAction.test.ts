@@ -30,6 +30,10 @@ const activeResult = {
 } as AttemptResult;
 
 describe("resolveOlympiadAction", () => {
+  it("blocks another olympiad while an attempt is active", () => {
+    const action = resolveOlympiadAction({ olympiad, results: [{ ...activeResult, olympiad_id: 9 }], resultsStatus: "ready", user });
+    expect(action).toEqual({ kind: "disabled", label: "Начать", reason: "Сначала завершите текущую попытку." });
+  });
   it("continues an active attempt instead of offering a new start", () => {
     expect(resolveOlympiadAction({
       olympiad,

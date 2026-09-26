@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import type { AttemptResult, AttemptView, OlympiadPublic, UserAnnouncement, UserRead } from "@api";
 import type { PlatformSection } from "./PlatformShell";
 import type { ResourceState } from "./usePlatformOverview";
-import { getOlympiadScheduleState, resolveOlympiadAction, type OlympiadAction } from "./olympiadAction";
-import type { OlympiadSubject } from "./platformApi";
+import type { OlympiadAction } from "./olympiadAction";
 import type { SchoolNotification } from "./schoolNotifications";
 import { PlatformIcon } from "./PlatformIcon";
 import { SubjectVisual } from "./SubjectVisual";
 import { availableSeasons, resultSeason, seasonLabel, seasonStart } from "./platformSeason";
+import { HeroOlympiads } from "./HeroOlympiads";
 
 type Props = {
   section: PlatformSection;
@@ -17,18 +17,15 @@ type Props = {
   announcements: ResourceState<UserAnnouncement[]>;
   schoolNotifications: SchoolNotification[];
   activeAttempt: ResourceState<AttemptView | null>;
-  nearestOlympiad: OlympiadPublic | null;
-  recentResults: AttemptResult[];
   startingOlympiadId: number | null;
   viewingAttemptId: number | null;
   downloadingAttemptId: number | null;
-  assigningSubject: OlympiadSubject | null;
   onOlympiadAction: (action: OlympiadAction) => void;
   onContinueAttempt: (attemptId: number) => void;
   onViewAttempt: (result: AttemptResult) => void;
   onDownloadDiploma: (result: AttemptResult) => void;
-  onAssignSubject: (subject: OlympiadSubject) => void;
   profileContent: React.ReactNode;
+  onRefresh?: () => void;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -39,11 +36,6 @@ const formatDate = (value: string | null) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "Дата не указана" : dateFormatter.format(date);
 };
-const formatDuration = (seconds: number) => {
-  const minutes = Math.max(Math.round(seconds / 60), 1);
-  return minutes >= 60 && minutes % 60 === 0 ? `${minutes / 60} ч` : `${minutes} мин`;
-};
-
 function StateMessage({ state, loading, empty, error }: {
   state: ResourceState<unknown[]>; loading: string; empty: string; error: string;
 }) {
@@ -54,63 +46,6 @@ function StateMessage({ state, loading, empty, error }: {
 
 function Panel({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return <section className={`student-panel ${className}`.trim()}><h2>{title}</h2>{children}</section>;
-}
-
-function SubjectStart({ assigning, onAssign }: { assigning: OlympiadSubject | null; onAssign: (subject: OlympiadSubject) => void }) {
-  return (
-    <div className="student-subject-start">
-      <div>
-        <h3>Начать новую олимпиаду</h3>
-        <p>Выбери предмет и попробуй свои силы.</p>
-      </div>
-      <div className="student-row-actions">
-        <button type="button" className="student-primary-action" disabled={assigning !== null} onClick={() => onAssign("math")}>{assigning === "math" ? "Подбираем…" : "Математика"}</button>
-        <button type="button" className="student-secondary-action" disabled={assigning !== null} onClick={() => onAssign("cs")}>{assigning === "cs" ? "Подбираем…" : "Информатика"}</button>
-      </div>
-    </div>
-  );
-}
-
-function OlympiadList({ state, results, user, startingId, onAction }: {
-  state: ResourceState<OlympiadPublic[]>;
-  results: ResourceState<AttemptResult[]>;
-  user: UserRead;
-  startingId: number | null;
-  onAction: (action: OlympiadAction) => void;
-}) {
-  if (state.status !== "ready" || state.data.length === 0) {
-    return <StateMessage state={state} loading="Загружаем олимпиады…" empty="Опубликованных олимпиад пока нет." error="Не удалось загрузить олимпиады. Остальные разделы кабинета доступны." />;
-  }
-  const labels = { soon: "Скоро", available: "Доступна", finished: "Завершена", "other-grade": "Другой класс" };
-  return (
-    <div className="student-data-list">
-      {state.data.map((olympiad) => {
-        const action = resolveOlympiadAction({ olympiad, results: results.data, resultsStatus: results.status, user });
-        const schedule = getOlympiadScheduleState(olympiad, user.class_grade);
-        const isStarting = startingId === olympiad.id;
-        const actionLabel = action.kind === "start" ? "Выбрать предмет" : action.label;
-        return (
-          <article key={olympiad.id} className="student-data-row student-olympiad-card">
-            <div className="student-data-row-main">
-              <span className={`student-status-badge is-${schedule}`}>{labels[schedule]}</span>
-              <h3>{olympiad.title}</h3>
-              <p>{olympiad.description || `Для классов: ${olympiad.age_group}`}</p>
-              <div className="student-card-meta"><span>{formatDuration(olympiad.duration_sec)}</span><span>Проходной результат: {olympiad.pass_percent}%</span></div>
-            </div>
-            <div className="student-card-side">
-              <dl>
-                <div><dt>Начало</dt><dd>{formatDate(olympiad.available_from)}</dd></div>
-                <div><dt>Окончание</dt><dd>{formatDate(olympiad.available_to)}</dd></div>
-              </dl>
-              <button type="button" className="student-primary-action" disabled={action.kind === "disabled" || isStarting} title={action.kind === "disabled" ? action.reason : undefined} onClick={() => onAction(action)}>
-                {isStarting ? "Запускаем…" : actionLabel}
-              </button>
-            </div>
-          </article>
-        );
-      })}
-    </div>
-  );
 }
 
 function ResultList({ state, items, user, viewingId, downloadingId, onContinue, onView, onDownload, illustrated = false }: {
@@ -189,28 +124,6 @@ function NotificationList({ state, system }: { state: ResourceState<UserAnnounce
   );
 }
 
-function CurrentParticipation({ p }: { p: Props }) {
-  const active = p.activeAttempt.data;
-  const currentSeason = seasonStart(new Date());
-  const latest = p.recentResults.find((result) => resultSeason(result) === currentSeason);
-  const loading = p.activeAttempt.status === "loading" || p.activeAttempt.status === "idle";
-  const failed = p.activeAttempt.status === "error";
-  const title = active?.olympiad_title ?? latest?.olympiad_title ?? "Время новых открытий";
-  return <section className="student-now-card" aria-label="Текущее участие">
-    <div className="student-now-content">
-      <span className="student-now-label">{active ? "Олимпиада началась" : latest ? latest.results_released ? "Результат опубликован" : "Работа отправлена ✓" : "Невский интеграл"}</span>
-      <h2>{title}</h2>
-      <p className="student-now-subtitle">{active ? "Продолжи с того места, где остановился." : latest ? latest.results_released ? "Твой результат уже в личном кабинете." : "Ответы приняты и сохранены." : "Математика и информатика — твой следующий шаг к открытиям."}</p>
-      <div className="student-now-facts">
-        {active ? <span><PlatformIcon name="calendar" size={16} />Завершить до {formatDate(active.attempt.deadline_at)} (МСК)</span> : latest ? <span><PlatformIcon name="tasks" size={16} />{latest.results_released ? `${latest.percent}% · ${latest.score_total} из ${latest.score_max}` : "Результаты будут опубликованы позже"}</span> : <span><PlatformIcon name="tasks" size={16} />Задания для твоего класса</span>}
-      </div>
-      {loading ? <p role="status">Загружаем активную попытку…</p> : failed ? <p role="alert">Не удалось загрузить активную попытку.</p> : active ? <button type="button" className="student-primary-action" onClick={() => p.onContinueAttempt(active.attempt.id)}>Продолжить<PlatformIcon name="arrow" size={18} /></button> : latest?.results_released ? <button type="button" className="student-primary-action" disabled={p.viewingAttemptId === latest.attempt_id} onClick={() => p.onViewAttempt(latest)}>{p.viewingAttemptId === latest.attempt_id ? "Загружаем…" : "Посмотреть работу"}<PlatformIcon name="arrow" size={18} /></button> : null}
-      {!active ? <div className="student-hero-subjects"><SubjectStart assigning={p.assigningSubject} onAssign={p.onAssignSubject} /></div> : null}
-    </div>
-    <SubjectVisual hero />
-  </section>;
-}
-
 function SeasonResults({ p }: { p: Props }) {
   const [season, setSeason] = useState("all");
   const seasons = availableSeasons(p.results.data);
@@ -227,16 +140,15 @@ export function PlatformContent(props: Props) {
   if (p.section === "results") return <SeasonResults p={p} />;
   if (p.section === "notifications") return <Panel title="Уведомления"><NotificationList state={p.announcements} system={p.schoolNotifications} /></Panel>;
   if (p.section === "profile") return <>{p.profileContent}</>;
-  const nearest: ResourceState<OlympiadPublic[]> = { ...p.olympiads, data: p.nearestOlympiad ? [p.nearestOlympiad] : [] };
   const currentSeason = seasonStart(new Date())!;
-  const seasonResults = p.results.data.filter((result) => resultSeason(result) === currentSeason);
+  const completedResults = p.results.data.filter((result) => result.status !== "active");
+  const seasonResults = completedResults.filter((result) => resultSeason(result) === currentSeason);
   return <div className="student-dashboard">
     {p.schoolNotifications.map((item) => <a className="student-school-alert" href="/platform/profile" key={item.id}><PlatformIcon name="info" /><span><strong>{item.title}</strong>{item.text}</span><PlatformIcon name="arrow" /></a>)}
-    <CurrentParticipation p={p} />
+    <HeroOlympiads olympiads={p.olympiads} results={p.results} activeAttempt={p.activeAttempt} user={p.user} startingId={p.startingOlympiadId} onAction={p.onOlympiadAction} onRefresh={p.onRefresh} />
     <section className="student-season-section"><header className="student-section-heading"><h2>Мой сезон {seasonLabel(currentSeason)}</h2><a href="/platform/results">Все результаты<PlatformIcon name="arrow" size={17} /></a></header>
-      {p.results.status === "ready" && p.results.data.length > 0 && seasonResults.length === 0 ? <p className="student-resource-state">{p.results.data.some((result) => resultSeason(result) === null) ? "Даты сезона для части работ пока недоступны. Все работы можно посмотреть в разделе «Результаты и дипломы»." : "В этом сезоне участий пока нет. Предыдущие работы доступны в разделе «Результаты и дипломы»."}</p> : <ResultList {...resultsProps} items={seasonResults} illustrated />}
+      {p.results.status === "ready" && completedResults.length > 0 && seasonResults.length === 0 ? <p className="student-resource-state">{completedResults.some((result) => resultSeason(result) === null) ? "Даты сезона для части работ пока недоступны. Все работы можно посмотреть в разделе «Результаты и дипломы»." : "В этом сезоне завершённых работ пока нет. Предыдущие работы доступны в разделе «Результаты и дипломы»."}</p> : <ResultList {...resultsProps} items={seasonResults} illustrated />}
     </section>
-    {p.nearestOlympiad || p.olympiads.status !== "ready" ? <Panel title="Ближайшая олимпиада"><OlympiadList state={nearest} results={p.results} user={p.user} startingId={p.startingOlympiadId} onAction={p.onOlympiadAction} /></Panel> : null}
     {p.announcements.status !== "ready" || p.announcements.data.length > 0 ? <Panel title="Объявления"><AnnouncementList state={p.announcements} limit={1} /></Panel> : null}
   </div>;
 }

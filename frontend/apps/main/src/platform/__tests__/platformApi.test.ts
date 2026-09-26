@@ -27,7 +27,7 @@ describe("createPlatformApi", () => {
 
     expect(request.mock.calls.map(([options]) => options)).toEqual([
       { path: "/auth/me", method: "GET", signal: controller.signal },
-      { path: "/olympiads?limit=200&offset=0", method: "GET", signal: controller.signal },
+      { path: "/olympiads/my", method: "GET", signal: controller.signal },
       { path: "/attempts/results/my", method: "GET", signal: controller.signal },
       { path: "/users/me/announcements", method: "GET", signal: controller.signal },
       { path: "/attempts/42", method: "GET", signal: controller.signal },

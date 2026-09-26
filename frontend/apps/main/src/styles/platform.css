@@ -62,6 +62,10 @@
 .student-user strong { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-size: .86rem; }
 .student-user small { color: #71809b; font-size: .72rem; }
 .student-user .student-user-arrow { margin-left: 14px; font-size: 1.2rem; }
+.student-user-menu { position: relative; }
+.student-user-popover { position: absolute; top: calc(100% + 10px); right: 0; z-index: 20; min-width: 145px; padding: 6px; border: 1px solid var(--student-line); border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(32, 48, 105, .12); }
+.student-user-popover button { display: flex; width: 100%; align-items: center; gap: 9px; padding: 10px 14px; border: 0; border-radius: 8px; background: transparent; color: var(--student-navy); font: inherit; cursor: pointer; }
+.student-user-popover button:hover { background: #f1f1ff; }
 .student-main { width: min(calc(100% - clamp(48px, 8vw, 116px)), 1160px); margin: 0 auto; padding: 6px 0 54px; }
 .student-footer { padding: 20px; color: #8290a7; text-align: center; font-size: .72rem; }
 .student-platform-intro { margin: 0 0 25px; }
@@ -79,16 +83,21 @@
 .student-now-facts { display: flex; flex-wrap: wrap; gap: 12px 22px; margin-top: 17px; color: #50627f; font-size: .9rem; }
 .student-now-facts > span { display: inline-flex; align-items: center; gap: 7px; }
 .student-now-content > .student-primary-action { margin-top: 22px; }
+.student-hero-olympiads { display: grid; gap: 12px; margin-top: 22px; }
+.student-hero-empty { margin: 0; padding: 22px 12px; color: var(--student-muted); text-align: center; font-size: .95rem; }
+.student-hero-olympiad { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px; border: 1px solid #dddaf5; border-radius: 13px; background: rgba(255, 255, 255, .7); }
+.student-hero-olympiad-info { min-width: 0; }
+.student-hero-olympiad-info h3 { margin: 0 0 9px; font-size: 1rem; overflow-wrap: anywhere; }
+.student-hero-olympiad-info p { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0 0; color: #50627f; font-size: .78rem; }
+.student-hero-olympiad-info svg { flex-shrink: 0; }
+.student-hero-olympiad > button { flex-shrink: 0; min-width: 118px; white-space: nowrap; }
+.student-hero-more { justify-self: start; margin-top: 4px; }
+@media (max-width: 1100px) { .student-hero-olympiad { flex-wrap: wrap; } }
 .student-subject-visual { position: relative; min-width: 0; min-height: 170px; align-self: stretch; overflow: hidden; }
 .student-subject-orbit { position: absolute; width: 210px; height: 210px; right: 8%; bottom: 5%; border: 26px solid #e5dffb; border-radius: 50%; background: #f0eaff; }
 .student-subject-symbol { position: absolute; top: 17%; right: 18%; color: #826ceb; font: 700 2.2rem Georgia, serif; opacity: .55; }
 .student-subject-visual > i { position: absolute; right: 30%; bottom: 30%; display: grid; width: 70px; height: 70px; place-items: center; border-radius: 20px; background: #6542dc; color: #fff; transform: rotate(-8deg); }
 .student-integralik { position: absolute; z-index: 2; right: 6px; bottom: 4px; width: 230px; max-width: 100%; max-height: 265px; object-fit: contain; filter: drop-shadow(0 8px 9px rgba(43, 31, 90, .1)); }
-.student-hero-subjects { margin-top: 22px; }
-.student-subject-start { display: grid; gap: 12px; }
-.student-subject-start h3 { margin: 0; font-size: .95rem; }
-.student-subject-start p { margin: 4px 0 0; color: var(--student-muted); font-size: .84rem; }
-.student-hero-subjects .student-row-actions { max-width: none; justify-content: flex-start; }
 .student-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 13px; }
 .student-section-heading h2 { margin: 0; font-size: 1.3rem; letter-spacing: -.01em; }
 .student-section-heading > a { display: inline-flex; align-items: center; gap: 7px; color: var(--student-blue); font-size: .88rem; font-weight: 750; }
@@ -139,6 +148,9 @@
 
 /* Profile uses the live Region -> School picker and existing submission workflow. */
 .student-profile-page { display: grid; gap: 24px; }
+.student-profile-page .account-deletion-section { padding: 24px; border: 1px solid var(--student-line); border-radius: 16px; background: #fff; }
+.account-deletion-section > button { margin-top: 12px; margin-bottom: 8px; }
+.account-deletion-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin: 24px 0 8px; }
 .student-profile-identity { display: flex; align-items: center; gap: 14px; margin-bottom: 21px; padding-bottom: 20px; border-bottom: 1px solid #e7ebf1; }
 .student-profile-identity > i { display: grid; width: 58px; height: 58px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: #dbe5ee; font-size: 1.25rem; font-style: normal; font-weight: 800; }
 .student-profile-identity h2 { margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }
@@ -193,6 +205,8 @@
 .student-review-task-heading h3, .student-review-content, .student-review-answer { margin: 0; }
 .student-review-task-heading h3 { font-size: 1rem; }
 .student-review-content { margin-top: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.student-review-image { display: block; max-width: 100%; height: auto; margin: 14px auto; border-radius: 8px; }
+.student-review-image-state { margin: 14px 0; color: var(--student-muted); font-size: .85rem; }
 .student-review-answer { margin-top: 14px; padding: 11px 13px; border-radius: 9px; background: #f3f7fc; overflow-wrap: anywhere; }
 .student-review-answer span { color: var(--student-muted); font-size: .82rem; }
 .student-coins { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; margin-right: 14px; padding: 8px 12px; border: 1px solid #f0cf68; border-radius: 999px; background: #fff8dc; color: #805b00; font: inherit; cursor: pointer; }

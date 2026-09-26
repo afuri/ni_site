@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps_auth import require_admin_or_moderator, get_current_user
@@ -15,6 +15,7 @@ from app.models.olympiad import Olympiad
 from app.models.olympiad_task import OlympiadTask
 from app.models.task import Task
 from app.models.user import UserRole
+from app.models.attempt import Attempt, AttemptStatus
 from app.schemas.uploads import (
     UploadPresignRequest,
     UploadPresignResponse,
@@ -70,13 +71,19 @@ def _is_admin_or_moderator(user) -> bool:
     return user.role == UserRole.teacher and user.is_moderator
 
 
-async def _task_image_access(db: AsyncSession, key: str, *, allow_unpublished: bool) -> bool:
+async def _task_image_access(db: AsyncSession, key: str, *, allow_unpublished: bool, student_id: int | None = None) -> bool:
     stmt = select(Task.id).where(Task.image_key == key)
     if not allow_unpublished:
+        own_completed = select(Attempt.id).where(
+            Attempt.olympiad_id == Olympiad.id,
+            Attempt.user_id == student_id,
+            Attempt.status != AttemptStatus.active,
+            Olympiad.results_released.is_(True),
+        ).correlate(Olympiad).exists() if student_id is not None else False
         stmt = (
             stmt.join(OlympiadTask, OlympiadTask.task_id == Task.id)
             .join(Olympiad, Olympiad.id == OlympiadTask.olympiad_id)
-            .where(Olympiad.is_published.is_(True))
+            .where(or_(Olympiad.is_published.is_(True), own_completed))
         )
     res = await db.execute(stmt.limit(1))
     return res.scalar_one_or_none() is not None
@@ -195,7 +202,8 @@ async def get_upload_url(
     allow_unpublished = _is_admin_or_moderator(user)
     prefix = normalized.split("/", 1)[0]
     if prefix == "tasks":
-        allowed = await _task_image_access(db, normalized, allow_unpublished=allow_unpublished)
+        allowed = await _task_image_access(db, normalized, allow_unpublished=allow_unpublished,
+                                          student_id=user.id if user.role == UserRole.student else None)
         if not allowed:
             raise http_error(404, codes.TASK_NOT_FOUND)
     elif prefix == "content":

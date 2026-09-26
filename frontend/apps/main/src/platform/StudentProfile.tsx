@@ -200,8 +200,8 @@ export function StudentProfile({ user, client, api, onUserUpdated }: {
         </form>
         {user.school_status === "missing" || user.school_status === "submission_rejected" ? <div className="student-school-submission-action"><Button type="button" onClick={() => { setSubmissionError(null); setSubmissionOpen(true); }}>{user.school_status === "submission_rejected" ? "Исправить заявку" : "Отправить сведения о школе"}</Button></div> : null}
       </section>
-      <AccountDeletionRequest client={client} />
       <TeacherConnections api={api} user={user} onUserUpdated={onUserUpdated} />
+      <AccountDeletionRequest client={client} />
       <SchoolSubmissionModal open={submissionOpen} regionIsOther={regionIsOther} submission={submission} saving={submissionSaving} serverError={submissionError} onClose={() => { setSubmissionOpen(false); setSubmissionError(null); }} onSubmit={createSubmission} />
     </div>
   );

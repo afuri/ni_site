@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import { PlatformIcon, type PlatformIconName } from "./PlatformIcon";
@@ -36,6 +36,29 @@ export function PlatformShell({
   children
 }: PlatformShellProps) {
   const displayName = userName || login;
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const userMenu = useRef<HTMLDivElement>(null);
+  const profileLink = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => { setLogoutOpen(false); }, [activeSection]);
+  useEffect(() => {
+    if (!logoutOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!userMenu.current?.contains(event.target as Node)) setLogoutOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLogoutOpen(false);
+        profileLink.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [logoutOpen]);
 
   return (
     <div className="student-platform-shell">
@@ -83,7 +106,16 @@ export function PlatformShell({
             <PlatformIcon name="notifications" size={23} />
             {notificationCount > 0 ? <b>{notificationCount}</b> : null}
           </Link>
-          <Link className="student-user" to="/platform/profile" aria-label="Открыть профиль" aria-current={activeSection === "profile" ? "page" : undefined}>
+          <div className="student-user-menu" ref={userMenu}>
+          <Link ref={profileLink} className="student-user" to="/platform/profile" aria-label="Открыть профиль" aria-current={activeSection === "profile" ? "page" : undefined}
+            aria-expanded={activeSection === "profile" ? logoutOpen : undefined}
+            aria-controls={logoutOpen ? "student-user-logout" : undefined}
+            onClick={(event) => {
+              if (activeSection === "profile") {
+                event.preventDefault();
+                setLogoutOpen((open) => !open);
+              }
+            }}>
             <i aria-hidden="true">{displayName.slice(0, 1).toUpperCase()}</i>
             <span>
               <strong>{displayName}</strong>
@@ -91,6 +123,10 @@ export function PlatformShell({
             </span>
             <span className="student-user-arrow" aria-hidden="true">⌄</span>
           </Link>
+          {logoutOpen ? <div className="student-user-popover" id="student-user-logout">
+            <button type="button" onClick={() => { setLogoutOpen(false); void onSignOut(); }}><PlatformIcon name="logout" size={18} />Выйти</button>
+          </div> : null}
+          </div>
         </header>
 
         <main className="student-main" id="student-main-content" tabIndex={-1}>{children}</main>

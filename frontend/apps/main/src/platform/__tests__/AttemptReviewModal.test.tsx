@@ -1,7 +1,7 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { AttemptResult, AttemptView } from "@api";
+import type { ApiClient, AttemptResult, AttemptView } from "@api";
 import { AttemptReviewModal } from "../AttemptReviewModal";
 
 const result: AttemptResult = {
@@ -52,10 +52,43 @@ const view: AttemptView = {
 
 describe("AttemptReviewModal", () => {
   it("shows the student's answer without per-task correctness", () => {
-    render(<AttemptReviewModal view={view} result={result} onClose={vi.fn()} />);
+    render(<AttemptReviewModal client={{ request: vi.fn() } as unknown as ApiClient} view={view} result={result} onClose={vi.fn()} />);
 
     expect(screen.getByText(/Ответ ученика/)).toBeInTheDocument();
     expect(screen.queryByText("Верно")).not.toBeInTheDocument();
     expect(screen.queryByText("Неверно")).not.toBeInTheDocument();
+  });
+
+  it("resolves duplicate image keys once, respects position and caches links on reopen", async () => {
+    const request = vi.fn().mockResolvedValue({ url: "https://storage.test/task.png", expires_in: 300 });
+    const client = { request } as unknown as ApiClient;
+    const withImages = { ...view, tasks: [
+      { ...view.tasks[0], image_key: "tasks/image 1.png", payload: { image_position: "before" } },
+      { ...view.tasks[0], task_id: 12, title: "Вторая", image_key: "tasks/image 1.png", sort_order: 2 }
+    ] };
+    const props = { client, result, onClose: vi.fn() };
+    const { rerender } = render(<AttemptReviewModal {...props} view={withImages} />);
+    const images = await screen.findAllByRole("img");
+    expect(images).toHaveLength(2);
+    expect(request).toHaveBeenCalledOnce();
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ path: "/uploads/tasks/image%201.png", method: "GET" }));
+    expect(images[0].nextElementSibling).toHaveTextContent("Условие");
+    expect(images[1].previousElementSibling).toHaveTextContent("Условие");
+    expect(images[0]).toHaveAttribute("loading", "lazy");
+    rerender(<AttemptReviewModal {...props} view={null} />);
+    rerender(<AttemptReviewModal {...props} view={withImages} />);
+    expect(await screen.findAllByRole("img")).toHaveLength(2);
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it("handles unavailable links and broken files without hiding the task", async () => {
+    const client = { request: vi.fn().mockRejectedValue(new Error("404")) } as unknown as ApiClient;
+    const withImage = { ...view, tasks: [{ ...view.tasks[0], image_key: "tasks/missing.png" }] };
+    const { rerender } = render(<AttemptReviewModal client={client} view={withImage} result={result} onClose={vi.fn()} />);
+    expect(await screen.findByText("Не удалось загрузить изображение задания.")).toBeInTheDocument();
+    expect(screen.getByText("Условие")).toBeInTheDocument();
+    rerender(<AttemptReviewModal client={client} view={{ ...withImage, tasks: [{ ...view.tasks[0], image_key: "https://storage.test/missing.png" }] }} result={result} onClose={vi.fn()} />);
+    fireEvent.error(await screen.findByRole("img"));
+    expect(screen.getByText("Не удалось загрузить изображение задания.")).toBeInTheDocument();
   });
 });
