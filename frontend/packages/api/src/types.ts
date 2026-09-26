@@ -94,6 +94,112 @@ export type UserRead = {
   subject: string | null;
 };
 
+export type UserUpdate = {
+  surname?: string;
+  name?: string;
+  father_name?: string | null;
+  region_id?: number | null;
+  school_id?: number | null;
+  school_not_found?: boolean;
+  class_grade?: number | null;
+  gender?: "male" | "female" | null;
+  manual_teachers?: ManualTeacher[];
+};
+
+export type TeacherRelation = {
+  id: number;
+  teacher_id: number;
+  student_id: number;
+  status: "pending" | "confirmed" | "rejected";
+  requested_by: "teacher" | "student" | null;
+  created_at: string;
+  confirmed_at: string | null;
+  teacher_surname: string | null;
+  teacher_name: string | null;
+  teacher_father_name: string | null;
+  teacher_subject: string | null;
+};
+
+export type OlympiadPublic = {
+  id: number;
+  title: string;
+  description: string | null;
+  age_group: string;
+  attempts_limit: number;
+  duration_sec: number;
+  available_from: string;
+  available_to: string;
+  pass_percent: number;
+  is_published: boolean;
+  results_released: boolean;
+};
+
+export type AttemptStatus = "active" | "submitted" | "expired";
+
+export type AttemptResult = {
+  attempt_id: number;
+  olympiad_id: number;
+  olympiad_title: string | null;
+  /** Start date of the olympiad; used for school-year grouping, never the grading date. */
+  olympiad_available_from?: string | null;
+  status: AttemptStatus;
+  score_total: number;
+  score_max: number;
+  percent: number;
+  passed: boolean | null;
+  graded_at: string | null;
+  results_released: boolean;
+};
+
+export type AttemptRead = {
+  id: number;
+  olympiad_id: number;
+  user_id: number;
+  started_at: string;
+  deadline_at: string;
+  duration_sec: number;
+  status: AttemptStatus;
+  score_total: number;
+  score_max: number;
+  passed: boolean | null;
+  graded_at: string | null;
+};
+
+export type AttemptTask = {
+  task_id: number;
+  title: string;
+  content: string;
+  task_type: "single_choice" | "multi_choice" | "short_text";
+  image_key: string | null;
+  payload: Record<string, unknown> & {
+    options?: Array<{ id: string; text: string }>;
+  };
+  sort_order: number;
+  max_score: number;
+  current_answer: {
+    task_id: number;
+    answer_payload: Record<string, unknown>;
+    updated_at: string;
+  } | null;
+  is_correct: boolean | null;
+};
+
+export type AttemptView = {
+  attempt: AttemptRead;
+  olympiad_title: string;
+  tasks: AttemptTask[];
+};
+
+export type UserAnnouncement = {
+  campaign_code: string;
+  subject: "math" | "cs" | null;
+  group_number: number | null;
+  title: string;
+  text: string;
+  starts_at: string | null;
+  ends_at: string | null;
+};
+
 export type ApiErrorPayload = {
   code: string;
   message: string;

@@ -34,6 +34,30 @@ async def list_published_olympiads(
     return await repo.list_published(limit=limit, offset=offset)
 
 
+@router.get(
+    "/my",
+    response_model=list[OlympiadPublicRead],
+    tags=["olympiads"],
+    description=("Опубликованные варианты текущего ученика из активных пулов: "
+                 "распределение (user_id - 1) % размера пула, с приоритетом сохранённого назначения. "
+                 "Будущие олимпиады включены; завершённые работы, истёкшие попытки и окна исключены. "
+                 "Сортировка по началу, затем ID. Просмотр не создаёт назначений или попыток."),
+    responses={
+        200: response_model_list_example(EXAMPLE_LISTS["olympiads"]),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+    },
+)
+async def list_my_olympiads(
+    db: AsyncSession = Depends(get_db),
+    student: User = Depends(require_role(UserRole.student)),
+):
+    service = OlympiadPoolsService(
+        OlympiadPoolsRepo(db), OlympiadAssignmentsRepo(db), OlympiadsRepo(db)
+    )
+    return await service.list_for_user(student)
+
+
 @router.post(
     "/assign",
     response_model=OlympiadPublicRead,

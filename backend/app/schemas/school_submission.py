@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
@@ -88,16 +89,33 @@ class SubmissionNewSchool(BaseModel):
         return self
 
 
+class SubmissionSchoolUpdate(BaseModel):
+    """Confirmed replacement of public details; region and administrative flags stay intact."""
+
+    school_id: int = Field(gt=0)
+    expected_updated_at: datetime
+    confirmed: Literal[True]
+    city_name: str = Field(min_length=1, max_length=120)
+    full_name: str = Field(min_length=1, max_length=512)
+    short_name: str = Field(min_length=1, max_length=255)
+    address: str = Field(min_length=1, max_length=512)
+    url: str = Field(min_length=1, max_length=2048)
+    email: EmailStr | None = None
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
 class SchoolSubmissionApprove(BaseModel):
     existing_school_id: int | None = Field(default=None, gt=0)
     new_school: SubmissionNewSchool | None = None
+    update_school: SubmissionSchoolUpdate | None = None
 
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def validate_choice(self):
-        if (self.existing_school_id is None) == (self.new_school is None):
-            raise ValueError("choose exactly one of existing_school_id or new_school")
+        if sum(value is not None for value in (self.existing_school_id, self.new_school, self.update_school)) != 1:
+            raise ValueError("choose exactly one of existing_school_id, new_school or update_school")
         return self
 
 

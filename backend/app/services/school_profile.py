@@ -82,7 +82,15 @@ class SchoolProfileService:
         allow_selected_geography_change: bool = False,
     ) -> dict:
         patch = dict(data)
+        new_role = patch.get("role", user.role)
         new_grade = patch.get("class_grade", user.class_grade)
+        leaving_preschool = user.role == UserRole.student and user.class_grade == 0 and (
+            new_role != UserRole.student or new_grade != 0
+        )
+        if leaving_preschool and new_role != UserRole.student:
+            raise ValueError(codes.ROLE_TRANSITION_NOT_ALLOWED)
+        if leaving_preschool and (not patch.get("school_id") or patch.get("school_not_found")):
+            raise ValueError(codes.SCHOOL_SELECTION_REQUIRED)
 
         if user.school_status == SchoolStatus.selected and not allow_selected_geography_change:
             requested_region_id = patch.get("region_id", user.region_id)
@@ -115,19 +123,19 @@ class SchoolProfileService:
         school_not_found = patch.pop("school_not_found", None)
         region_id = patch.pop("region_id", user.region_id)
 
-        if user.role == UserRole.student and new_grade is None:
+        if new_role == UserRole.student and (new_grade is None or not 0 <= new_grade <= 11):
             raise ValueError(codes.CLASS_GRADE_REQUIRED)
-        if user.role == UserRole.teacher and "class_grade" in patch and new_grade is not None:
+        if new_role == UserRole.teacher and "class_grade" in patch and new_grade is not None:
             raise ValueError(codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER)
 
         geography_touched = region_supplied or school_id_supplied or not_found_supplied
-        if user.role == UserRole.student and new_grade == 0:
+        if new_role == UserRole.student and new_grade == 0:
             if school_id_supplied and school_id is not None:
                 raise ValueError(codes.SCHOOL_SELECTION_REQUIRED)
             if region_id is None:
                 raise ValueError(codes.REGION_NOT_FOUND)
             choice = await self.resolve_choice(
-                role=user.role,
+                role=new_role,
                 class_grade=new_grade,
                 region_id=region_id,
                 school_id=None,
@@ -144,7 +152,7 @@ class SchoolProfileService:
             if school_not_found is None:
                 school_not_found = school_id is None
             choice = await self.resolve_choice(
-                role=user.role,
+                role=new_role,
                 class_grade=new_grade,
                 region_id=region_id,
                 school_id=school_id,
@@ -156,11 +164,4 @@ class SchoolProfileService:
                 school_status=choice.status,
                 **choice.legacy_values,
             )
-        elif (
-            user.role == UserRole.student
-            and user.class_grade == 0
-            and new_grade != 0
-            and user.school_status == SchoolStatus.not_required
-        ):
-            patch.update(school_id=None, school_status=SchoolStatus.missing, city=None, school=None)
         return patch

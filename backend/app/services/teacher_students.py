@@ -199,7 +199,9 @@ class TeacherStudentsService:
             raise ValueError(codes.USER_NOT_FOUND)
         if "subject" in data:
             data.pop("subject", None)
-        data = await SchoolProfileService(self.users_repo.db).apply_profile_fields(student, data)
+        data = await SchoolProfileService(self.users_repo.db).apply_profile_fields(
+            student, data, allow_selected_geography_change=teacher.role == UserRole.admin
+        )
         if any(data.get(field, getattr(student, field)) != getattr(student, field) for field in ("region_id", "school_id", "school_status")):
             self.users_repo.db.add(
                 UserChange(

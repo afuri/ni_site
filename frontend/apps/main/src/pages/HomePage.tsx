@@ -3,7 +3,8 @@ import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient, type ApiError } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
 import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
-import { Link, useNavigate } from "react-router-dom";
+import { getAccountHomePath, LOGIN_REDIRECT_KEY } from "../routes/accountHome";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
 import logoImage from "../assets/logo2.png";
@@ -34,7 +35,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RU_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё -]+$/;
 const FATHER_NAME_REGEX = /^[А-ЯЁ][А-ЯЁа-яё-]*(?: [А-ЯЁ][А-ЯЁа-яё-]*)*$/;
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
-const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 const VERIFY_SUCCESS_STORAGE_KEY = "ni_email_verified_success";
 const RESET_TOKEN_STORAGE_KEY = "ni_password_reset_token";
 
@@ -151,6 +151,21 @@ const getStartErrorMessage = (error: unknown): string => {
     }
     if (code === "olympiad_not_published") {
       return "Олимпиада ещё не опубликована.";
+    }
+    if (code === "active_attempt_exists") {
+      return "У вас уже есть активная попытка. Сначала завершите её.";
+    }
+    if (code === "olympiad_not_assigned") {
+      return "Назначенный вариант изменился. Обновите список олимпиад в личном кабинете.";
+    }
+    if (code === "email_not_verified") {
+      return "Подтвердите email, чтобы участвовать в олимпиаде.";
+    }
+    if (code === "school_profile_required") {
+      return "Выберите школу или отправьте заявку на её добавление.";
+    }
+    if (code === "olympiad_has_no_tasks") {
+      return "В олимпиаде пока нет заданий. Сообщите администратору.";
     }
     if (message) {
       return message;
@@ -506,6 +521,10 @@ const formatOlympiadDateRange = (olympiad: PublicOlympiad): string => {
 export function HomePage() {
   const { signIn, signOut, user, status } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedOlympiadId: unknown = location.state?.startOlympiadId;
+  const entryOlympiadId = typeof requestedOlympiadId === "number" && Number.isSafeInteger(requestedOlympiadId) && requestedOlympiadId > 0
+    ? requestedOlympiadId : null;
   const authStorage = useMemo(() => createMainAuthStorage(), []);
   const authedClient = useMemo(
     () =>
@@ -609,6 +628,52 @@ export function HomePage() {
     () => (agreementRole === "student" ? studentAgreement : teacherAgreement),
     [agreementRole]
   );
+
+  useEffect(() => {
+    if (entryOlympiadId === null || status === "idle" || status === "loading") return;
+    const clearEntry = () => navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+    if (status !== "authenticated" || !user) {
+      setStartError("Войдите в аккаунт, чтобы начать олимпиаду.");
+      clearEntry();
+      return;
+    }
+    if (user.role !== "student" || !user.is_email_verified) {
+      setStartError(user.role !== "student" ? "Начать олимпиаду могут только ученики." : "Подтвердите email, чтобы участвовать в олимпиаде.");
+      clearEntry();
+      return;
+    }
+
+    const controller = new AbortController();
+    setStartError(null);
+    setStartStatus("idle");
+    setAssignStatus("loading");
+    // Recheck the exact selected variant. Opening instructions must not start an attempt.
+    void authedClient.request<PublicOlympiad[]>({ path: "/olympiads/my", method: "GET", signal: controller.signal })
+      .then((olympiads) => {
+        if (controller.signal.aborted) return;
+        const olympiad = olympiads.find((item) => item.id === entryOlympiadId);
+        if (!olympiad) {
+          setStartError("Олимпиада больше недоступна. Обновите список в личном кабинете.");
+          setAssignStatus("error");
+        } else if (!isOlympiadAvailableNow(olympiad)) {
+          setStartError("Сейчас олимпиада недоступна по времени.");
+          setAssignStatus("error");
+        } else {
+          setPendingOlympiad(olympiad);
+          setIsInstructionOpen(true);
+          setAssignStatus("idle");
+        }
+        // Consume navigation state so Back/refresh never opens instructions again.
+        clearEntry();
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setStartError(getStartErrorMessage(error));
+        setAssignStatus("error");
+        clearEntry();
+      });
+    return () => controller.abort();
+  }, [entryOlympiadId, status, user?.id, user?.role, user?.is_email_verified, authedClient, navigate, location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (!isUserMenuOpen) {
@@ -1103,7 +1168,7 @@ export function HomePage() {
     }
     setLoginStatus("loading");
     try {
-      await signIn({ login: loginForm.login, password: loginForm.password });
+      const signedInUser = await signIn({ login: loginForm.login, password: loginForm.password });
       setLoginStatus("idle");
       setIsLoginOpen(false);
       if (typeof window !== "undefined") {
@@ -1114,7 +1179,7 @@ export function HomePage() {
           return;
         }
       }
-      navigate("/cabinet");
+      navigate(getAccountHomePath(signedInUser));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Ошибка входа.";
       setLoginErrorMessage(message);
@@ -1282,7 +1347,7 @@ export function HomePage() {
                 </button>
                 {isUserMenuOpen ? (
                   <div className="home-user-popup" role="menu">
-                    <Link to="/cabinet" role="menuitem" onClick={handleUserMenuClose}>
+                    <Link to={getAccountHomePath(user)} role="menuitem" onClick={handleUserMenuClose}>
                       Войти
                     </Link>
                     <button type="button" onClick={handleLogout} role="menuitem">
@@ -1332,6 +1397,9 @@ export function HomePage() {
           </div>
         </section>
 
+        {assignStatus === "loading" ? <p className="container home-text" role="status">Подбираем олимпиаду...</p> : null}
+        {startError ? <p className="container home-error" role="alert">{startError}</p> : null}
+
         <section id="choose" className="home-section-alt" hidden>
           <div className="container">
             <div className="home-section-heading">
@@ -1352,8 +1420,6 @@ export function HomePage() {
                   </Button>
                 ))}
               </div>
-              {assignStatus === "loading" ? <p className="home-text">Подбираем олимпиаду...</p> : null}
-              {startError ? <p className="home-error">{startError}</p> : null}
             </div>
           </div>
         </section>

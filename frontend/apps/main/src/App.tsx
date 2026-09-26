@@ -5,12 +5,16 @@ import { createMainAuthStorage } from "./utils/authStorage";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { HomePage } from "./pages/HomePage";
+import { AccountRoute } from "./routes/AccountRoute";
 
 const OlympiadPage = lazy(() =>
   import("./pages/OlympiadPage").then((module) => ({ default: module.OlympiadPage }))
 );
 const CabinetPage = lazy(() =>
   import("./pages/CabinetPage").then((module) => ({ default: module.CabinetPage }))
+);
+const StudentPlatformPage = lazy(() =>
+  import("./pages/StudentPlatformPage").then((module) => ({ default: module.StudentPlatformPage }))
 );
 const VerifyEmailPage = lazy(() =>
   import("./pages/VerifyEmailPage").then((module) => ({ default: module.VerifyEmailPage }))
@@ -35,12 +39,27 @@ const apiClient = createApiClient({
 export function App() {
   return (
     <AuthProvider client={apiClient} storage={storage}>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/olympiad" element={<OlympiadPage />} />
-            <Route path="/cabinet" element={<CabinetPage />} />
+            <Route
+              path="/cabinet"
+              element={(
+                <AccountRoute area="legacy-cabinet">
+                  <CabinetPage />
+                </AccountRoute>
+              )}
+            />
+            <Route
+              path="/platform/*"
+              element={(
+                <AccountRoute area="student-platform">
+                  <StudentPlatformPage />
+                </AccountRoute>
+              )}
+            />
             <Route path="/results" element={<ResultPage />} />
             <Route path="/archive" element={<ArchivePage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />

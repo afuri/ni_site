@@ -29,7 +29,8 @@ const school = {
   is_platform: false,
   curator: null,
   info: null,
-  is_active: true
+  is_active: true,
+  updated_at: "2026-09-21T00:00:00Z"
 };
 
 const submission = {
@@ -72,9 +73,51 @@ describe("SchoolsPage", () => {
       if (path === "/admin/schools" && method === "POST") return school;
       if (path.startsWith("/admin/schools?") && method === "GET") return [school];
       if (path === "/admin/schools/10" && method === "PATCH") return { ...school, ...body };
+      if (path === "/admin/schools/10" && method === "GET") return school;
       if (path.endsWith("/approve") || path.endsWith("/reject")) return { submission: { ...submission, status: "approved" } };
       return [];
     });
+  });
+
+  it("updates a school by ID only after reviewing and confirming replacement", async () => {
+    const user = userEvent.setup();
+    render(<SchoolsPage />);
+    await user.click(await screen.findByRole("button", { name: "Открыть" }));
+    await user.click(screen.getByLabelText("Обновить школу по ID"));
+    await user.type(screen.getByLabelText("ID обновляемой школы"), "10");
+    await user.click(screen.getByRole("button", { name: "Загрузить школу" }));
+    await user.click(await screen.findByRole("button", { name: "Проверить изменения" }));
+    expect(screen.getByText("Подтверждение обновления школы #10")).toBeInTheDocument();
+    expect(mockRequest.mock.calls.some(([request]) => request.method === "POST")).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Подтвердить обновление и одобрить" }));
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith({
+      path: "/admin/school-submissions/5/approve", method: "POST",
+      body: { update_school: {
+        school_id: 10, expected_updated_at: school.updated_at, confirmed: true,
+        city_name: "Москва", short_name: "Лицей 1", full_name: "ГБОУ Лицей 1",
+        address: "Улица, 1", url: "www.school.ru", email: null
+      } }
+    }));
+  });
+
+  it("clears loaded data when ID changes and keeps the dialog open on conflict", async () => {
+    const user = userEvent.setup();
+    render(<SchoolsPage />);
+    await user.click(await screen.findByRole("button", { name: "Открыть" }));
+    await user.click(screen.getByLabelText("Обновить школу по ID"));
+    const id = screen.getByLabelText("ID обновляемой школы");
+    await user.type(id, "10");
+    await user.click(screen.getByRole("button", { name: "Загрузить школу" }));
+    await screen.findByRole("button", { name: "Проверить изменения" });
+    await user.clear(id);
+    expect(screen.queryByRole("button", { name: "Проверить изменения" })).not.toBeInTheDocument();
+    await user.type(id, "10");
+    await user.click(screen.getByRole("button", { name: "Загрузить школу" }));
+    await user.click(await screen.findByRole("button", { name: "Проверить изменения" }));
+    mockRequest.mockRejectedValueOnce({ code: "school_update_conflict" });
+    await user.click(screen.getByRole("button", { name: "Подтвердить обновление и одобрить" }));
+    expect(await screen.findByText(/Данные школы изменились после загрузки/)).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("uses server pagination and sends filters to list and count", async () => {
@@ -153,7 +196,7 @@ describe("SchoolsPage", () => {
     expect(within(dialog).getByLabelText("Регион")).toBeInTheDocument();
     await user.click(dialog.parentElement as HTMLElement);
     expect(dialog).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Close modal" }));
+    await user.click(within(dialog).getByRole("button", { name: "Закрыть модальное окно" }));
     expect(screen.queryByRole("dialog", { name: "Добавление школы" })).toBeNull();
   });
 

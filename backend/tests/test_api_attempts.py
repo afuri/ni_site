@@ -128,6 +128,10 @@ async def test_attempts_flow(client, create_user, redis_client):
     result = resp.json()
     assert result["percent"] == 100
     assert result["score_total"] == result["score_max"]
+    assert datetime.fromisoformat(result["olympiad_available_from"]) == datetime.fromisoformat(olympiad_payload["available_from"])
+    response = await client.get("/api/v1/attempts/results/my", headers=_auth_headers(student_token))
+    assert response.status_code == 200
+    assert response.json()[0]["olympiad_available_from"] == result["olympiad_available_from"]
 
 
 @pytest.mark.asyncio

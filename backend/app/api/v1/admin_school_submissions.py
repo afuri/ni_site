@@ -27,7 +27,7 @@ def _raise_submission_error(exc: ValueError):
     code = str(exc)
     if code in {codes.SCHOOL_SUBMISSION_NOT_FOUND, codes.SCHOOL_NOT_FOUND, codes.REGION_NOT_FOUND, codes.USER_NOT_FOUND}:
         raise http_error(404, code)
-    if code in {codes.SCHOOL_SUBMISSION_NOT_PENDING, codes.SCHOOL_INACTIVE, codes.REGION_INACTIVE}:
+    if code in {codes.SCHOOL_SUBMISSION_NOT_PENDING, codes.SCHOOL_INACTIVE, codes.REGION_INACTIVE, codes.SCHOOL_UPDATE_CONFLICT}:
         raise http_error(409, code)
     raise exc
 
@@ -67,7 +67,11 @@ async def preview_duplicate_candidates(
         _raise_submission_error(exc)
 
 
-@router.post("/{submission_id}/approve", response_model=SchoolSubmissionApprovalRead)
+@router.post(
+    "/{submission_id}/approve",
+    response_model=SchoolSubmissionApprovalRead,
+    description="Одобрить заявку: привязать существующую школу, создать новую или подтвердить обновление школы по ID. Обновление и привязка выполняются атомарно. При устаревшем expected_updated_at возвращается 409 school_update_conflict.",
+)
 async def approve_school_submission(
     submission_id: int,
     payload: SchoolSubmissionApprove,
@@ -80,6 +84,7 @@ async def approve_school_submission(
             admin=admin,
             existing_school_id=payload.existing_school_id,
             new_school=payload.new_school.model_dump(mode="json") if payload.new_school else None,
+            update_school=payload.update_school.model_dump() if payload.update_school else None,
         )
         return {"submission": submission, "duplicate_candidate_ids": duplicate_ids}
     except ValueError as exc:

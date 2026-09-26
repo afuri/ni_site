@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { AccountDeletionRequest } from "../components/AccountDeletionRequest";
 import { Button, LayoutShell, Modal, Table, TextInput, useAuth } from "@ui";
 import {
   createApiClient,
@@ -826,9 +827,11 @@ export function CabinetPage() {
       setSavedProfile(nextProfile);
       setProfileStatus("idle");
       setProfileMessage("Данные сохранены.");
-    } catch {
+    } catch (error) {
       setProfileStatus("error");
-      setProfileMessage("Не удалось сохранить изменения.");
+      setProfileMessage((error as ApiError)?.code === "school_selection_required"
+        ? "Проверьте выбор школы. При переходе дошкольника в ученика необходимо выбрать школу из списка."
+        : "Не удалось сохранить изменения.");
     }
   };
 
@@ -1815,6 +1818,7 @@ export function CabinetPage() {
               </div>
                 </form>
               ) : null}
+              {!viewingStudentId && user.role !== "admin" ? <AccountDeletionRequest client={client} /> : null}
             </section>
           </div>
 

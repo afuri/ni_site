@@ -8,11 +8,34 @@ from app.models.attempt import Attempt, AttemptAnswer, AttemptStatus, AttemptTas
 from app.models.olympiad import Olympiad
 from app.models.olympiad_task import OlympiadTask
 from app.models.task import Task
+from app.models.user import User
 
 
 class AttemptsRepo:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def lock_user_for_start(self, user_id: int) -> None:
+        # Serializes only starts for this user, across all API replicas. The
+        # transaction is held until create_attempt commits (or the request rolls back).
+        await self.db.execute(select(User.id).where(User.id == user_id).with_for_update())
+
+    async def has_active_attempt(self, user_id: int, now: datetime) -> bool:
+        res = await self.db.execute(select(Attempt.id).where(
+            Attempt.user_id == user_id,
+            Attempt.status == AttemptStatus.active,
+            Attempt.deadline_at >= now,
+        ).limit(1))
+        return res.scalar_one_or_none() is not None
+
+    async def expire_overdue_attempts(self, user_id: int, now: datetime) -> None:
+        await self.db.execute(update(Attempt).where(
+            Attempt.user_id == user_id,
+            Attempt.status == AttemptStatus.active,
+            Attempt.deadline_at < now,
+        ).values(status=AttemptStatus.expired))
+        # Grading remains in the existing expiry flow. Commit with the new start,
+        # not here, so the per-user transaction lock is never released early.
 
     async def get_olympiad(self, olympiad_id: int) -> Olympiad | None:
         res = await self.db.execute(select(Olympiad).where(Olympiad.id == olympiad_id))

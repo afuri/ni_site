@@ -22,7 +22,7 @@ describe("Modal", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Details")).toBeInTheDocument();
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "Close modal" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Закрыть модальное окно" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -47,6 +47,43 @@ describe("Modal", () => {
     );
 
     await userEvent.setup().click(screen.getByRole("presentation"));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("traps keyboard focus and restores it after closing", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <>
+        <button type="button">Открыть</button>
+        <Modal isOpen={false} onClose={() => {}} title="Modal"><button type="button">Действие</button></Modal>
+      </>
+    );
+    const trigger = screen.getByRole("button", { name: "Открыть" });
+    trigger.focus();
+    rerender(
+      <>
+        <button type="button">Открыть</button>
+        <Modal isOpen onClose={() => {}} title="Modal"><button type="button">Действие</button></Modal>
+      </>
+    );
+
+    expect(screen.getByRole("button", { name: "Закрыть модальное окно" })).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Действие" })).toHaveFocus();
+
+    rerender(<button type="button">Открыть</button>);
+    expect(screen.getByRole("button", { name: "Открыть" })).toHaveFocus();
+  });
+
+  it("closes with Escape only when backdrop closing is allowed", async () => {
+    const onClose = vi.fn();
+    const { rerender } = render(<Modal isOpen onClose={onClose} title="Modal" />);
+    await userEvent.setup().keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    onClose.mockClear();
+    rerender(<Modal isOpen onClose={onClose} title="Modal" closeOnBackdrop={false} />);
+    await userEvent.setup().keyboard("{Escape}");
     expect(onClose).not.toHaveBeenCalled();
   });
 });

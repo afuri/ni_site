@@ -82,6 +82,7 @@ async def create_or_attach_student(
             codes.SUBJECT_REQUIRED,
             codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+            codes.ROLE_TRANSITION_NOT_ALLOWED,
             codes.REGION_NOT_FOUND,
             codes.REGION_INACTIVE,
             codes.SCHOOL_NOT_FOUND,
@@ -256,6 +257,7 @@ async def update_student_profile(
             codes.SCHOOL_SELECTION_REQUIRED,
             codes.CLASS_GRADE_REQUIRED,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+            codes.ROLE_TRANSITION_NOT_ALLOWED,
         }:
             raise http_error(422, code)
         raise

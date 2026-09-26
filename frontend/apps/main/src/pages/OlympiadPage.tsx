@@ -6,6 +6,7 @@ import { renderMarkdown } from "../utils/markdown";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import instructionImage from "../assets/help.png";
+import { getAccountHomePath, LOGIN_REDIRECT_KEY } from "../routes/accountHome";
 import "../styles/olympiad.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
@@ -55,7 +56,6 @@ type AnswerPayload =
 
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
-const LOGIN_REDIRECT_KEY = "ni_login_redirect";
 
 const loadMockS3 = (): Record<string, string> => {
   if (typeof window === "undefined") {
@@ -718,7 +718,7 @@ export function OlympiadPage() {
       >
         <Modal
           isOpen
-          onClose={() => navigate("/cabinet")}
+          onClose={() => navigate(getAccountHomePath(user))}
           title="Олимпиада завершена"
           className="olympiad-result-modal"
         >
@@ -744,7 +744,7 @@ export function OlympiadPage() {
               </div>
             ) : null}
             <div className="olympiad-modal-actions olympiad-result-actions">
-              <Button onClick={() => navigate("/cabinet")}>В личный кабинет</Button>
+              <Button onClick={() => navigate(getAccountHomePath(user))}>В личный кабинет</Button>
             </div>
           </div>
         </Modal>
@@ -1077,7 +1077,7 @@ export function OlympiadPage() {
             </div>
           ) : null}
           <div className="olympiad-modal-actions olympiad-result-actions">
-            <Button onClick={() => navigate("/cabinet")}>В личный кабинет</Button>
+            <Button onClick={() => navigate(getAccountHomePath(user))}>В личный кабинет</Button>
           </div>
         </div>
       </Modal>

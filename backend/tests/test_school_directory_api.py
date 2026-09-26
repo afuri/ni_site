@@ -208,6 +208,53 @@ async def test_selected_school_profile_can_be_changed_by_user_and_admin(client, 
 
 
 @pytest.mark.asyncio
+async def test_approve_submission_updates_school_with_confirmation(client, db_session, create_user):
+    await client.post('/api/v1/auth/register', json=_register_payload('updateapplicant', school_id=None, missing=True))
+    login = await client.post('/api/v1/auth/login', json={'login': 'updateapplicant', 'password': 'StrongPass1'})
+    student_headers = _headers(login.json()['access_token'])
+    submission = await client.post('/api/v1/users/me/school-submissions', headers=student_headers, json={
+        'city_name': 'Москва', 'school_short_name': 'Новое название',
+        'school_full_name': 'Полное новое название', 'url': 'www.school.ru',
+    })
+    assert submission.status_code == 201
+    await create_user(login='updateadmin', email='updateadmin@example.com', password='AdminPass1', role=UserRole.admin, class_grade=None, subject=None)
+    login = await client.post('/api/v1/auth/login', json={'login': 'updateadmin', 'password': 'AdminPass1'})
+    headers = _headers(login.json()['access_token'])
+    await client.post('/api/v1/auth/register', json=_register_payload('linkedstudent'))
+    await client.patch('/api/v1/admin/schools/1', headers=headers, json={'is_sirius': True, 'is_consortium': True})
+    original = (await client.get('/api/v1/admin/schools/1', headers=headers)).json()
+    payload = {'school_id': 1, 'expected_updated_at': original['updated_at'], 'confirmed': True,
+               'city_name': 'Москва', 'short_name': 'Новое название', 'full_name': 'Полное новое название',
+               'address': 'Новый адрес', 'url': 'www.school.ru', 'email': None}
+    path = f"/api/v1/admin/school-submissions/{submission.json()['id']}/approve"
+    unauthorized = await client.post(path, headers=student_headers, json={'update_school': payload})
+    assert unauthorized.status_code == 403
+    for invalid in ({**payload, 'confirmed': False}, {**payload, 'is_sirius': False}):
+        assert (await client.post(path, headers=headers, json={'update_school': invalid})).status_code == 422
+    assert (await client.post(path, headers=headers, json={'update_school': payload, 'existing_school_id': 1})).status_code == 422
+    stale = await client.post(path, headers=headers, json={'update_school': {**payload, 'expected_updated_at': '2000-01-01T00:00:00Z'}})
+    assert stale.status_code == 409
+    assert stale.json()['error']['code'] == codes.SCHOOL_UPDATE_CONFLICT
+    unchanged = (await client.get('/api/v1/admin/schools/1', headers=headers)).json()
+    assert unchanged['short_name'] == original['short_name']
+    approved = await client.post(path, headers=headers, json={'update_school': payload})
+    assert approved.status_code == 200, approved.text
+    assert approved.json()['submission']['resolved_school_id'] == 1
+    updated = (await client.get('/api/v1/admin/schools/1', headers=headers)).json()
+    assert updated['short_name'] == 'Новое название'
+    assert updated['updated_at'] != original['updated_at']
+    assert updated['city_id'] == original['city_id']
+    assert updated['is_sirius'] and updated['is_consortium']
+    for name in ('updateapplicant', 'linkedstudent'):
+        user = await UsersRepo(db_session).get_by_login(name)
+        await db_session.refresh(user)
+        assert user.school_id == 1
+        assert user.school_status == SchoolStatus.selected
+        assert user.school == 'Новое название'
+    assert (await client.post(path, headers=headers, json={'update_school': payload})).status_code == 409
+
+
+@pytest.mark.asyncio
 async def test_school_submission_is_unique_and_admin_can_approve_existing_school(client, db_session, create_user):
     response = await client.post(
         "/api/v1/auth/register",

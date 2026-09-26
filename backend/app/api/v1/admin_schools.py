@@ -25,6 +25,7 @@ def _serialize(school: School, *, user_count: int = 0) -> SchoolAdminRead:
         region_id=school.city.region_id,
         region_name=school.city.region.name,
         user_count=user_count,
+        updated_at=school.updated_at,
         full_name=school.full_name,
         short_name=school.short_name,
         address=school.address,

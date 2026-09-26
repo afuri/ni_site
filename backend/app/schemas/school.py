@@ -1,4 +1,5 @@
 """Public and administrative schemas for the canonical school directory."""
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -59,6 +60,7 @@ class SchoolAdminRead(SchoolFields):
     region_id: int
     region_name: str
     user_count: int = Field(default=0, ge=0)
+    updated_at: datetime
 
 
 class CityAdminRead(BaseModel):

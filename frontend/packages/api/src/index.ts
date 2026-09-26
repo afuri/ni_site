@@ -8,8 +8,14 @@ export type {
 export type {
   ApiError,
   ApiErrorResponse,
+  AttemptRead,
+  AttemptResult,
+  AttemptStatus,
+  AttemptTask,
+  AttemptView,
   AuthStorage,
   ManualTeacher,
+  OlympiadPublic,
   RegionLookup,
   SchoolLookup,
   SchoolStatus,
@@ -17,6 +23,9 @@ export type {
   SchoolSubmissionCreate,
   SchoolSubmissionStatus,
   TokenPair,
+  TeacherRelation,
+  UserAnnouncement,
   UserRead,
+  UserUpdate,
   UserRole
 } from "./types";

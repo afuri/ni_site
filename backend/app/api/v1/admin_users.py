@@ -1,9 +1,11 @@
 from datetime import datetime, timezone, timedelta
 import secrets
 import string
+import re
 
 from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
@@ -16,6 +18,8 @@ from app.core.security import hash_password, validate_password_policy, hash_toke
 from app.tasks.email import send_email_task
 from app.models.user import SchoolStatus, UserRole, User
 from app.models.user_change import UserChange
+from app.models.teacher_student import TeacherStudent
+from app.schemas.user import CYRILLIC_RE
 from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.audit_logs import AuditLogsRepo
 from app.repos.user_changes import UserChangesRepo
@@ -363,7 +367,7 @@ async def set_moderator_status(
     "/{user_id}",
     response_model=UserRead,
     tags=["admin"],
-    description="Обновить пользователя (админ, кроме email)",
+    description="Обновить пользователя (админ, кроме email). Дошкольник переходит только в ученика со школой. Смена ученик/учитель требует класса 1–11 или предмета и действующей школы; несовместимые поля и связи очищаются.",
     responses={
         200: response_model_example(UserRead, EXAMPLE_USER_READ),
         401: response_example(codes.MISSING_TOKEN),
@@ -374,6 +378,7 @@ async def set_moderator_status(
             codes.VALIDATION_ERROR,
             codes.CLASS_GRADE_REQUIRED,
             codes.SUBJECT_REQUIRED,
+            codes.ROLE_TRANSITION_NOT_ALLOWED,
             codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
         ),
@@ -407,28 +412,41 @@ async def update_user(
     requested_is_moderator = payload.is_moderator
     new_subject = patch.get("subject", user.subject)
     new_class_grade = patch.get("class_grade", user.class_grade)
+    role_changed = new_role != user.role
+    if new_role is None or (user.role == UserRole.student and user.class_grade == 0 and role_changed):
+        raise http_error(422, codes.ROLE_TRANSITION_NOT_ALLOWED)
+    if role_changed and new_role == UserRole.student and (
+        "class_grade" not in patch or new_class_grade is None or not 1 <= new_class_grade <= 11
+    ):
+        raise http_error(422, codes.CLASS_GRADE_REQUIRED)
+    if role_changed and new_role == UserRole.teacher and not patch.get("subject", ""):
+        raise http_error(422, codes.SUBJECT_REQUIRED)
 
     if new_role == UserRole.student:
-        if new_class_grade is None:
+        if new_class_grade is None or not 0 <= new_class_grade <= 11:
             raise http_error(422, codes.CLASS_GRADE_REQUIRED)
-        if "subject" in patch and patch["subject"] is not None:
+        if not role_changed and "subject" in patch and patch["subject"] is not None:
             raise http_error(422, codes.SUBJECT_NOT_ALLOWED_FOR_STUDENT)
         patch["subject"] = None
         patch["is_moderator"] = False
         patch["moderator_requested"] = False
     elif new_role == UserRole.teacher:
-        if new_subject is None:
+        if not new_subject or not new_subject.strip():
             raise http_error(422, codes.SUBJECT_REQUIRED)
-        if "class_grade" in patch and patch["class_grade"] is not None:
+        if role_changed and not re.fullmatch(CYRILLIC_RE, new_subject.strip()):
+            raise http_error(422, codes.VALIDATION_ERROR)
+        patch["subject"] = new_subject.strip()
+        if not role_changed and "class_grade" in patch and patch["class_grade"] is not None:
             raise http_error(422, codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER)
         patch["class_grade"] = None
+        patch["manual_teachers"] = []
     elif new_role == UserRole.admin:
         patch["subject"] = None
         patch["class_grade"] = None
         patch["is_moderator"] = False
         patch["moderator_requested"] = False
 
-    if requested_is_moderator and new_role != UserRole.teacher:
+    if requested_is_moderator and new_role != UserRole.teacher and not role_changed:
         raise http_error(409, codes.USER_NOT_TEACHER)
 
     if (
@@ -443,6 +461,13 @@ async def update_user(
     if admin_actor.user is not None and _requires_admin_otp(user, patch):
         await _verify_admin_otp(admin_actor.user.id, patch.get("admin_otp"))
     patch.pop("admin_otp", None)
+
+    if role_changed and new_role in {UserRole.student, UserRole.teacher}:
+        patch.setdefault("region_id", user.region_id)
+        patch.setdefault("school_id", user.school_id)
+        if not patch["school_id"] or patch.get("school_not_found"):
+            raise http_error(422, codes.SCHOOL_SELECTION_REQUIRED)
+        patch["school_not_found"] = False
 
     try:
         patch = await SchoolProfileService(db).apply_profile_fields(
@@ -461,6 +486,7 @@ async def update_user(
             codes.SCHOOL_SELECTION_REQUIRED,
             codes.CLASS_GRADE_REQUIRED,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+            codes.ROLE_TRANSITION_NOT_ALLOWED,
         }:
             raise http_error(422, code)
         raise
@@ -488,6 +514,11 @@ async def update_user(
         for field in critical_fields
     )
 
+    if role_changed:
+        # Remove only relations incompatible with the new role; attempts stay intact.
+        column = TeacherStudent.teacher_id if old_role == UserRole.teacher else TeacherStudent.student_id
+        await db.execute(delete(TeacherStudent).where(column == user.id))
+
     try:
         updated = await repo.update_profile(user, patch)
     except IntegrityError:
@@ -509,7 +540,7 @@ async def update_user(
         actor_user_id=admin_actor.id,
         target_user_id=user_id,
         action="update",
-        details={"fields": sorted(patch.keys())},
+        details={"fields": sorted(patch.keys()), "old_role": old_role.value, "new_role": updated.role.value},
         created_at=datetime.now(timezone.utc),
     )
     if needs_revoke:

@@ -91,6 +91,7 @@ async def update_me(
             codes.SCHOOL_SELECTION_REQUIRED,
             codes.CLASS_GRADE_REQUIRED,
             codes.CLASS_GRADE_NOT_ALLOWED_FOR_TEACHER,
+            codes.ROLE_TRANSITION_NOT_ALLOWED,
         }:
             raise http_error(422, code)
         raise

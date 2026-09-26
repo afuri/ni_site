@@ -18,6 +18,27 @@ from app.repos.attempts import AttemptsRepo
 from app.services.attempts import AttemptsService
 
 
+@celery_app.task(name="maintenance.cleanup_deleted_account_files")
+def cleanup_deleted_account_files():
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.pool import NullPool
+    from app.models.account_deletion import AccountDeletionCleanup
+    from app.services.account_deletion import cleanup_files
+
+    async def run():
+        engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
+        try:
+            maker = async_sessionmaker(engine, expire_on_commit=False)
+            async with maker() as db:
+                ids = list((await db.scalars(select(AccountDeletionCleanup.user_id).order_by(AccountDeletionCleanup.created_at).limit(100))).all())
+            for user_id in ids:
+                async with maker() as db:
+                    await cleanup_files(db, user_id)
+        finally:
+            await engine.dispose()
+    asyncio.run(run())
+
+
 async def _cleanup_expired_auth(
     *,
     session_maker=SessionLocal,

@@ -12,6 +12,10 @@ celery_app = Celery(
 celery_app.autodiscover_tasks(["app"])
 
 beat_schedule: dict[str, dict] = {}
+beat_schedule["cleanup-deleted-account-files"] = {
+    "task": "maintenance.cleanup_deleted_account_files",
+    "schedule": timedelta(minutes=5),
+}
 if settings.CACHE_WARMUP_INTERVAL_SEC > 0:
     beat_schedule["warmup-olympiad-cache"] = {
         "task": "maintenance.warmup_olympiad_cache",

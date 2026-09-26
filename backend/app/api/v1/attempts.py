@@ -56,6 +56,8 @@ router = APIRouter(prefix="/attempts")
             codes.OLYMPIAD_AGE_GROUP_MISMATCH,
             codes.OLYMPIAD_NOT_PUBLISHED,
             codes.OLYMPIAD_HAS_NO_TASKS,
+            codes.ACTIVE_ATTEMPT_EXISTS,
+            codes.OLYMPIAD_NOT_ASSIGNED,
         ),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),
     },
@@ -71,6 +73,8 @@ async def start_attempt(
         return attempt
     except ValueError as e:
         code = str(e)
+        if code in {codes.ACTIVE_ATTEMPT_EXISTS, codes.OLYMPIAD_NOT_ASSIGNED}:
+            raise http_error(409, code)
         if code == codes.OLYMPIAD_NOT_FOUND:
             raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
         if code == codes.EMAIL_NOT_VERIFIED:

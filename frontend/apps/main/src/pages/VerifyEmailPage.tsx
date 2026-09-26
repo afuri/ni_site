@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { createApiClient } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { getAccountHomePath } from "../routes/accountHome";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
@@ -21,9 +22,10 @@ export function VerifyEmailPage() {
 
     const storage = createMainAuthStorage();
     const hasTokens = Boolean(storage.getTokens());
+    const accountHome = getAccountHomePath(storage.getUser?.());
 
     if (!token) {
-      navigate(hasTokens ? "/cabinet" : "/", { replace: true });
+      navigate(hasTokens ? accountHome : "/", { replace: true });
       return;
     }
 
@@ -38,7 +40,7 @@ export function VerifyEmailPage() {
         window.localStorage.setItem(VERIFY_SUCCESS_STORAGE_KEY, "1");
       })
       .finally(() => {
-        navigate(hasTokens ? "/cabinet" : "/", { replace: true });
+        navigate(hasTokens ? accountHome : "/", { replace: true });
       });
   }, [navigate, token]);
 
