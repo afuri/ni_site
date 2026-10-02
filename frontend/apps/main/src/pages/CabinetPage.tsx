@@ -772,9 +772,6 @@ export function CabinetPage() {
     if (!form.gender) {
       errors.gender = "Выберите пол.";
     }
-    if (profileRole === "student" && !form.classGrade) {
-      errors.classGrade = "Выберите класс.";
-    }
     const schoolRequired = !(profileRole === "student" && form.classGrade === "0");
     if (
       !isSelectedSchoolProfileLocked &&
@@ -839,7 +836,6 @@ export function CabinetPage() {
                 school_id: normalizedProfileForm.schoolId,
                 school_not_found: normalizedProfileForm.schoolNotFound
               }),
-          class_grade: normalizedProfileForm.classGrade ? Number(normalizedProfileForm.classGrade) : null,
           gender: normalizedProfileForm.gender || null,
           subject: normalizedProfileForm.subject ? normalizedProfileForm.subject : null
         }
@@ -1770,7 +1766,7 @@ export function CabinetPage() {
                   {profileErrors.classGrade ? (
                     <span className="field-helper field-helper-error">{profileErrors.classGrade}</span>
                   ) : (
-                    <span className="field-helper">Обязательно для ученика.</span>
+                    <span className="field-helper">Изменить класс может администратор.</span>
                   )}
                 </label>
               ) : null}
