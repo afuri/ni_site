@@ -11,6 +11,7 @@ from app.core.tracing import setup_tracing
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from app.core.request_id import get_request_id
 from app.middleware.audit import AuditMiddleware
+from app.middleware.attempt_body_limit import AttemptBodyLimitMiddleware
 from app.middleware.rate_limit import GlobalRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 from app.api.v1.router import router as v1_router
@@ -55,6 +56,7 @@ APP_DESCRIPTION = """
 """
 
 app = FastAPI(title=settings.APP_NAME, description=APP_DESCRIPTION)
+app.add_middleware(AttemptBodyLimitMiddleware, max_bytes=settings.ATTEMPT_MAX_BODY_BYTES)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(GlobalRateLimitMiddleware)
 app.add_middleware(AuditMiddleware)
@@ -63,7 +65,14 @@ if settings.OTEL_ENABLED:
     FastAPIInstrumentor.instrument_app(app)
 
 if settings.PROMETHEUS_ENABLED:
-    app.mount("/metrics", make_asgi_app())
+    from app.core.maintenance_monitor import read_maintenance_state
+    prometheus_app = make_asgi_app()
+
+    async def metrics_app(scope, receive, send):
+        await read_maintenance_state()
+        await prometheus_app(scope, receive, send)
+
+    app.mount("/metrics", metrics_app)
 
 
 @app.exception_handler(HTTPException)
@@ -81,6 +90,7 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": payload, "request_id": get_request_id()},
+        headers=exc.headers,
     )
 
 

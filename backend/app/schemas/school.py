@@ -17,7 +17,6 @@ class SchoolFields(BaseModel):
     short_name: str = Field(min_length=1, max_length=255)
     address: str = Field(min_length=1, max_length=512)
     url: str | None = Field(default=None, max_length=2048)
-    email: EmailStr | None = None
     is_sirius: bool = False
     is_consortium: bool = False
     is_peterson: bool = False
@@ -32,6 +31,7 @@ class SchoolFields(BaseModel):
 
 class SchoolCreate(SchoolFields):
     city_id: int = Field(gt=0)
+    email: EmailStr | None = None
 
 
 class SchoolUpdate(BaseModel):
@@ -54,6 +54,9 @@ class SchoolUpdate(BaseModel):
 
 
 class SchoolAdminRead(SchoolFields):
+    # Imported contacts may contain several addresses or legacy formatting.
+    # Preserve them on reads; validate new input in SchoolCreate/SchoolUpdate.
+    email: str | None = None
     id: int
     city_id: int
     city_name: str

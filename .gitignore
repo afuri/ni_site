@@ -25,3 +25,29 @@ reports/
 *_report_*.csv
 temporary
 regrade_task49.sh
+
+# Local test suites and generated test artifacts
+/backend/tests/
+/frontend/**/__tests__/
+/frontend/**/*.test.*
+/frontend/**/*.spec.*
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+playwright-report/
+test-results/
+
+# Local analysis, browser checks and resilience measurements
+/docs/concurrency-client-resilience-*.md
+/docs/safari-user-scenarios-*.md
+/docs/pragmatic-resilience-*.md
+/docs/pragmatic-resilience-measurements-*.json
+/docs/optimization-progress.md
+
+# Dependencies in any frontend workspace and local scheduler state
+/frontend/**/node_modules/
+celerybeat-schedule*

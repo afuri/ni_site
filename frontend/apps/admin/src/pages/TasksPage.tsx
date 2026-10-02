@@ -14,6 +14,7 @@ type TaskItem = {
   task_type: string;
   image_key: string | null;
   payload: Record<string, unknown>;
+  archived_at?: string | null;
   created_by_user_id: number;
 };
 
@@ -246,6 +247,7 @@ const renderMarkdown = (value: string) => {
 
 export function TasksPage() {
   const { user } = useAuth();
+  const [showArchive, setShowArchive] = useState(false);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -280,13 +282,11 @@ export function TasksPage() {
     try {
       const safePage = Math.max(1, targetPage);
       const offset = (safePage - 1) * PAGE_SIZE;
-      const [list, count] = await Promise.all([
-        adminApiClient.request<TaskItem[]>({
-          path: `/admin/tasks?limit=${PAGE_SIZE}&offset=${offset}`,
-          method: "GET"
-        }),
-        adminApiClient.request<number>({ path: "/admin/tasks/count", method: "GET" })
-      ]);
+      const data = await adminApiClient.request<{items: TaskItem[]; total: number}>({
+        path: `/admin/tasks?limit=${PAGE_SIZE}&offset=${offset}&archived=${showArchive}&include_total=true`, method: "GET"
+      });
+      const list = data?.items;
+      const count = data?.total;
       const nextTasks = list ?? [];
       const nextTotal = count ?? 0;
       const nextTotalPages = Math.max(1, Math.ceil(nextTotal / PAGE_SIZE));
@@ -335,8 +335,8 @@ export function TasksPage() {
   };
 
   useEffect(() => {
-    void loadTasks();
-  }, []);
+    void loadTasks(1);
+  }, [showArchive]);
 
   const handleFirstPage = () => {
     if (page <= 1) {
@@ -859,8 +859,8 @@ export function TasksPage() {
         await adminApiClient.request({ path: "/admin/tasks", method: "POST", body });
       } else if (editingTaskId) {
         await adminApiClient.request({
-          path: `/admin/tasks/${editingTaskId}`,
-          method: "PUT",
+          path: `/admin/tasks/${editingTaskId}/copy`,
+          method: "POST",
           body
         });
       }
@@ -908,7 +908,7 @@ export function TasksPage() {
     }
     setDeleteStatus("deleting");
     try {
-      await adminApiClient.request({ path: `/admin/tasks/${deleteTarget.id}`, method: "DELETE" });
+      await adminApiClient.request({ path: `/admin/tasks/${deleteTarget.id}/archive`, method: "POST" });
       setDeleteTarget(null);
       await loadTasks();
     } catch {
@@ -923,7 +923,8 @@ export function TasksPage() {
           <h1>Управление заданиями</h1>
           <p className="admin-hint">Создавайте и редактируйте задания банка.</p>
         </div>
-        <div className="admin-toolbar-actions">
+        <label><input type="checkbox" checked={showArchive} onChange={(event) => setShowArchive(event.target.checked)} /> Показать архив</label>
+      <div className="admin-toolbar-actions">
           <Button type="button" onClick={openCreate}>
             Создать задание
           </Button>
@@ -999,7 +1000,7 @@ export function TasksPage() {
                 <td>
                   <div className="admin-table-actions">
                     <Button type="button" size="sm" variant="outline" onClick={() => openEdit(task)}>
-                      Редактировать
+                      Создать изменённую копию
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => openPreviewFromTask(task)}>
                       Предпросмотр
@@ -1013,8 +1014,8 @@ export function TasksPage() {
                     >
                       Скопировать
                     </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setDeleteTarget(task)}>
-                      Удалить
+                    <Button type="button" size="sm" variant="ghost" disabled={Boolean(task.archived_at)} onClick={() => setDeleteTarget(task)}>
+                      В архив
                     </Button>
                   </div>
                 </td>
@@ -1028,7 +1029,7 @@ export function TasksPage() {
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         closeOnBackdrop={false}
-        title={formMode === "create" ? "Новое задание" : "Редактирование задания"}
+        title={formMode === "create" ? "Новое задание" : "Копия задания"}
         className="admin-task-modal"
       >
         <div className="admin-form">
@@ -1240,15 +1241,15 @@ export function TasksPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title="Удалить задание">
-        <p>Вы действительно хотите удалить задание “{deleteTarget?.title}”?</p>
-        {deleteStatus === "error" ? <p className="admin-error">Не удалось удалить запись.</p> : null}
+      <Modal isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title="Архивировать задание">
+        <p>Архивировать задание “{deleteTarget?.title}”?</p>
+        {deleteStatus === "error" ? <p className="admin-error">Не удалось архивировать задание.</p> : null}
         <div className="admin-modal-actions">
           <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
             Отмена
           </Button>
           <Button type="button" onClick={handleDelete} isLoading={deleteStatus === "deleting"}>
-            Удалить
+            В архив
           </Button>
         </div>
       </Modal>

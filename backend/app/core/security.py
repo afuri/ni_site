@@ -68,7 +68,7 @@ def decode_token(token: str) -> dict:
 
 
 def encode_token(payload: dict) -> str:
-    return jwt.encode(payload, _jwt_signing_secret(), algorithm=settings.JWT_ALG)
+    return jwt.encode(dict(sorted(payload.items())), _jwt_signing_secret(), algorithm=settings.JWT_ALG)
 
 def generate_token() -> str:
     return secrets.token_urlsafe(32)

@@ -28,6 +28,7 @@ class TeacherAttemptRead(BaseModel):
     score_max: int
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -39,6 +40,8 @@ class TeacherAttemptTask(BaseModel):
     task_type: TaskType
     sort_order: int
     max_score: int
+    image_key: str | None = None
+    payload: dict[str, Any]
     answer_payload: Optional[dict[str, Any]] = None
     updated_at: Optional[datetime] = None
 
@@ -63,6 +66,7 @@ class TeacherOlympiadAttemptRow(BaseModel):
     score_max: int
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
 
 
 class TeacherCertificateItem(BaseModel):

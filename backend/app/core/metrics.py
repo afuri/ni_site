@@ -83,3 +83,12 @@ REQUEST_LATENCY_SECONDS = Histogram(
     "HTTP request latency",
     ["path", "method"],
 )
+
+MAINTENANCE_LAST_SUCCESS_TIMESTAMP = Gauge(
+    "maintenance_last_success_timestamp_seconds", "Last committed maintenance run", ["task"])
+
+MAINTENANCE_PENDING_BOUNDED = Gauge(
+    "maintenance_pending_bounded", "Pending rows, capped at 1001; sampled after a committed run", ["entity"])
+
+MAINTENANCE_OLDEST_PENDING_AGE = Gauge(
+    "maintenance_oldest_pending_age_seconds", "Age of oldest pending row from the last worker sample", ["entity"])

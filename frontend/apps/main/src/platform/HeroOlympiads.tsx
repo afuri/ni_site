@@ -75,6 +75,13 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
   const visible = expanded ? candidates : candidates.slice(0, 3);
   const loading = olympiads.status === "idle" || olympiads.status === "loading";
   const failed = olympiads.status === "error";
+  const matchingPublished = olympiads.data.filter((item) => item.is_published && getOlympiadScheduleState(item, user.class_grade, now) !== "other-grade");
+  const completedIds = new Set(results.data.filter((item) => item.status !== "active").map((item) => item.olympiad_id));
+  const emptyMessage = matchingPublished.length === 0
+    ? "Для вашего класса пока нет опубликованных олимпиад."
+    : results.status === "ready" && matchingPublished.every((item) => completedIds.has(item.id))
+      ? "Вы прошли все доступные олимпиады."
+      : "Сейчас нет открытых олимпиад для вашего класса.";
 
   return <section className="student-now-card" aria-label="Доступные олимпиады">
     <div className="student-now-content">
@@ -82,7 +89,7 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
       <h2>Время новых открытий</h2>
       <p className="student-now-subtitle">Математика и информатика — твой следующий шаг к открытиям.</p>
       <div className="student-hero-olympiads">
-        {loading ? <p role="status" className="student-hero-empty">Загружаем олимпиады…</p> : failed ? <div className="student-hero-empty"><p role="alert">Не удалось загрузить олимпиады.</p>{onRefresh ? <button type="button" className="student-secondary-action" onClick={onRefresh}>Повторить загрузку</button> : null}</div> : !visible.length ? <p className="student-hero-empty">Олимпиада для вашего класса еще не опубликована</p> : visible.map((item) => {
+        {loading ? <p role="status" className="student-hero-empty">Загружаем олимпиады…</p> : failed ? <div className="student-hero-empty"><p role="alert">Не удалось загрузить олимпиады.</p>{onRefresh ? <button type="button" className="student-secondary-action" onClick={onRefresh}>Повторить загрузку</button> : null}</div> : !visible.length ? <div className="student-hero-empty"><p>{emptyMessage}</p>{results.status === "ready" && completedIds.size > 0 ? <a href="/platform/results">Посмотреть свои результаты</a> : null}</div> : visible.map((item) => {
           const action = resolveOlympiadAction({ olympiad: item, results: results.data, resultsStatus: results.status, user, now });
           const soon = getOlympiadScheduleState(item, user.class_grade, now) === "soon";
           const busy = startingId !== null;

@@ -39,7 +39,7 @@ async def list_published_olympiads(
     response_model=list[OlympiadPublicRead],
     tags=["olympiads"],
     description=("Опубликованные варианты текущего ученика из активных пулов: "
-                 "распределение (user_id - 1) % размера пула, с приоритетом сохранённого назначения. "
+                 "распределение ((user_id - 1) % 4) + 1, с приоритетом сохранённого назначения. "
                  "Будущие олимпиады включены; завершённые работы, истёкшие попытки и окна исключены. "
                  "Сортировка по началу, затем ID. Просмотр не создаёт назначений или попыток."),
     responses={
@@ -62,7 +62,7 @@ async def list_my_olympiads(
     "/assign",
     response_model=OlympiadPublicRead,
     tags=["olympiads"],
-    description="Назначить олимпиаду из активного пула по предмету",
+    description="Назначить вариант выбранной работы по pool_id",
     responses={
         200: {},
         401: response_example(codes.MISSING_TOKEN),
@@ -87,7 +87,7 @@ async def assign_olympiad(
         OlympiadPoolsRepo(db), OlympiadAssignmentsRepo(db), OlympiadsRepo(db)
     )
     try:
-        return await service.assign_for_user(user=student, subject=payload.subject)
+        return await service.assign_for_user(user=student, pool_id=payload.pool_id)
     except ValueError as e:
         code = str(e)
         if code == codes.INVALID_SUBJECT:
@@ -104,4 +104,4 @@ async def assign_olympiad(
             raise http_error(409, codes.OLYMPIAD_NOT_AVAILABLE)
         if code == codes.OLYMPIAD_NOT_FOUND:
             raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
-        raise
+        raise http_error(409, code)

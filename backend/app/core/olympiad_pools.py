@@ -2,9 +2,8 @@ from app.core.age_groups import normalize_age_group
 
 SUBJECT_MATH = "math"
 SUBJECT_CS = "cs"
-SUBJECT_TRIAL = "trial"
 
-ALLOWED_SUBJECTS = {SUBJECT_MATH, SUBJECT_CS, SUBJECT_TRIAL}
+ALLOWED_SUBJECTS = {SUBJECT_MATH, SUBJECT_CS}
 
 
 def normalize_subject(value: str) -> str:

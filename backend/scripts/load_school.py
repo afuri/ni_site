@@ -303,10 +303,10 @@ def import_directory(
         with connection.cursor() as cursor:
             cursor.execute("SELECT pg_advisory_xact_lock(%s)", (ADVISORY_LOCK_KEY,))
             cursor.execute(
-                "SELECT to_regclass('public.regions'), to_regclass('public.schools_legacy'), "
+                "SELECT to_regclass('public.regions'), "
                 "to_regclass('public.school_import_batches')"
             )
-            if cursor.fetchone() != ("regions", "schools_legacy", "school_import_batches"):
+            if cursor.fetchone() != ("regions", "school_import_batches"):
                 raise ImportValidationError("database is not migrated to the canonical school schema")
             cursor.execute("SELECT 1 FROM school_import_batches WHERE batch_id = %s", (batch_id,))
             if cursor.fetchone():
@@ -451,72 +451,17 @@ def import_directory(
 
             missing_ids = [row.user_id for row in users if row.school_status == "missing"]
             cursor.execute(
-                "SELECT id, role::text, class_grade, country, city FROM users WHERE id = ANY(%s)",
+                "SELECT id, role::text, class_grade FROM users WHERE id = ANY(%s)",
                 (missing_ids,),
             )
             missing_users = cursor.fetchall()
             if len(missing_users) != len(missing_ids):
                 raise ImportValidationError("not all users without schools were loaded from the database")
-            city_regions: dict[str, set[int]] = defaultdict(set)
-            region_names = {value: key for key, value in region_ids.items()}
-            for region_key, city_key in city_variants:
-                city_regions[city_key].add(region_ids[region_key])
-
             resolved_missing: list[tuple[int, int, str]] = []
-            review_rows: list[dict[str, object]] = []
-            not_required = 0
-            for user_id, role, class_grade, country, city in missing_users:
-                if user_id in override_region_ids:
-                    target_status = "not_required" if role == "student" and class_grade == 0 else "missing"
-                    resolved_missing.append((user_id, override_region_ids[user_id], target_status))
-                    not_required += int(target_status == "not_required")
-                    continue
-                if role == "student" and class_grade == 0:
-                    candidates = city_regions.get(normalize_name(city or ""), set())
-                    region_id = next(iter(candidates)) if len(candidates) == 1 else other_region_id if not _is_russia(country) else None
-                    if region_id is None:
-                        review_rows.append(
-                            {
-                                "user_id": user_id,
-                                "legacy_country": country or "",
-                                "legacy_city": city or "",
-                                "candidate_regions": "|".join(
-                                    sorted(_display_name(region_variants[region_names[item]]) for item in candidates)
-                                ),
-                                "reason": "preschool_region_unresolved",
-                            }
-                        )
-                        continue
-                    resolved_missing.append((user_id, region_id, "not_required"))
-                    not_required += 1
-                    continue
-                if not _is_russia(country):
-                    resolved_missing.append((user_id, other_region_id, "missing"))
-                    continue
-                candidates = city_regions.get(normalize_name(city or ""), set())
-                if len(candidates) == 1:
-                    resolved_missing.append((user_id, next(iter(candidates)), "missing"))
-                    continue
-                review_rows.append(
-                    {
-                        "user_id": user_id,
-                        "legacy_country": country or "",
-                        "legacy_city": city or "",
-                        "candidate_regions": "|".join(
-                            sorted(_display_name(region_variants[region_names[item]]) for item in candidates)
-                        ),
-                        "reason": "city_not_found" if not candidates else "city_in_multiple_regions",
-                    }
-                )
-
-            stats["not_required_users"] = not_required
-            stats["region_overrides_used"] = len(override_region_ids)
-            stats["unresolved_user_regions"] = len(review_rows)
-            if review_rows:
-                _write_review(review_output, review_rows)
-                raise ImportValidationError(
-                    f"{len(review_rows)} user regions are unresolved; review {review_output}"
-                )
+            for user_id, role, class_grade in missing_users:
+                region_id = override_region_ids.get(user_id, other_region_id)
+                status = "not_required" if role == "student" and class_grade == 0 else "missing"
+                resolved_missing.append((user_id, region_id, status))
             cursor.execute(
                 "CREATE TEMP TABLE missing_user_regions "
                 "(user_id integer PRIMARY KEY, region_id integer, school_status school_status_enum) "

@@ -60,16 +60,13 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
-    TOKEN_CLEANUP_INTERVAL_SEC: int = 3600
+    TOKEN_CLEANUP_INTERVAL_SEC: int = 60
 
-    VK_CLIENT_ID: str | None = None
-    VK_CLIENT_SECRET: str | None = None
-    VK_REDIRECT_URI: str | None = None
-    VK_SCOPE: str = "offline,email"
 
     HTTP_CLIENT_TIMEOUT_SEC: int = 10
 
     # rate limit for saving answers
+    ATTEMPT_MAX_BODY_BYTES: int = 512 * 1024
     ANSWERS_RL_LIMIT: int = 100
     ANSWERS_RL_WINDOW_SEC: int = 10
     SUBMIT_LOCK_TTL_SEC: int = 15
@@ -77,6 +74,10 @@ class Settings(BaseSettings):
 
     AUTH_LOGIN_RL_LIMIT: int = 10
     AUTH_LOGIN_RL_WINDOW_SEC: int = 60
+    AUTH_REFRESH_RL_LIMIT: int = 10
+    AUTH_REFRESH_RL_WINDOW_SEC: int = 60
+    AUTH_INVALID_REFRESH_IP_LIMIT: int = 120
+    AUTH_LOGOUT_RL_LIMIT: int = 10
     AUTH_REGISTER_RL_LIMIT: int = 2
     AUTH_REGISTER_RL_WINDOW_SEC: int = 60
     AUTH_VERIFY_RL_LIMIT: int = 2

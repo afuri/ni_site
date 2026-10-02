@@ -76,9 +76,6 @@ export type UserRead = {
   surname: string;
   name: string;
   father_name: string | null;
-  country: string | null;
-  city: string | null;
-  school: string | null;
   region_id: number | null;
   region_name: string | null;
   school_id: number | null;
@@ -121,6 +118,9 @@ export type TeacherRelation = {
 };
 
 export type OlympiadPublic = {
+  pool_id?: number | null;
+  subject?: "math" | "cs" | null;
+  is_trial?: boolean;
   id: number;
   title: string;
   description: string | null;
@@ -148,6 +148,9 @@ export type AttemptResult = {
   percent: number;
   passed: boolean | null;
   graded_at: string | null;
+  started_at?: string | null;
+  deadline_at?: string | null;
+  finished_at?: string | null;
   results_released: boolean;
 };
 
@@ -163,6 +166,8 @@ export type AttemptRead = {
   score_max: number;
   passed: boolean | null;
   graded_at: string | null;
+  finished_at?: string | null;
+  answers_revision?: number | null;
 };
 
 export type AttemptTask = {
@@ -186,6 +191,7 @@ export type AttemptTask = {
 
 export type AttemptView = {
   attempt: AttemptRead;
+  server_now?: string;
   olympiad_title: string;
   tasks: AttemptTask[];
 };
@@ -221,4 +227,6 @@ export type AuthStorage = {
   setTokens: (tokens: TokenPair | null) => void;
   getUser?: () => UserRead | null;
   setUser?: (user: UserRead | null) => void;
+  getSessionId?: () => string | null;
+  subscribe?: (listener: () => void) => () => void;
 };

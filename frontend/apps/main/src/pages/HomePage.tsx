@@ -593,6 +593,7 @@ export function HomePage() {
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [resetErrors, setResetErrors] = useState<ResetErrors>({});
   const [resetStatus, setResetStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [continueAttemptId, setContinueAttemptId] = useState<number | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [isInstructionOpen, setIsInstructionOpen] = useState(false);
   const [isNotFoundOpen, setIsNotFoundOpen] = useState(false);
@@ -1202,20 +1203,7 @@ export function HomePage() {
       setStartError("Подтвердите email, чтобы участвовать в олимпиаде.");
       return;
     }
-    setAssignStatus("loading");
-    try {
-      const olympiad = await authedClient.request<PublicOlympiad>({
-        path: "/olympiads/assign",
-        method: "POST",
-        body: { subject }
-      });
-      setPendingOlympiad(olympiad);
-      setIsInstructionOpen(true);
-      setAssignStatus("idle");
-    } catch (error) {
-      setStartError(getStartErrorMessage(error));
-      setAssignStatus("error");
-    }
+    navigate("/platform/olympiads");
   };
 
   const handleConfirmStart = async () => {
@@ -1235,6 +1223,9 @@ export function HomePage() {
       navigate(`/olympiad?attemptId=${attempt.id}`);
     } catch (error) {
       const message = getStartErrorMessage(error);
+      const apiError = error as ApiError;
+      const existingId = Number(apiError?.details?.attempt_id);
+      setContinueAttemptId(apiError?.code === "active_attempt_exists" && existingId > 0 ? existingId : null);
       setStartError(message);
       setStartStatus("error");
       setIsInstructionOpen(false);
@@ -1399,6 +1390,7 @@ export function HomePage() {
 
         {assignStatus === "loading" ? <p className="container home-text" role="status">Подбираем олимпиаду...</p> : null}
         {startError ? <p className="container home-error" role="alert">{startError}</p> : null}
+        {continueAttemptId ? <div className="container"><Button onClick={() => navigate(`/olympiad?attemptId=${continueAttemptId}`)}>Продолжить начатую работу</Button></div> : null}
 
         <section id="choose" className="home-section-alt" hidden>
           <div className="container">

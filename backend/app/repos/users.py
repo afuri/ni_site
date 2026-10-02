@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import noload
 from app.core import error_codes as codes
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, Gender, SchoolStatus
@@ -49,10 +50,12 @@ class UsersRepo:
         res = await self.db.execute(select(User).where(func.lower(User.email) == email_value))
         return res.scalar_one_or_none()
 
-    async def get_by_id(self, user_id: int, *, for_update: bool = False) -> User | None:
-        stmt = select(User).where(User.id == user_id)
+    async def get_by_id(self, user_id: int, *, for_update: bool = False, minimal: bool = False) -> User | None:
+        stmt = select(User).where(User.id == user_id).execution_options(populate_existing=True)
+        if minimal:
+            stmt = stmt.options(noload(User.region_record), noload(User.school_record))
         if for_update:
-            stmt = stmt.with_for_update(of=User)
+            stmt = stmt.with_for_update(of=User).execution_options(populate_existing=True)
         res = await self.db.execute(stmt)
         return res.scalar_one_or_none()
 
@@ -263,9 +266,6 @@ class UsersRepo:
         surname: str,
         name: str,
         father_name: str | None,
-        country: str | None,
-        city: str | None,
-        school: str | None,
         class_grade: int | None,
         subject: str | None,
         gender: str | None,
@@ -288,9 +288,6 @@ class UsersRepo:
             surname=surname,
             name=name,
             father_name=father_name,
-            country=country,
-            city=city,
-            school=school,
             class_grade=class_grade,
             subject=subject,
             gender=gender_value,
@@ -320,8 +317,9 @@ class UsersRepo:
         for k, v in data.items():
             setattr(user, k, v)
         await self.db.commit()
-        await self.db.refresh(user)
-        return user
+        # Refreshing the row alone can leave the previously loaded school
+        # relationship pointing at the old (or absent) school after a FK change.
+        return await self.get_by_id(user.id)
 
     async def set_email_verified(self, user: User) -> User:
         user.is_email_verified = True

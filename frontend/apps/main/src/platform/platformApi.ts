@@ -32,11 +32,11 @@ export function createPlatformApi(client: ApiClient) {
       client.request<AttemptView>({ path: `/attempts/${attemptId}`, method: "GET", signal }),
     getAttemptResult: (attemptId: number, signal?: AbortSignal) =>
       client.request<AttemptResult>({ path: `/attempts/${attemptId}/result`, method: "GET", signal }),
-    assignOlympiad: (subject: OlympiadSubject) =>
+    assignOlympiad: (poolId: number) =>
       client.request<OlympiadPublic>({
         path: "/olympiads/assign",
         method: "POST",
-        body: { subject }
+        body: { pool_id: poolId }
       }),
     startAttempt: (olympiadId: number) =>
       client.request<AttemptRead>({

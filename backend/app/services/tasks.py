@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.models.task import Task, TaskType
+from app.models.task import Task
 from app.repos.tasks import TasksRepo
 from app.schemas.tasks import TaskCreate
 from app.core.redis import safe_redis
@@ -28,28 +28,17 @@ class TasksService:
         return await self.repo.create(task)
 
     async def update(self, *, task: Task, patch: dict) -> Task:
-        # Если обновляют payload — валидируем через TaskCreate-валидатор, используя текущий/новый task_type
-        new_task_type = patch.get("task_type", task.task_type)
+        raise ValueError("task_immutable")
 
-        if "payload" in patch and patch["payload"] is not None:
-            # Используем TaskCreate как валидатор контракта
-            tmp = TaskCreate(
-                subject=patch.get("subject", task.subject),
-                title=patch.get("title", task.title),
-                content=patch.get("content", task.content),
-                task_type=new_task_type,
-                image_key=patch.get("image_key", task.image_key),
-                payload=patch["payload"],
-            )
-            patch["payload"] = tmp.payload
+    async def copy(self, *, task: Task, payload: TaskCreate, created_by_user_id: int) -> Task:
+        return await self.create(payload=payload, created_by_user_id=created_by_user_id)
 
-        for k, v in patch.items():
-            setattr(task, k, v)
-
-        task.updated_at = datetime.now(timezone.utc)
-        updated = await self.repo.update(task)
+    async def archive(self, *, task: Task) -> Task:
+        if task.archived_at is None:
+            task.archived_at = datetime.now(timezone.utc)
+        saved = await self.repo.update(task)
         await self._invalidate_task_cache(task.id)
-        return updated
+        return saved
 
     async def _invalidate_task_cache(self, task_id: int) -> None:
         redis = await safe_redis()
@@ -65,5 +54,4 @@ class TasksService:
             pass
 
     async def delete(self, *, task: Task) -> None:
-        await self.repo.delete(task)
-        await self._invalidate_task_cache(task.id)
+        raise ValueError("physical_delete_disabled")

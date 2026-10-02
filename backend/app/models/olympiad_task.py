@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, UniqueConstraint, Index
+from sqlalchemy import ForeignKey, Integer, UniqueConstraint, CheckConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
@@ -15,5 +15,6 @@ class OlympiadTask(Base):
 
     __table_args__ = (
         UniqueConstraint("olympiad_id", "task_id", name="uq_olympiad_task"),
+        CheckConstraint("max_score > 0 AND sort_order >= 0", name="ck_olympiad_tasks_rules"),
         Index("ix_olympiad_tasks_olympiad_sort", "olympiad_id", "sort_order"),
     )

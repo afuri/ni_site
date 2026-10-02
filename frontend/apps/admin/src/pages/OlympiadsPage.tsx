@@ -4,6 +4,8 @@ import { adminApiClient, adminStorage } from "../lib/adminClient";
 import { formatDate, fromDateTimeLocal, toDateTimeLocal } from "../lib/formatters";
 
 type OlympiadItem = {
+  archived_at?: string | null;
+  rules_locked_at?: string | null;
   id: number;
   title: string;
   description: string | null;
@@ -23,7 +25,6 @@ type OlympiadForm = {
   title: string;
   description: string;
   classGrades: number[];
-  attemptsLimit: string;
   durationMinutes: string;
   availableFrom: string;
   availableTo: string;
@@ -59,6 +60,7 @@ type TaskSelection = {
 };
 
 type PoolItem = {
+  is_trial?: boolean;
   id: number;
   subject: string;
   grade_group: string;
@@ -70,6 +72,7 @@ type PoolItem = {
 
 type PoolForm = {
   subject: string;
+  isTrial: boolean;
   gradeGroup: string;
   olympiadIds: string;
   activate: boolean;
@@ -86,7 +89,6 @@ const emptyForm: OlympiadForm = {
   title: "",
   description: "",
   classGrades: [7, 8],
-  attemptsLimit: "1",
   durationMinutes: "10",
   availableFrom: "",
   availableTo: "",
@@ -95,9 +97,8 @@ const emptyForm: OlympiadForm = {
 
 const CLASS_GRADE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 const SUBJECT_OPTIONS = [
-  { value: "math", label: "Математика", gradeGroups: ["1", "2", "3", "4", "5-6", "7"] },
-  { value: "cs", label: "Информатика", gradeGroups: ["3-4", "5-6", "7"] },
-  { value: "trial", label: "Пробная олимпиада", gradeGroups: ["1-8"] }
+  { value: "math", label: "Математика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "7-8", "1-8"] },
+  { value: "cs", label: "Информатика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "7-8", "1-8"] }
 ];
 
 const escapeHtml = (value: string) =>
@@ -212,6 +213,7 @@ const renderMarkdown = (value: string) => {
 };
 
 export function OlympiadsPage() {
+  const [showArchive, setShowArchive] = useState(false);
   const [olympiads, setOlympiads] = useState<OlympiadItem[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -237,6 +239,7 @@ export function OlympiadsPage() {
   const [poolError, setPoolError] = useState<string | null>(null);
   const [poolForm, setPoolForm] = useState<PoolForm>({
     subject: "math",
+    isTrial: false,
     gradeGroup: "1",
     olympiadIds: "",
     activate: true
@@ -313,7 +316,7 @@ export function OlympiadsPage() {
     setError(null);
     try {
       const data = await adminApiClient.request<OlympiadItem[]>({
-        path: "/admin/olympiads?mine=true",
+        path: `/admin/olympiads?mine=true&archived=${showArchive}`,
         method: "GET"
       });
       setOlympiads(data ?? []);
@@ -323,6 +326,8 @@ export function OlympiadsPage() {
       setError("Не удалось загрузить олимпиады.");
     }
   };
+
+  useEffect(() => { void loadOlympiads(); }, [showArchive]);
 
   const loadPools = async () => {
     if (poolStatus === "loading") {
@@ -351,7 +356,7 @@ export function OlympiadsPage() {
     setPreviewImageUrls({});
     try {
       const data = await adminApiClient.request<OlympiadPreviewTask[]>({
-        path: `/admin/olympiads/${olympiad.id}/tasks/full`,
+        path: `/admin/olympiads/${olympiad.id}/tasks?with_details=true`,
         method: "GET"
       });
       const sorted = [...(data ?? [])].sort((a, b) => a.sort_order - b.sort_order);
@@ -400,7 +405,6 @@ export function OlympiadsPage() {
       title: olympiad.title,
       description: olympiad.description ?? "",
       classGrades: parseAgeGroup(olympiad.age_group),
-      attemptsLimit: String(olympiad.attempts_limit),
       durationMinutes: String(olympiad.duration_sec / 60),
       availableFrom: toDateTimeLocal(olympiad.available_from),
       availableTo: toDateTimeLocal(olympiad.available_to),
@@ -421,25 +425,14 @@ export function OlympiadsPage() {
     setTaskCatalogStatus("loading");
     setTaskCatalogError(null);
     try {
-      const total = await adminApiClient.request<number>({
-        path: "/admin/tasks/count",
-        method: "GET"
-      });
       const pageSize = 200;
       const items: TaskCatalogItem[] = [];
-      if (total && total > 0) {
-        for (let offset = 0; offset < total; offset += pageSize) {
-          const page = await adminApiClient.request<TaskCatalogItem[]>({
-            path: `/admin/tasks?limit=${pageSize}&offset=${offset}`,
-            method: "GET"
-          });
-          if (page && page.length > 0) {
-            items.push(...page);
-          }
-          if (!page || page.length < pageSize) {
-            break;
-          }
-        }
+      for (let offset = 0; ; offset += pageSize) {
+        const page = await adminApiClient.request<{items: TaskCatalogItem[]}>({
+          path: `/admin/tasks?limit=${pageSize}&offset=${offset}`, method: "GET"
+        });
+        items.push(...(page?.items ?? []));
+        if (!page || page.items.length < pageSize) break;
       }
       setTaskCatalog(items);
       setTaskCatalogStatus("idle");
@@ -608,7 +601,6 @@ export function OlympiadsPage() {
         title: form.title,
         description: form.description,
         age_group: classGrades,
-        attempts_limit: Number(form.attemptsLimit),
         duration_sec: Math.round(durationMinutes * 60),
         available_from: availableFrom,
         available_to: availableTo,
@@ -652,7 +644,7 @@ export function OlympiadsPage() {
     }
     setDeleteStatus("deleting");
     try {
-      await adminApiClient.request({ path: `/admin/olympiads/${deleteTarget.id}`, method: "DELETE" });
+      await adminApiClient.request({ path: `/admin/olympiads/${deleteTarget.id}/archive`, method: "POST" });
       setDeleteTarget(null);
       await loadOlympiads();
     } catch {
@@ -740,8 +732,8 @@ export function OlympiadsPage() {
     event.preventDefault();
     setPoolFormError(null);
     const olympiadIds = parsePoolIds(poolForm.olympiadIds);
-    if (olympiadIds.length === 0) {
-      setPoolFormError("Укажите ID олимпиад через запятую.");
+    if (olympiadIds.length !== 4 || new Set(olympiadIds).size !== 4) {
+      setPoolFormError("Укажите ровно четыре разных ID олимпиад в порядке вариантов 1–4.");
       return;
     }
     setPoolSaving(true);
@@ -751,6 +743,7 @@ export function OlympiadsPage() {
         method: "POST",
         body: {
           subject: poolForm.subject,
+          is_trial: poolForm.isTrial,
           grade_group: poolForm.gradeGroup,
           olympiad_ids: olympiadIds,
           activate: poolForm.activate
@@ -763,6 +756,16 @@ export function OlympiadsPage() {
     } finally {
       setPoolSaving(false);
     }
+  };
+
+  const handleCopyPool = async (poolId: number) => {
+    setPoolActionStatus(poolId);
+    try {
+      await adminApiClient.request({ path: `/admin/olympiad-pools/${poolId}/copy`, method: "POST" });
+      await loadPools();
+      await loadOlympiads();
+    } catch { setPoolError("Не удалось создать копию работы."); }
+    finally { setPoolActionStatus(null); }
   };
 
   const handleActivatePool = async (poolId: number) => {
@@ -846,6 +849,7 @@ export function OlympiadsPage() {
         </div>
       </div>
       {status === "error" && error ? <div className="admin-alert">{error}</div> : null}
+      <label><input type="checkbox" checked={showArchive} onChange={(event) => setShowArchive(event.target.checked)} /> Показать архив</label>
       <Table>
         <thead>
           <tr>
@@ -887,9 +891,13 @@ export function OlympiadsPage() {
                 </td>
                 <td>
                   <div className="admin-table-actions">
-                    <Button type="button" size="sm" variant="outline" onClick={() => openEdit(item)}>
+                    <Button type="button" size="sm" variant="outline" disabled={Boolean(item.rules_locked_at || item.archived_at)} onClick={() => openEdit(item)}>
                       Редактировать
                     </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={async () => {
+                      try { await adminApiClient.request({ path: `/admin/olympiads/${item.id}/copy`, method: "POST" }); await loadOlympiads(); }
+                      catch { setError("Не удалось создать копию олимпиады."); setStatus("error"); }
+                    }}>Создать копию</Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => openPreview(item)}>
                       Предпросмотр
                     </Button>
@@ -915,7 +923,7 @@ export function OlympiadsPage() {
                       {item.results_released ? "Скрыть результаты" : "Показать результаты"}
                     </Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setDeleteTarget(item)}>
-                      Удалить
+                      В архив
                     </Button>
                   </div>
                 </td>
@@ -930,7 +938,7 @@ export function OlympiadsPage() {
           <div>
             <h2>Пулы олимпиад</h2>
             <p className="admin-hint">
-              Один активный пул на предмет. Пользователи получают вариант по формуле (user_id - 1) % n.
+              Можно активировать несколько работ. В каждой ровно четыре варианта; ученику назначается ((user_id − 1) % 4) + 1.
             </p>
           </div>
         </div>
@@ -969,6 +977,11 @@ export function OlympiadsPage() {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="field">
+              <span className="field-label">Формат</span>
+              <label><input type="checkbox" checked={poolForm.isTrial} onChange={(event) => setPoolForm((prev) => ({ ...prev, isTrial: event.target.checked }))} /> Пробная работа</label>
             </label>
 
             <TextInput
@@ -1029,7 +1042,7 @@ export function OlympiadsPage() {
               pools.map((pool) => (
                 <tr key={pool.id}>
                   <td>{pool.id}</td>
-                  <td>{formatSubject(pool.subject)}</td>
+                  <td>{formatSubject(pool.subject)}{pool.is_trial ? " · пробная" : ""}</td>
                   <td>{pool.grade_group}</td>
                   <td>{pool.olympiad_ids.join(", ") || "—"}</td>
                   <td>
@@ -1052,6 +1065,8 @@ export function OlympiadsPage() {
                     ) : (
                       <span className="admin-hint">Активен</span>
                     )}
+                      <Button type="button" size="sm" variant="outline" onClick={() => handleCopyPool(pool.id)} disabled={poolActionStatus !== null}>Создать копию работы</Button>
+
                   </td>
                 </tr>
               ))
@@ -1113,12 +1128,6 @@ export function OlympiadsPage() {
             />
           </label>
           <div className="admin-form-grid">
-            <TextInput
-              label="Лимит попыток"
-              name="attemptsLimit"
-              value={form.attemptsLimit}
-              onChange={(event) => setForm((prev) => ({ ...prev, attemptsLimit: event.target.value }))}
-            />
             <TextInput
               label="Длительность (мин)"
               name="durationMinutes"
@@ -1258,15 +1267,15 @@ export function OlympiadsPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title="Удалить олимпиаду">
-        <p>Вы действительно хотите удалить олимпиаду “{deleteTarget?.title}”?</p>
-        {deleteStatus === "error" ? <p className="admin-error">Не удалось удалить запись.</p> : null}
+      <Modal isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} title="Архивировать олимпиаду">
+        <p>Архивировать олимпиаду “{deleteTarget?.title}”?</p>
+        {deleteStatus === "error" ? <p className="admin-error">Не удалось архивировать олимпиаду.</p> : null}
         <div className="admin-modal-actions">
           <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>
             Отмена
           </Button>
           <Button type="button" onClick={handleDelete} isLoading={deleteStatus === "deleting"}>
-            Удалить
+            В архив
           </Button>
         </div>
       </Modal>

@@ -120,10 +120,12 @@ EXAMPLE_ATTEMPT_READ: dict = {
     "score_max": 1,
     "passed": None,
     "graded_at": None,
+    "finished_at": None,
 }
 
 EXAMPLE_ATTEMPT_VIEW: dict = {
     "attempt": EXAMPLE_ATTEMPT_READ,
+    "server_now": "2026-01-05T10:03:00Z",
     "olympiad_title": "Olympiad 7-8",
     "tasks": [
         {
@@ -147,6 +149,9 @@ EXAMPLE_ATTEMPT_RESULT: dict = {
     "olympiad_title": "Олимпиада по математике",
     "olympiad_available_from": "2026-01-05T09:00:00Z",
     "status": "submitted",
+    "started_at": "2026-01-05T10:00:00Z",
+    "deadline_at": "2026-01-05T10:10:00Z",
+    "finished_at": "2026-01-05T10:07:00Z",
     "score_total": 1,
     "score_max": 1,
     "percent": 100,
@@ -168,6 +173,7 @@ EXAMPLE_TEACHER_ATTEMPT_VIEW: dict = {
         "score_max": 1,
         "passed": True,
         "graded_at": "2026-01-05T10:12:00Z",
+        "finished_at": "2026-01-05T10:07:00Z",
     },
     "user": {
         "id": 1,
@@ -182,6 +188,8 @@ EXAMPLE_TEACHER_ATTEMPT_VIEW: dict = {
             "title": "2+2",
             "content": "2+2?",
             "task_type": "single_choice",
+            "image_key": None,
+            "payload": {"options": [{"id": "a", "text": "4"}, {"id": "b", "text": "5"}]},
             "sort_order": 1,
             "max_score": 1,
             "answer_payload": {"choice_id": "a"},

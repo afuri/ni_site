@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from app.models.teacher_student import TeacherStudent
+from app.models.attempt import Attempt
 
 from app.core.deps import get_db, get_read_db
 from app.core.deps_auth import require_role
@@ -10,7 +13,7 @@ from app.repos.olympiads import OlympiadsRepo
 from app.repos.teacher import TeacherRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.models.teacher_student import TeacherStudentStatus
-from app.schemas.admin_results import AdminOlympiadAttemptRow, AdminAttemptView
+from app.schemas.admin_results import AdminAttemptView, AdminAttemptsPage
 from app.services.teacher import TeacherService
 
 
@@ -19,7 +22,7 @@ router = APIRouter(prefix="/admin/results")
 
 @router.get(
     "/olympiads/{olympiad_id}/attempts",
-    response_model=list[AdminOlympiadAttemptRow],
+    response_model=AdminAttemptsPage,
     tags=["admin"],
     description="Список попыток по олимпиаде для администратора",
     responses={
@@ -30,13 +33,16 @@ router = APIRouter(prefix="/admin/results")
 )
 async def list_olympiad_attempts(
     olympiad_id: int,
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    include_total: bool = Query(False),
     db: AsyncSession = Depends(get_read_db),
     admin: User = Depends(require_role(UserRole.admin)),
 ):
     links_repo = TeacherStudentsRepo(db)
     service = TeacherService(TeacherRepo(db), OlympiadsRepo(db), links_repo)
     try:
-        _olymp, rows = await service.list_olympiad_attempts(teacher=admin, olympiad_id=olympiad_id)
+        _olymp, rows = await service.list_olympiad_attempts(teacher=admin, olympiad_id=olympiad_id, limit=limit, offset=offset)
     except ValueError as e:
         code = str(e)
         if code == codes.OLYMPIAD_NOT_FOUND:
@@ -45,17 +51,20 @@ async def list_olympiad_attempts(
             raise http_error(403, codes.FORBIDDEN)
         raise
 
+    linked = {}
+    teacher_rows = (await db.execute(select(TeacherStudent.student_id, User.surname, User.name, User.father_name)
+        .join(User, User.id == TeacherStudent.teacher_id).where(TeacherStudent.student_id.in_([u.id for _,u in rows]),
+            TeacherStudent.status == TeacherStudentStatus.confirmed))).all()
+    for student_id, surname, name, father_name in teacher_rows:
+        full_name = " ".join(filter(None, [surname,name,father_name]))
+        if full_name:
+            linked.setdefault(student_id, []).append(full_name)
     result = []
     for attempt, user in rows:
         full_name = " ".join(filter(None, [user.surname, user.name, user.father_name])) or None
         gender = user.gender.value if user.gender else None
 
-        links = await links_repo.list_links_with_users_for_student(user.id, TeacherStudentStatus.confirmed)
-        teachers: list[str] = []
-        for _link, teacher_user, _student_user in links:
-            teacher_name = " ".join(filter(None, [teacher_user.surname, teacher_user.name, teacher_user.father_name]))
-            if teacher_name:
-                teachers.append(teacher_name)
+        teachers = list(linked.get(user.id, []))
 
         for teacher in user.manual_teachers or []:
             if isinstance(teacher, dict):
@@ -86,7 +95,6 @@ async def list_olympiad_attempts(
                 "school_id": user.school_id,
                 "school_status": user.school_status,
                 "teachers": teachers_value,
-                "linked_teachers": teachers_value,
                 "started_at": attempt.started_at,
                 "completed_at": attempt.graded_at,
                 "duration_sec": attempt.duration_sec,
@@ -95,7 +103,8 @@ async def list_olympiad_attempts(
                 "percent": percent,
             }
         )
-    return result
+    total = await db.scalar(select(func.count()).select_from(Attempt).where(Attempt.olympiad_id == olympiad_id)) if include_total else None
+    return {"items": result, "total": total}
 
 
 @router.get(

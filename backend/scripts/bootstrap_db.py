@@ -16,7 +16,6 @@ import app.models.olympiad  # noqa: F401
 import app.models.olympiad_task  # noqa: F401
 import app.models.attempt  # noqa: F401
 import app.models.teacher_student  # noqa: F401
-import app.models.social_account  # noqa: F401
 import app.models.auth_token  # noqa: F401
 import app.models.audit_log  # noqa: F401
 import app.models.content  # noqa: F401

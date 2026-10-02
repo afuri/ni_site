@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@ui";
 import { createApiClient, type AttemptResult, type AttemptView } from "@api";
@@ -27,7 +27,7 @@ const sectionTitle: Record<PlatformSection, string> = {
 };
 
 export function StudentPlatformPage() {
-  const { user, tokens, setSession, signOut } = useAuth();
+  const { user, tokens, setSession, signOut, refreshUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const activeSection = resolvePlatformSection(location.pathname);
@@ -43,6 +43,10 @@ export function StudentPlatformPage() {
   const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
   const [downloadingAttemptId, setDownloadingAttemptId] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSection === "profile" && tokens) void refreshUser();
+  }, [activeSection, tokens, refreshUser]);
 
   if (!user) {
     return null;
@@ -148,7 +152,7 @@ export function StudentPlatformPage() {
             user={user}
             client={client}
             api={platformApi}
-            onUserUpdated={(updated) => { if (tokens) setSession(tokens, updated); }}
+            onUserUpdated={(updated) => { const current = storage.getTokens(); if (current) setSession(current, updated); }}
           />
         )}
       />

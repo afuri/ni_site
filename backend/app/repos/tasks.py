@@ -21,8 +21,8 @@ class TasksRepo:
         res = await self.db.execute(select(Task).where(Task.id == task_id))
         return res.scalar_one_or_none()
 
-    async def list(self, subject: Subject | None, task_type: TaskType | None, limit: int, offset: int) -> list[Task]:
-        stmt = select(Task)
+    async def list(self, subject: Subject | None, task_type: TaskType | None, limit: int, offset: int, archived: bool = False) -> list[Task]:
+        stmt = select(Task).where(Task.archived_at.is_not(None) if archived else Task.archived_at.is_(None))
         if subject:
             stmt = stmt.where(Task.subject == subject)
         if task_type:
@@ -31,8 +31,8 @@ class TasksRepo:
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
 
-    async def count(self, subject: Subject | None, task_type: TaskType | None) -> int:
-        stmt = select(func.count()).select_from(Task)
+    async def count(self, subject: Subject | None, task_type: TaskType | None, archived: bool = False) -> int:
+        stmt = select(func.count()).select_from(Task).where(Task.archived_at.is_not(None) if archived else Task.archived_at.is_(None))
         if subject:
             stmt = stmt.where(Task.subject == subject)
         if task_type:
@@ -46,8 +46,7 @@ class TasksRepo:
         return task
 
     async def delete(self, task: Task) -> None:
-        await self.db.delete(task)
-        await self.db.commit()
+        raise ValueError("physical_delete_disabled")
 
     async def list_olympiad_ids_for_task(self, task_id: int) -> list[int]:
         res = await self.db.execute(

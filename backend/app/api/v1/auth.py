@@ -24,7 +24,7 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserRead
 from app.core.deps_auth import get_current_user, get_current_user_allow_password_change
-from app.core.security import verify_password, hash_password, validate_password_policy
+from app.core.security import verify_password, hash_password, validate_password_policy, decode_token
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import EXAMPLE_TOKEN_PAIR, EXAMPLE_USER_READ, response_model_example
 from app.core import error_codes as codes
@@ -39,6 +39,7 @@ async def _apply_rate_limit(
     limit: int,
     window_sec: int,
     identity: str | None = None,
+    by_ip: bool = True,
 ) -> None:
     try:
         redis = await get_redis()
@@ -47,7 +48,7 @@ async def _apply_rate_limit(
 
     ip = request.client.host if request.client else "unknown"
     ident = identity or "anon"
-    key = f"rl:{key_prefix}:{ip}:{ident}"
+    key = f"rl:{key_prefix}:{ip}:{ident}" if by_ip else f"rl:{key_prefix}:{ident}"
 
     try:
         rl = await token_bucket_rate_limit(
@@ -62,7 +63,28 @@ async def _apply_rate_limit(
 
     if not rl.allowed:
         RATE_LIMIT_BLOCKS.labels(scope=key_prefix).inc()
-        raise http_error(status.HTTP_429_TOO_MANY_REQUESTS, codes.RATE_LIMITED)
+        error = http_error(status.HTTP_429_TOO_MANY_REQUESTS, codes.RATE_LIMITED,
+                           details={"retry_after_seconds": rl.retry_after_sec})
+        error.headers = {"Retry-After": str(rl.retry_after_sec)}
+        raise error
+
+
+async def _limit_refresh_operation(request: Request, token: str, *, logout: bool = False) -> None:
+    # Only a verified signature may provide the identity. School NAT must not
+    # group legitimate pupils into one ten-request bucket.
+    try:
+        claims = decode_token(token)
+        user_id = int(claims["sub"])
+        if claims.get("type") != "refresh" or user_id <= 0:
+            raise ValueError("invalid refresh")
+    except Exception:
+        await _apply_rate_limit(request, key_prefix="auth:invalid_refresh",
+            limit=settings.AUTH_INVALID_REFRESH_IP_LIMIT,
+            window_sec=settings.AUTH_REFRESH_RL_WINDOW_SEC)
+        return
+    await _apply_rate_limit(request, key_prefix="auth:logout" if logout else "auth:refresh",
+        limit=settings.AUTH_LOGOUT_RL_LIMIT if logout else settings.AUTH_REFRESH_RL_LIMIT,
+        window_sec=settings.AUTH_REFRESH_RL_WINDOW_SEC, identity=str(user_id), by_ip=False)
 
 
 @router.post(
@@ -153,6 +175,7 @@ async def register(
         401: response_example(codes.INVALID_CREDENTIALS),
         422: response_example(codes.VALIDATION_ERROR),
         409: response_example(codes.TEMP_PASSWORD_EXPIRED),
+        429: response_example(codes.RATE_LIMITED),
     },
 )
 async def login(
@@ -187,8 +210,8 @@ async def login(
         200: response_model_example(UserRead, EXAMPLE_USER_READ),
     },
 )
-async def me(user=Depends(get_current_user)):
-    return user
+async def me(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await UsersRepo(db).get_by_id(user.id)
 
 
 @router.post(
@@ -347,7 +370,8 @@ async def confirm_password_reset(
     description="Обновить access и refresh токены",
     responses={
         200: response_model_example(TokenPair, EXAMPLE_TOKEN_PAIR),
-        422: response_example(codes.INVALID_TOKEN),
+        401: response_example(codes.INVALID_TOKEN),
+        422: {"description": "invalid_token_type"},
         409: response_example(codes.TEMP_PASSWORD_EXPIRED),
     },
 )
@@ -356,23 +380,17 @@ async def refresh_tokens(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    await _apply_rate_limit(
-        request,
-        key_prefix="auth:refresh",
-        limit=settings.AUTH_LOGIN_RL_LIMIT,
-        window_sec=settings.AUTH_LOGIN_RL_WINDOW_SEC,
-        identity="refresh",
-    )
+    await _limit_refresh_operation(request, payload.refresh_token)
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
-        access, refresh, must_change_password = await service.refresh_tokens(refresh_token=payload.refresh_token)
+        access, refresh, must_change_password = await service.refresh_tokens(refresh_token=payload.refresh_token, idempotency_key=payload.idempotency_key)
     except ValueError as e:
         code = str(e)
         if code == codes.TEMP_PASSWORD_EXPIRED:
             raise http_error(409, codes.TEMP_PASSWORD_EXPIRED)
         if code == codes.INVALID_TOKEN_TYPE:
             raise http_error(422, codes.INVALID_TOKEN_TYPE)
-        raise http_error(422, codes.INVALID_TOKEN)
+        raise http_error(401, codes.INVALID_TOKEN)
     return TokenPair(access_token=access, refresh_token=refresh, must_change_password=must_change_password)
 
 
@@ -387,13 +405,7 @@ async def logout(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    await _apply_rate_limit(
-        request,
-        key_prefix="auth:logout",
-        limit=settings.AUTH_LOGIN_RL_LIMIT,
-        window_sec=settings.AUTH_LOGIN_RL_WINDOW_SEC,
-        identity="logout",
-    )
+    await _limit_refresh_operation(request, payload.refresh_token, logout=True)
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     await service.logout(refresh_token=payload.refresh_token)
     return {"status": "ok"}

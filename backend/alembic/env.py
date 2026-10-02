@@ -14,13 +14,15 @@ from alembic import context
 
 from app.db.base import Base
 from app.models.user import User  # noqa
+from app.models.task import Task  # noqa
+from app.models.teacher_student import TeacherStudent  # noqa
+from app.models.user_change import UserChange  # noqa
 from app.models.olympiad import Olympiad  # noqa
 from app.models.olympiad_task import OlympiadTask  # noqa
 from app.models.attempt import Attempt, AttemptAnswer, AttemptTaskGrade  # noqa
 from app.models.auth_token import EmailVerification, PasswordResetToken, RefreshToken  # noqa
 from app.models.audit_log import AuditLog  # noqa
 from app.core.config import settings
-from app.models.social_account import SocialAccount  # noqa
 from app.models.content import ContentItem  # noqa
 from app.models.school import School  # noqa
 from app.models.region import Region  # noqa
@@ -63,6 +65,17 @@ database_url = (
 )
 database_url = database_url.replace("+asyncpg", "+psycopg2").replace("localhost", "127.0.0.1")
 config.set_main_option("sqlalchemy.url", database_url)
+
+
+def include_schema_object(obj, name, type_, reflected, compare_to):
+    # Optional pg_trgm indexes are owned by the school-directory migration.
+    # Their installation depends on extension privileges; never autogenerate
+    # removal just because they are not part of portable ORM create_all.
+    if type_ == "index" and reflected and compare_to is None and name in {
+        "ix_school_directory_short_trgm", "ix_school_directory_full_trgm"
+    }:
+        return False
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -116,8 +129,14 @@ def run_migrations_online() -> None:
                 f"Alembic preflight failed: alembic_version={version} but no app tables found. "
                 "Drop alembic_version or reset the database before running migrations."
             )
+        # Inspection starts an implicit transaction; Alembic must own the next one
+        # so concurrent index migrations can commit and enter autocommit safely.
+        connection.commit()
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            transaction_per_migration=True,
+            include_object=include_schema_object,
         )
 
         with context.begin_transaction():

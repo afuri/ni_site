@@ -26,8 +26,6 @@ class OlympiadCreate(BaseModel):
 
     pass_percent: int = Field(ge=0, le=100)
 
-    # admin only: scope fixed to global
-    scope: OlympiadScope = OlympiadScope.global_
 
     @field_validator("age_group", mode="before")
     @classmethod
@@ -43,7 +41,6 @@ class OlympiadUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
 
     age_group: str | None = None
-    attempts_limit: int | None = Field(default=None, ge=1, le=1)
     duration_sec: int | None = Field(default=None, ge=60, le=6 * 60 * 60)
 
     available_from: datetime | None = None
@@ -91,6 +88,8 @@ class OlympiadRead(BaseModel):
     pass_percent: int
     is_published: bool
     results_released: bool
+    archived_at: datetime | None = None
+    rules_locked_at: datetime | None = None
     created_by_user_id: int
 
     model_config = ConfigDict(from_attributes=True)

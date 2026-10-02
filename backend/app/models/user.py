@@ -1,7 +1,7 @@
 """User model."""
 import enum
 from datetime import datetime
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,7 +30,10 @@ class SchoolStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
+        Index("uq_users_email_lower", text("lower(email)"), unique=True),
+        Index("uq_users_login_lower", text("lower(login)"), unique=True),
         CheckConstraint("coins >= 0", name="ck_users_coins_nonnegative"),
+        CheckConstraint("class_grade IS NULL OR class_grade BETWEEN 0 AND 11", name="ck_users_class_grade"),
         CheckConstraint(
             "(school_status = 'selected' AND school_id IS NOT NULL) OR "
             "(school_status IN ('missing', 'submission_pending', 'submission_rejected', 'not_required') "
@@ -43,7 +46,7 @@ class User(Base):
 
     # auth
     login: Mapped[str] = mapped_column(String(64), unique=True, index=True)  # NEW
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -60,9 +63,6 @@ class User(Base):
     name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     father_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
-    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    school: Mapped[str | None] = mapped_column(String(255), nullable=True)
     region_id: Mapped[int | None] = mapped_column(ForeignKey("regions.id", ondelete="RESTRICT"), nullable=True, index=True)
     school_id: Mapped[int | None] = mapped_column(
         ForeignKey(

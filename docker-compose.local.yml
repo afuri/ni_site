@@ -3,6 +3,7 @@ name: ni-site-v2
 services:
   db:
     image: postgres:16
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ni_v2_local_postgres
@@ -85,7 +86,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: celery -A app.core.celery_app.celery_app worker --loglevel=INFO
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=INFO -Q celery,maintenance
     env_file:
       - .env.local
     profiles: ["worker"]
@@ -96,6 +97,22 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+  beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: celery -A app.core.celery_app.celery_app beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - .env.local
+    profiles: ["worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
 
 volumes:
   pgdata_v2:

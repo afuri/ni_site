@@ -2,23 +2,10 @@ import React, { useState } from "react";
 import type { ApiClient, AttemptResult, AttemptTask, AttemptView } from "@api";
 import { Button, Modal } from "@ui";
 import { useTaskImages } from "./useTaskImages";
+import { attemptAnswerLabels, formatAttemptElapsed } from "./attemptReview";
 
 const answerText = (task: AttemptTask) => {
-  const answer = task.current_answer?.answer_payload;
-  if (!answer) return "Ответ не дан";
-  if (typeof answer.text === "string") return answer.text || "Ответ не дан";
-  const options = Array.isArray(task.payload.options)
-    ? task.payload.options.filter((item): item is { id: string; text: string } => (
-        Boolean(item) && typeof item === "object" && typeof item.id === "string" && typeof item.text === "string"
-      ))
-    : [];
-  const selectedIds = typeof answer.choice_id === "string"
-    ? [answer.choice_id]
-    : Array.isArray(answer.choice_ids)
-      ? answer.choice_ids.filter((item): item is string => typeof item === "string")
-      : [];
-  if (selectedIds.length === 0) return "Ответ не дан";
-  return selectedIds.map((id) => options.find((option) => option.id === id)?.text ?? id).join(", ");
+  return attemptAnswerLabels(task.current_answer?.answer_payload, task.payload.options).join(", ") || "Ответ не дан";
 };
 
 function TaskImage({ url, title }: { url: string; title: string }) {
@@ -51,6 +38,7 @@ export function AttemptReviewModal({ client, view, result, onClose }: {
       {view && result ? (
         <div className="student-review">
           <p className="student-review-total">Результат: <strong>{result.percent}% · {result.score_total} из {result.score_max}</strong></p>
+          <p className="student-review-total">Время прохождения: {formatAttemptElapsed(view.attempt)}</p>
           <div className="student-review-tasks">
             {[...view.tasks].sort((a, b) => a.sort_order - b.sort_order).map((task, index) => (
               <article key={task.task_id} className="student-review-task">

@@ -126,3 +126,4 @@ class MessageResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+    idempotency_key: str | None = Field(default=None, min_length=16, max_length=128)

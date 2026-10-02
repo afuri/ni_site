@@ -21,13 +21,17 @@ class AdminOlympiadAttemptRow(BaseModel):
     school_id: int | None = None
     school_status: SchoolStatus | None = None
     teachers: Optional[str] = None
-    linked_teachers: Optional[str] = None
     started_at: datetime
     completed_at: Optional[datetime] = None
     duration_sec: int
     score_total: int
     score_max: int
     percent: int
+
+
+class AdminAttemptsPage(BaseModel):
+    items: list[AdminOlympiadAttemptRow]
+    total: int | None = None
 
 
 class AdminAttemptTaskView(BaseModel):
