@@ -89,25 +89,14 @@ export function StudentProfile({ user, client, api, onUserUpdated }: {
     setErrors((current) => ({ ...current, [field]: undefined }));
     setMessage(null);
   };
-  const setGrade = (value: string) => {
-    setForm((current) => ({
-      ...current,
-      classGrade: value,
-      ...(value === "0" ? { schoolId: null, schoolQuery: "", schoolCity: "", schoolNotFound: false } : current.classGrade === "0" ? { schoolId: null, schoolQuery: "", schoolCity: "", schoolNotFound: true } : {})
-    }));
-    setErrors((current) => ({ ...current, classGrade: undefined, schoolQuery: undefined }));
-  };
-
   const validate = () => {
     const next: Errors = {};
     if (!cyrillicName.test(form.surname.trim())) next.surname = "Введите фамилию кириллицей с заглавной буквы.";
     if (!cyrillicName.test(form.name.trim())) next.name = "Введите имя кириллицей с заглавной буквы.";
     if (form.fatherName.trim() && !fatherName.test(form.fatherName.trim())) next.fatherName = "Введите отчество кириллицей с заглавной буквы.";
     if (!form.gender) next.gender = "Выберите пол.";
-    if (form.classGrade === "") next.classGrade = "Выберите класс.";
     if (form.regionId === null) next.regionId = "Выберите регион школы.";
     if (form.classGrade !== "0" && form.schoolId === null && !form.schoolNotFound) next.schoolQuery = "Выберите школу или отметьте, что её нет в списке.";
-    if (user.class_grade === 0 && form.classGrade !== "0" && (form.schoolId === null || form.schoolNotFound)) next.schoolQuery = "Для перехода из дошкольников в ученики необходимо выбрать школу из списка.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -117,13 +106,11 @@ export function StudentProfile({ user, client, api, onUserUpdated }: {
     if (!validate()) return;
     const normalized = { ...form, surname: form.surname.trim(), name: form.name.trim(), fatherName: form.fatherName.trim() };
     setForm(normalized);
-    const gradeChanged = normalized.classGrade !== savedForm.classGrade;
-    const geographyChanged = gradeChanged || normalized.regionId !== savedForm.regionId || normalized.schoolId !== savedForm.schoolId || normalized.schoolNotFound !== savedForm.schoolNotFound;
+    const geographyChanged = normalized.regionId !== savedForm.regionId || normalized.schoolId !== savedForm.schoolId || normalized.schoolNotFound !== savedForm.schoolNotFound;
     const payload: UserUpdate = {
       surname: normalized.surname,
       name: normalized.name,
       father_name: normalized.fatherName || null,
-      class_grade: Number(normalized.classGrade),
       gender: normalized.gender || null,
       ...(geographyChanged ? {
         region_id: normalized.regionId,
@@ -141,9 +128,7 @@ export function StudentProfile({ user, client, api, onUserUpdated }: {
       const code = (error as ApiError)?.code;
       const copy: Record<string, string> = {
         school_region_mismatch: "Выбранная школа относится к другому региону.",
-        school_selection_required: user.class_grade === 0 && form.classGrade !== "0"
-          ? "Для перехода из дошкольников в ученики необходимо выбрать школу из списка."
-          : "Выберите школу или отметьте, что её нет в списке.",
+        school_selection_required: "Выберите школу или отметьте, что её нет в списке.",
         region_not_found: "Выбранный регион не найден.",
         school_not_found: "Выбранная школа не найдена."
       };
@@ -189,7 +174,7 @@ export function StudentProfile({ user, client, api, onUserUpdated }: {
             <TextInput label="Имя" name="profileName" value={form.name} error={errors.name} onChange={(event) => setField("name", event.target.value)} />
             <TextInput label="Отчество" name="profileFatherName" value={form.fatherName} error={errors.fatherName} onChange={(event) => setField("fatherName", event.target.value)} />
             <label className="field"><span className="field-label">Пол</span><select className={`field-input ${errors.gender ? "field-input-error" : ""}`} value={form.gender} onChange={(event) => setField("gender", event.target.value as ProfileForm["gender"])}><option value="">Выберите пол</option><option value="male">Мужской</option><option value="female">Женский</option></select>{errors.gender ? <span className="field-helper field-helper-error">{errors.gender}</span> : null}</label>
-            <label className="field"><span className="field-label">Класс</span><select className={`field-input ${errors.classGrade ? "field-input-error" : ""}`} value={form.classGrade} onChange={(event) => setGrade(event.target.value)}><option value="">Выберите класс</option>{Array.from({ length: 12 }, (_, grade) => <option key={grade} value={grade}>{grade === 0 ? "Дошкольник" : `${grade} класс`}</option>)}</select>{errors.classGrade ? <span className="field-helper field-helper-error">{errors.classGrade}</span> : null}</label>
+            <label className="field"><span className="field-label">Класс</span><input className="field-input" value={form.classGrade === "0" ? "Дошкольник" : form.classGrade ? `${form.classGrade} класс` : "Не указан"} disabled /><span className="field-helper">Изменить класс может администратор.</span></label>
           </div>
           <div className="student-account-meta"><span>Логин: <strong>{user.login}</strong></span>{!user.is_email_verified ? <Button type="button" variant="outline" isLoading={emailStatus === "sending"} onClick={() => void requestEmailVerification()}>Отправить письмо повторно</Button> : null}{emailStatus === "sent" ? <span role="status">Письмо отправлено.</span> : null}{emailStatus === "error" ? <span className="field-helper-error" role="alert">Не удалось отправить письмо.</span> : null}</div>
           <h3 className="student-profile-geography-title">Регион и школа</h3>
