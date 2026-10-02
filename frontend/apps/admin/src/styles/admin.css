@@ -697,6 +697,18 @@
   gap: var(--space-4);
 }
 
+.admin-duplicate-panel {
+  margin: var(--space-6) 0;
+}
+
+.admin-duplicate-panel .admin-toolbar-actions {
+  flex-wrap: wrap;
+}
+
+.admin-duplicate-panel .admin-duplicate-group-start td {
+  border-top: 2px solid rgba(0, 86, 210, 0.35);
+}
+
 .admin-temp-password h2,
 .admin-account-deletion-panel h2 {
   margin-bottom: 0;

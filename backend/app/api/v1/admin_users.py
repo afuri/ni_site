@@ -599,7 +599,9 @@ async def set_temporary_password(
         must_change_password=True,
         temp_password_expires_at=expires_at,
     )
-    await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    tokens_repo = AuthTokensRepo(db)
+    await tokens_repo.revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    await tokens_repo.delete_password_resets(user_id)
     await AuditLogsRepo(db).create(
         user_id=admin_actor.id,
         action="admin_set_temp_password",
@@ -659,7 +661,9 @@ async def generate_temporary_password(
         must_change_password=True,
         temp_password_expires_at=expires_at,
     )
-    await AuthTokensRepo(db).revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    tokens_repo = AuthTokensRepo(db)
+    await tokens_repo.revoke_all_refresh_tokens(user_id, datetime.now(timezone.utc))
+    await tokens_repo.delete_password_resets(user_id)
     await AuditLogsRepo(db).create(
         user_id=admin_actor.id,
         action="admin_generate_temp_password",

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import asyncio
+from dataclasses import dataclass
 from sqlalchemy import select, update
 from app.models.auth_token import RefreshToken, RefreshRotation, EmailVerification, PasswordResetToken
 
@@ -22,6 +23,12 @@ from app.repos.users import UsersRepo
 from app.tasks.email import send_email_task
 from app.core import error_codes as codes
 from app.services.school_profile import SchoolProfileService
+
+
+@dataclass(frozen=True)
+class TemporaryPasswordReset:
+    token: str
+    expires_in_seconds: int
 
 
 class AuthService:
@@ -125,10 +132,26 @@ class AuthService:
             raise ValueError(codes.INVALID_CREDENTIALS)
 
         if user.must_change_password:
+            # Serialize exchanges with admin password changes and reset confirmation.
+            user = await self.users_repo.get_by_id(user.id, for_update=True, minimal=True)
+            if not user or not user.is_active or not user.must_change_password:
+                raise ValueError(codes.INVALID_CREDENTIALS)
+            if not verify_password(password, user.password_hash):
+                raise ValueError(codes.INVALID_CREDENTIALS)
             if user.temp_password_expires_at is None:
                 raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
-            if user.temp_password_expires_at < self._now_utc():
+            now = self._now_utc()
+            if user.temp_password_expires_at <= now:
                 raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
+            token = generate_token()
+            ttl_seconds = settings.TEMP_PASSWORD_RESET_TTL_MINUTES * 60
+            await self.tokens_repo.replace_password_reset(
+                user_id=user.id,
+                token_hash=hash_token(token),
+                created_at=now,
+                expires_at=now + timedelta(seconds=ttl_seconds),
+            )
+            return TemporaryPasswordReset(token=token, expires_in_seconds=ttl_seconds)
 
         access = create_access_token(str(user.id))
         refresh = create_refresh_token(str(user.id))
@@ -142,7 +165,7 @@ class AuthService:
             created_at=now,
             expires_at=expires_at,
         )
-        return access, refresh, user.must_change_password
+        return access, refresh, False
 
     async def refresh_tokens(self, *, refresh_token: str, idempotency_key: str | None = None):
         try:
@@ -296,7 +319,7 @@ class AuthService:
 
         now = self._now_utc()
         if record.used_at is not None:
-            return
+            raise ValueError(codes.INVALID_TOKEN)
         if record.expires_at < now:
             raise ValueError(codes.INVALID_TOKEN)
 
@@ -307,13 +330,12 @@ class AuthService:
         record = await db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
             .with_for_update().execution_options(populate_existing=True))
         now = self._now_utc()
-        if not user or not record or record.expires_at <= now:
+        if not user or not record or record.used_at is not None or record.expires_at <= now:
             raise ValueError(codes.INVALID_TOKEN)
-        if record.used_at is None:
-            record.used_at = now
-            user.password_hash = password_hash
-            user.must_change_password = False
-            user.temp_password_expires_at = None
-            await db.execute(update(RefreshToken).where(RefreshToken.user_id == user.id,
-                RefreshToken.revoked_at.is_(None)).values(revoked_at=now))
+        record.used_at = now
+        user.password_hash = password_hash
+        user.must_change_password = False
+        user.temp_password_expires_at = None
+        await db.execute(update(RefreshToken).where(RefreshToken.user_id == user.id,
+            RefreshToken.revoked_at.is_(None)).values(revoked_at=now))
         await db.commit()

@@ -3,11 +3,15 @@ import type { ApiClient, TokenPair, UserRead, AuthStorage } from "@api";
 
 type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated" | "error";
 
+type SignInResult =
+  | { kind: "authenticated"; user: UserRead }
+  | { kind: "password_reset_required"; resetToken: string; expiresInSeconds: number };
+
 type AuthContextValue = {
   status: AuthStatus;
   user: UserRead | null;
   tokens: TokenPair | null;
-  signIn: (payload: { login: string; password: string }) => Promise<UserRead>;
+  signIn: (payload: { login: string; password: string }) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   refresh: () => Promise<boolean>;
   refreshUser: () => Promise<void>;
@@ -121,6 +125,14 @@ export function AuthProvider({ client, storage, children }: AuthProviderProps) {
       try {
         const authTokens = await client.auth.login({ login, password });
         if (generation !== sessionGeneration.current) throw new Error("session_changed");
+        if ("reset_token" in authTokens) {
+          setStatus("unauthenticated");
+          return {
+            kind: "password_reset_required" as const,
+            resetToken: authTokens.reset_token,
+            expiresInSeconds: authTokens.expires_in_seconds
+          };
+        }
         storage.setTokens(authTokens);
         initialProfileChecked.current = true;
         setTokens(authTokens);
@@ -130,7 +142,7 @@ export function AuthProvider({ client, storage, children }: AuthProviderProps) {
         storage.setUser?.(me);
         setUser(me);
         setStatus("authenticated");
-        return me;
+        return { kind: "authenticated" as const, user: me };
       } catch (error) {
         if (!(error instanceof Error && error.message === "session_changed")) setStatus("error");
         throw error;

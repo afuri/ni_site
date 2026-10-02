@@ -56,6 +56,14 @@ export type TokenPair = {
   must_change_password?: boolean;
 };
 
+export type TemporaryPasswordResetRequired = {
+  status: "password_reset_required";
+  reset_token: string;
+  expires_in_seconds: number;
+};
+
+export type AuthLoginResponse = TokenPair | TemporaryPasswordResetRequired;
+
 export type ManualTeacher = {
   id: number;
   full_name: string;
