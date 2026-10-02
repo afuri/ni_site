@@ -77,8 +77,8 @@ async def _task_image_access(db: AsyncSession, key: str, *, allow_unpublished: b
         own_completed = select(Attempt.id).where(
             Attempt.olympiad_id == Olympiad.id,
             Attempt.user_id == student_id,
-            Attempt.status != AttemptStatus.active,
-            Olympiad.results_released.is_(True),
+            or_(Attempt.status == AttemptStatus.active,
+                Olympiad.results_released.is_(True)),
         ).correlate(Olympiad).exists() if student_id is not None else False
         stmt = (
             stmt.join(OlympiadTask, OlympiadTask.task_id == Task.id)

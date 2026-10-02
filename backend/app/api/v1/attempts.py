@@ -1,4 +1,6 @@
 """Attempts endpoints."""
+from datetime import datetime, timezone
+import math
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Response
@@ -36,6 +38,8 @@ from app.schemas.attempt import (
     AttemptAnswerUpsertRequest,
     SubmitResponse,
     AttemptResult,
+    AttemptSubmitRequest,
+    AnswerSaveResponse,
 )
 
 router = APIRouter(prefix="/attempts")
@@ -89,7 +93,7 @@ async def start_attempt(
             raise http_error(409, codes.OLYMPIAD_AGE_GROUP_MISMATCH)
         if code == codes.OLYMPIAD_HAS_NO_TASKS:
             raise http_error(409, codes.OLYMPIAD_HAS_NO_TASKS)
-        raise
+        raise http_error(409, code)
 
 
 
@@ -152,6 +156,7 @@ async def get_attempt_view(
 
     return {
         "attempt": attempt,
+        "server_now": datetime.now(timezone.utc),
         "olympiad_title": olympiad.title,
         "tasks": tasks_view,
     }
@@ -160,13 +165,15 @@ async def get_attempt_view(
 @router.post(
     "/{attempt_id}/answers",
     status_code=200,
+    response_model=AnswerSaveResponse,
     tags=["attempts"],
-    description="Сохранить ответ на задание",
+    description="Сохранить ответ (тело до ATTEMPT_MAX_BODY_BYTES) при совпадении expected_revision; null очищает ответ. Ответ возвращает новую answers_revision.",
     responses={
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_examples(codes.ATTEMPT_NOT_FOUND, codes.TASK_NOT_FOUND),
-        409: response_examples(codes.ATTEMPT_EXPIRED, codes.ATTEMPT_NOT_ACTIVE),
+        409: response_examples(codes.ATTEMPT_EXPIRED, codes.ATTEMPT_NOT_ACTIVE, codes.ANSWERS_REVISION_CONFLICT),
+        413: response_example(codes.ATTEMPT_PAYLOAD_TOO_LARGE),
         422: response_example(codes.INVALID_ANSWER_PAYLOAD),
     },
 )
@@ -195,7 +202,9 @@ async def upsert_answer(
     if not rl.allowed:
         response.headers["Retry-After"] = str(rl.retry_after_sec)
         RATE_LIMIT_BLOCKS.labels(scope="attempts:answers").inc()
-        raise http_error(429, codes.RATE_LIMITED)
+        error = http_error(429, codes.RATE_LIMITED, details={"retry_after_seconds": rl.retry_after_sec})
+        error.headers = {"Retry-After": str(rl.retry_after_sec)}
+        raise error
 
     service = AttemptsService(AttemptsRepo(db))
     try:
@@ -204,6 +213,7 @@ async def upsert_answer(
             attempt_id=attempt_id,
             task_id=payload.task_id,
             answer_payload=payload.answer_payload,
+            expected_revision=payload.expected_revision,
         )
     except ValueError as e:
         code = str(e)
@@ -227,23 +237,30 @@ async def upsert_answer(
     "/{attempt_id}/submit",
     response_model=SubmitResponse,
     tags=["attempts"],
-    description="Отправить попытку на проверку",
+    description=("Атомарно сохранить полный снимок ответов и завершить попытку при совпадении expected_revision. "
+                 "Снимок содержит все task_id, включая null для пустых ответов. "
+                 "После дедлайна снимок не принимается; повторное завершение закрытой попытки не меняет результат."),
     responses={
         200: response_model_example(SubmitResponse, {"status": "submitted"}),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.ATTEMPT_NOT_FOUND),
-        409: response_example(codes.ATTEMPT_SUBMIT_TOO_EARLY),
+        409: response_examples(codes.ATTEMPT_SUBMIT_TOO_EARLY, codes.ANSWERS_REVISION_REQUIRED, codes.ANSWERS_REVISION_CONFLICT),
+        413: response_example(codes.ATTEMPT_PAYLOAD_TOO_LARGE),
+        422: response_examples(codes.INVALID_ANSWER_PAYLOAD, codes.INCOMPLETE_ANSWER_SNAPSHOT),
     },
 )
 async def submit_attempt(
     attempt_id: int,
+    payload: AttemptSubmitRequest | None = None,
     db: AsyncSession = Depends(get_db),
     student: User = Depends(require_role(UserRole.student)),
 ):
     service = AttemptsService(AttemptsRepo(db))
     try:
-        status_value = await service.submit(user=student, attempt_id=attempt_id)
+        status_value = await service.submit(user=student, attempt_id=attempt_id,
+            expected_revision=payload.expected_revision if payload else None,
+            answers=payload.answers if payload else None)
         return {"status": status_value}
     except ValueError as e:
         code = str(e)
@@ -252,7 +269,13 @@ async def submit_attempt(
         if code == codes.FORBIDDEN:
             raise http_error(403, codes.FORBIDDEN)
         if code == codes.ATTEMPT_SUBMIT_TOO_EARLY:
-            raise http_error(409, codes.ATTEMPT_SUBMIT_TOO_EARLY)
+            attempt = await AttemptsRepo(db).get_attempt(attempt_id)
+            remaining = max(1, math.ceil(
+                settings.ATTEMPT_MIN_SUBMIT_AGE_SEC
+                - (datetime.now(timezone.utc) - attempt.started_at).total_seconds()
+            ))
+            raise http_error(409, codes.ATTEMPT_SUBMIT_TOO_EARLY,
+                             details={"retry_after_seconds": remaining})
         raise
 
 
@@ -347,7 +370,7 @@ async def get_attempt_diploma(
     },
 )
 async def list_my_results(
-    db: AsyncSession = Depends(get_read_db),
+    db: AsyncSession = Depends(get_db),
     student: User = Depends(require_role(UserRole.student)),
 ):
     service = AttemptsService(AttemptsRepo(db))

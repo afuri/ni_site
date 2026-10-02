@@ -8,6 +8,7 @@ import { PlatformIcon } from "./PlatformIcon";
 import { SubjectVisual } from "./SubjectVisual";
 import { availableSeasons, resultSeason, seasonLabel, seasonStart } from "./platformSeason";
 import { HeroOlympiads } from "./HeroOlympiads";
+import { formatAttemptElapsed } from "./attemptReview";
 
 type Props = {
   section: PlatformSection;
@@ -67,7 +68,9 @@ function ResultList({ state, items, user, viewingId, downloadingId, onContinue, 
             <span className={`student-status-badge is-${result.status}`}>{result.status === "active" ? "В процессе" : result.results_released ? "Результат опубликован" : "Результат готовится"}</span>
             <h3><PlatformIcon name="trophy" />{result.olympiad_title || `Олимпиада №${result.olympiad_id}`}</h3>
             <p>{result.status === "active" ? "Попытка не завершена" : result.results_released ? `${result.percent}% · ${result.score_total} из ${result.score_max}` : "Результат ещё не опубликован"}</p>
-            {result.olympiad_available_from ? <time dateTime={result.olympiad_available_from}><PlatformIcon name="calendar" size={16} />{formatDate(result.olympiad_available_from)}</time> : null}
+            {result.started_at ? <time dateTime={result.started_at}><PlatformIcon name="calendar" size={16} />Дата участия: {formatDate(result.started_at)}</time>
+              : result.olympiad_available_from ? <time dateTime={result.olympiad_available_from}><PlatformIcon name="calendar" size={16} />Дата олимпиады: {formatDate(result.olympiad_available_from)}</time> : null}
+            {result.status !== "active" ? <p>Время прохождения: {formatAttemptElapsed(result)}</p> : null}
           </div>
           <div className="student-row-actions">
             {result.status === "active" ? (

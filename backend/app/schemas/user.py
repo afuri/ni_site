@@ -32,9 +32,6 @@ class UserRead(BaseModel):
     surname: Optional[str] = None
     name: Optional[str] = None
     father_name: Optional[str] = None
-    country: Optional[str] = None
-    city: Optional[str] = None
-    school: Optional[str] = None
     region_id: int | None = None
     region_name: str | None = None
     school_id: int | None = None
@@ -61,7 +58,7 @@ class UserUpdate(BaseModel):
     region_id: int | None = Field(default=None, gt=0)
     school_id: int | None = Field(default=None, gt=0)
     school_not_found: bool | None = None
-    class_grade: Optional[int] = Field(default=None)
+    class_grade: Optional[int] = Field(default=None, ge=0, le=11)
     gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
     subscription: Optional[int] = Field(default=None, ge=0, le=5)
     manual_teachers: Optional[list["ManualTeacher"]] = None
@@ -96,7 +93,7 @@ class AdminUserUpdate(BaseModel):
     region_id: int | None = Field(default=None, gt=0)
     school_id: int | None = Field(default=None, gt=0)
     school_not_found: bool | None = None
-    class_grade: Optional[int] = Field(default=None)
+    class_grade: Optional[int] = Field(default=None, ge=0, le=11)
     gender: Optional[str] = Field(default=None, pattern=r"^(male|female)$")
     subscription: Optional[int] = Field(default=None, ge=0, le=5)
     manual_teachers: Optional[list["ManualTeacher"]] = None

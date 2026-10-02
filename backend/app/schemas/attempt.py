@@ -1,7 +1,7 @@
 """Attempt schemas."""
 from datetime import datetime
 from typing import Any, List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from app.models.task import TaskType
 
 from app.models.attempt import AttemptStatus
@@ -23,13 +23,38 @@ class AttemptRead(BaseModel):
     score_max: int
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    answers_revision: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class AttemptAnswerUpsertRequest(BaseModel):
     task_id: int
-    answer_payload: dict[str, Any]
+    answer_payload: dict[str, Any] | None
+    expected_revision: int = Field(ge=0)
+
+
+class AttemptAnswerChange(BaseModel):
+    task_id: int
+    # null explicitly clears the answer; absence is a validation error.
+    answer_payload: dict[str, Any] | None
+
+
+class AttemptSubmitRequest(BaseModel):
+    expected_revision: int = Field(ge=0)
+    answers: list[AttemptAnswerChange] | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def unique_tasks(self):
+        if self.answers is not None and len({answer.task_id for answer in self.answers}) != len(self.answers):
+            raise ValueError("duplicate_task_answers")
+        return self
+
+
+class AnswerSaveResponse(BaseModel):
+    status: AttemptStatus
+    answers_revision: int
 
 
 class AttemptAnswerRead(BaseModel):
@@ -55,6 +80,7 @@ class AttemptTaskView(BaseModel):
 
 class AttemptView(BaseModel):
     attempt: AttemptRead
+    server_now: datetime
     olympiad_title: str
     tasks: List[AttemptTaskView]
 
@@ -76,4 +102,7 @@ class AttemptResult(BaseModel):
     percent: int
     passed: Optional[bool] = None
     graded_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    deadline_at: datetime | None = None
+    finished_at: datetime | None = None
     results_released: bool = False

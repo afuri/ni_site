@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core import error_codes as codes
@@ -118,9 +118,9 @@ class SchoolSubmissionsService:
             before = {key: getattr(school, key) for key in patch}
             await self.schools.update(school, patch, actor_user_id=admin.id)
             school.city = city
-            # Preserve linked users and their canonical status, while keeping legacy labels in sync.
-            affected = await self.db.execute(
-                update(User).where(User.school_id == school.id).values(city=city.name, school=school.short_name)
+            # Canonical labels are read through the school relation.
+            linked_users = await self.db.scalar(
+                select(func.count()).select_from(User).where(User.school_id == school.id)
             )
             submission.city_name = city.name
             add_audit_event(
@@ -129,7 +129,7 @@ class SchoolSubmissionsService:
                 action="school_updated_from_submission",
                 method="POST",
                 path=f"/api/v1/admin/school-submissions/{submission.id}/approve",
-                details={"submission_id": submission.id, "school_id": school.id, "before": before, "after": patch, "linked_users_updated": affected.rowcount},
+                details={"submission_id": submission.id, "school_id": school.id, "before": before, "after": patch, "linked_users_updated": linked_users},
             )
         elif existing_school_id is not None:
             school = await self.schools.get(existing_school_id)
@@ -165,9 +165,6 @@ class SchoolSubmissionsService:
         target_user.region_id = school.city.region_id
         target_user.school_id = school.id
         target_user.school_status = SchoolStatus.selected
-        target_user.country = "Россия" if school.city.region.country_code == "RU" else school.city.region.name
-        target_user.city = school.city.name
-        target_user.school = school.short_name
         self.db.add(
             UserChange(
                 actor_user_id=admin.id,

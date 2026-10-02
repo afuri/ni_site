@@ -15,6 +15,7 @@ from app.repos.teacher import TeacherRepo
 from app.repos.teacher_students import TeacherStudentsRepo
 from app.repos.users import UsersRepo
 from app.services.teacher import TeacherService
+from app.services.attempts import AttemptsService
 from app.schemas.teacher import TeacherAttemptView, TeacherOlympiadAttemptRow, TeacherCertificateItem
 from app.schemas.user import ModeratorRequestResponse
 from app.core.storage import list_object_keys, presign_get, public_url_for_key
@@ -88,6 +89,7 @@ async def list_attempts_for_olympiad(
                 "score_max": attempt.score_max,
                 "passed": attempt.passed,
                 "graded_at": attempt.graded_at,
+                "finished_at": attempt.finished_at,
             }
         )
     return result
@@ -135,6 +137,8 @@ async def get_attempt_for_review(
                 "title": task.title,
                 "content": task.content,
                 "task_type": task.task_type,
+                "image_key": task.image_key,
+                "payload": AttemptsService._sanitize_task_payload(task.task_type, task.payload),
                 "sort_order": olymp_task.sort_order,
                 "max_score": olymp_task.max_score,
                 "answer_payload": None if a is None else a.answer_payload,

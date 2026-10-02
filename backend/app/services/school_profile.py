@@ -14,19 +14,6 @@ class SchoolChoice:
     school: School | None
     status: SchoolStatus
 
-    @property
-    def legacy_values(self) -> dict[str, str | None]:
-        if self.school is not None:
-            return {
-                "country": "Россия" if self.region.country_code == "RU" else self.region.name,
-                "city": self.school.city.name,
-                "school": self.school.short_name,
-            }
-        return {
-            "country": "Россия" if self.region.country_code == "RU" else None,
-            "city": None,
-            "school": None,
-        }
 
 
 class SchoolProfileService:
@@ -141,7 +128,7 @@ class SchoolProfileService:
                 school_id=None,
                 school_not_found=False,
             )
-            patch.update(region_id=choice.region.id, school_id=None, school_status=choice.status, **choice.legacy_values)
+            patch.update(region_id=choice.region.id, school_id=None, school_status=choice.status)
             return patch
 
         if geography_touched:
@@ -162,6 +149,5 @@ class SchoolProfileService:
                 region_id=choice.region.id,
                 school_id=choice.school.id if choice.school else None,
                 school_status=choice.status,
-                **choice.legacy_values,
             )
         return patch

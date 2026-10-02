@@ -35,7 +35,7 @@ async def _get_current_user_base(
         raise http_error(status.HTTP_401_UNAUTHORIZED, codes.INVALID_TOKEN)
 
     users_repo = UsersRepo(db)
-    user = await users_repo.get_by_id(int(sub))
+    user = await users_repo.get_by_id(int(sub), minimal=True)
     if not user or not user.is_active:
         raise http_error(status.HTTP_401_UNAUTHORIZED, codes.USER_NOT_FOUND)
 

@@ -1,8 +1,12 @@
 from datetime import datetime, timedelta, timezone
+import asyncio
+from sqlalchemy import select, update
+from app.models.auth_token import RefreshToken, RefreshRotation, EmailVerification, PasswordResetToken
 
 from app.core.config import settings
 from app.core.email import build_reset_link, build_verify_link
 from app.core.security import (
+    encode_token,
     hash_password,
     verify_password,
     create_access_token,
@@ -12,7 +16,7 @@ from app.core.security import (
     hash_token,
     validate_password_policy,
 )
-from app.models.user import UserRole, Gender
+from app.models.user import UserRole
 from app.repos.auth_tokens import AuthTokensRepo
 from app.repos.users import UsersRepo
 from app.tasks.email import send_email_task
@@ -96,7 +100,6 @@ class AuthService:
             surname=surname,
             name=name,
             father_name=father_name,
-            **choice.legacy_values,
             class_grade=class_grade,
             subject=subject,
             gender=gender_enum.value,
@@ -141,50 +144,52 @@ class AuthService:
         )
         return access, refresh, user.must_change_password
 
-    async def refresh_tokens(self, *, refresh_token: str):
+    async def refresh_tokens(self, *, refresh_token: str, idempotency_key: str | None = None):
         try:
             payload = decode_token(refresh_token)
+            user_id = int(payload['sub'])
         except Exception:
             raise ValueError(codes.INVALID_TOKEN)
-
-        if payload.get("type") != "refresh":
+        if payload.get('type') != 'refresh':
             raise ValueError(codes.INVALID_TOKEN_TYPE)
-
-        sub = payload.get("sub")
-        if not sub:
-            raise ValueError(codes.INVALID_TOKEN)
-
-        token_hash = hash_token(refresh_token)
-        record = await self.tokens_repo.get_refresh_by_hash(token_hash)
-        if not record:
-            raise ValueError(codes.INVALID_TOKEN)
-
-        now = self._now_utc()
-        if record.revoked_at is not None or record.expires_at < now:
-            raise ValueError(codes.INVALID_TOKEN)
-
-        user = await self.users_repo.get_by_id(record.user_id)
+        db = self.tokens_repo.db
+        user = await self.users_repo.get_by_id(user_id, for_update=True)
         if not user or not user.is_active:
             raise ValueError(codes.INVALID_TOKEN)
-
-        if user.must_change_password:
-            if user.temp_password_expires_at is None:
-                raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
-            if user.temp_password_expires_at < self._now_utc():
-                raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
-
-        await self.tokens_repo.revoke_refresh_token(record, now)
-
-        access = create_access_token(str(user.id))
-        refresh = create_refresh_token(str(user.id))
+        now = self._now_utc()
+        if user.must_change_password and (user.temp_password_expires_at is None or user.temp_password_expires_at < now):
+            raise ValueError(codes.TEMP_PASSWORD_EXPIRED)
+        token_hash = hash_token(refresh_token)
+        record = await db.scalar(select(RefreshToken).where(RefreshToken.user_id == user_id,
+            RefreshToken.token_hash == token_hash).with_for_update().execution_options(populate_existing=True))
+        if not record or record.revoked_at is not None or record.expires_at <= now:
+            # Exact operation retry only, never reactivate the revoked token.
+            receipt = await db.get(RefreshRotation, token_hash) if idempotency_key else None
+            if receipt and receipt.user_id == user_id and receipt.expires_at > now and receipt.request_hash == hash_token(idempotency_key):
+                successor = await db.scalar(select(RefreshToken).where(RefreshToken.user_id == user_id,
+                    RefreshToken.token_hash == receipt.new_hash, RefreshToken.revoked_at.is_(None), RefreshToken.expires_at > now))
+                if successor:
+                    access, refresh = (encode_token(receipt.claims[k]) for k in ('access','refresh'))
+                    if hash_token(refresh) == receipt.new_hash:
+                        await db.commit()
+                        return access, refresh, user.must_change_password
+            raise ValueError(codes.INVALID_TOKEN)
+        timestamp = int(now.timestamp())
+        claims = {
+            'access': {'sub': str(user.id), 'type':'access', 'iat':timestamp,
+                'exp':int((now+timedelta(minutes=settings.JWT_ACCESS_TTL_MIN)).timestamp())},
+            'refresh': {'sub': str(user.id), 'type':'refresh', 'iat':timestamp,
+                'exp':int((now+timedelta(days=settings.JWT_REFRESH_TTL_DAYS)).timestamp()), 'jti':generate_token()},
+        }
+        access, refresh = (encode_token(claims[k]) for k in ('access','refresh'))
         new_hash = hash_token(refresh)
-        expires_at = now + timedelta(days=settings.JWT_REFRESH_TTL_DAYS)
-        await self.tokens_repo.create_refresh_token(
-            user_id=user.id,
-            token_hash=new_hash,
-            created_at=now,
-            expires_at=expires_at,
-        )
+        record.revoked_at = now
+        db.add(RefreshToken(user_id=user.id, token_hash=new_hash, created_at=now,
+            expires_at=now+timedelta(days=settings.JWT_REFRESH_TTL_DAYS)))
+        if idempotency_key:
+            db.add(RefreshRotation(old_hash=token_hash, request_hash=hash_token(idempotency_key), user_id=user.id,
+                new_hash=new_hash, claims=claims, expires_at=now+timedelta(seconds=60)))
+        await db.commit()
         return access, refresh, user.must_change_password
 
     async def logout(self, *, refresh_token: str) -> None:
@@ -241,12 +246,17 @@ class AuthService:
         if record.expires_at < now:
             raise ValueError(codes.INVALID_TOKEN)
 
-        user = await self.users_repo.get_by_id(record.user_id)
-        if not user:
+        db = self.tokens_repo.db
+        user = await self.users_repo.get_by_id(record.user_id, for_update=True, minimal=True)
+        record = await db.scalar(select(EmailVerification).where(EmailVerification.token_hash == token_hash)
+            .with_for_update().execution_options(populate_existing=True))
+        now = self._now_utc()
+        if not user or not record or record.expires_at <= now:
             raise ValueError(codes.INVALID_TOKEN)
-
-        await self.tokens_repo.mark_email_verification_used(record, now)
-        await self.users_repo.set_email_verified(user)
+        if record.used_at is None:
+            record.used_at = now
+            user.is_email_verified = True
+        await db.commit()
 
     async def request_password_reset(self, *, email: str) -> None:
         user = await self.users_repo.get_by_email(email)
@@ -290,16 +300,20 @@ class AuthService:
         if record.expires_at < now:
             raise ValueError(codes.INVALID_TOKEN)
 
-        user = await self.users_repo.get_by_id(record.user_id)
-        if not user:
+        # Password hashing does not hold database row locks.
+        password_hash = await asyncio.to_thread(hash_password, new_password)
+        db = self.tokens_repo.db
+        user = await self.users_repo.get_by_id(record.user_id, for_update=True, minimal=True)
+        record = await db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+            .with_for_update().execution_options(populate_existing=True))
+        now = self._now_utc()
+        if not user or not record or record.expires_at <= now:
             raise ValueError(codes.INVALID_TOKEN)
-
-        await self.tokens_repo.mark_password_reset_used(record, now)
-        password_hash = hash_password(new_password)
-        await self.users_repo.set_password(
-            user,
-            password_hash,
-            must_change_password=False,
-            temp_password_expires_at=None,
-        )
-        await self.tokens_repo.revoke_all_refresh_tokens(user.id, now)
+        if record.used_at is None:
+            record.used_at = now
+            user.password_hash = password_hash
+            user.must_change_password = False
+            user.temp_password_expires_at = None
+            await db.execute(update(RefreshToken).where(RefreshToken.user_id == user.id,
+                RefreshToken.revoked_at.is_(None)).values(revoked_at=now))
+        await db.commit()

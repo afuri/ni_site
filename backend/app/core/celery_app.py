@@ -12,6 +12,11 @@ celery_app = Celery(
 celery_app.autodiscover_tasks(["app"])
 
 beat_schedule: dict[str, dict] = {}
+beat_schedule["expire-attempts"] = {
+    "task": "maintenance.expire_attempts",
+    "schedule": timedelta(seconds=30),
+    "options": {"expires": 30},
+}
 beat_schedule["cleanup-deleted-account-files"] = {
     "task": "maintenance.cleanup_deleted_account_files",
     "schedule": timedelta(minutes=5),
@@ -25,6 +30,7 @@ if settings.TOKEN_CLEANUP_INTERVAL_SEC > 0:
     beat_schedule["cleanup-expired-auth"] = {
         "task": "maintenance.cleanup_expired_auth",
         "schedule": timedelta(seconds=settings.TOKEN_CLEANUP_INTERVAL_SEC),
+        "options": {"expires": settings.TOKEN_CLEANUP_INTERVAL_SEC},
     }
 if settings.AUDIT_LOG_CLEANUP_INTERVAL_SEC > 0:
     beat_schedule["cleanup-audit-logs"] = {
@@ -38,4 +44,5 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     beat_schedule=beat_schedule,
+    task_routes={"maintenance.*": {"queue": "maintenance"}},
 )

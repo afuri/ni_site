@@ -16,9 +16,10 @@ from app.db.base import Base
 
 class AnnouncementCampaign(Base):
     __tablename__ = "announcement_campaigns"
+    __table_args__ = (UniqueConstraint("code", name="announcement_campaigns_code_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    code: Mapped[str] = mapped_column(String(64), index=True)
     title_default: Mapped[str] = mapped_column(String(255))
     common_text: Mapped[str] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
@@ -82,11 +83,11 @@ class AnnouncementAssignment(Base):
 
 class AnnouncementCampaignFallback(Base):
     __tablename__ = "announcement_campaign_fallbacks"
+    __table_args__ = (UniqueConstraint("campaign_id", name="announcement_campaign_fallbacks_campaign_id_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     campaign_id: Mapped[int] = mapped_column(
         ForeignKey("announcement_campaigns.id", ondelete="CASCADE"),
-        unique=True,
         index=True,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

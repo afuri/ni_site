@@ -13,6 +13,7 @@ import {
 import { createMainAuthStorage } from "../utils/authStorage";
 import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
 import { renderMarkdown } from "../utils/markdown";
+import { attemptAnswerLabels, formatAttemptElapsed } from "../platform/attemptReview";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import "../styles/cabinet.css";
@@ -90,7 +91,7 @@ type AttemptTask = {
 };
 
 type AttemptView = {
-  attempt: { id: number };
+  attempt: { id: number; status?: string; started_at?: string | null; deadline_at?: string | null; finished_at?: string | null };
   olympiad_title: string;
   tasks: AttemptTask[];
 };
@@ -200,8 +201,8 @@ const buildProfileFromUser = (currentUser: UserRead): ProfileForm => ({
   fatherName: currentUser.father_name ?? "",
   regionId: currentUser.region_id ?? null,
   schoolId: currentUser.school_id ?? null,
-  schoolQuery: currentUser.school_short_name ?? currentUser.school ?? "",
-  schoolCity: currentUser.city_name ?? currentUser.city ?? "",
+  schoolQuery: currentUser.school_short_name ?? "",
+  schoolCity: currentUser.city_name ?? "",
   schoolNotFound: currentUser.school_status === "missing" || currentUser.school_status === "submission_rejected",
   classGrade:
     currentUser.class_grade !== null && currentUser.class_grade !== undefined
@@ -257,6 +258,7 @@ export function CabinetPage() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [viewedStudent, setViewedStudent] = useState<UserRead | null>(null);
+  const [viewedStudentStatus, setViewedStudentStatus] = useState<"idle" | "loading" | "ready" | "forbidden" | "not_found" | "error">("idle");
 
   const [attemptResults, setAttemptResults] = useState<AttemptResult[]>([]);
   const [attemptsStatus, setAttemptsStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -343,7 +345,7 @@ export function CabinetPage() {
     if (tokens) {
       client.auth
         .me()
-        .then((me) => setSession(tokens, me))
+        .then((me) => { const current = storage.getTokens(); if (current) setSession(current, me); })
         .catch(() => null);
     }
   }, [client, setSession, tokens]);
@@ -361,9 +363,15 @@ export function CabinetPage() {
       ? studentIdValue
       : null;
 
-  const activeUser = viewingStudentId ? viewedStudent : user;
+  React.useEffect(() => {
+    if (user?.role === "teacher" && ["missing", "submission_rejected"].includes(user.school_status)) {
+      setIsProfileOpen(true);
+    }
+  }, [user?.id, user?.role, user?.school_status]);
+
+  const activeUser = viewingStudentId ? (viewedStudent?.id === viewingStudentId ? viewedStudent : null) : user;
   const activeSchoolStatus: SchoolStatus =
-    activeUser?.school_status ?? (activeUser?.school_id || activeUser?.school ? "selected" : "missing");
+    activeUser?.school_status ?? (activeUser?.school_id ? "selected" : "missing");
   const diplomaAllowed = activeSchoolStatus === "selected" || activeSchoolStatus === "not_required";
   const greetingName =
     activeUser?.role === "teacher"
@@ -424,13 +432,24 @@ export function CabinetPage() {
       return;
     }
     if (viewingStudentId) {
+      let current = true;
+      setViewedStudent(null);
+      setViewedStudentStatus("loading");
       client
         .request<UserRead>({ path: `/teacher/students/${viewingStudentId}/profile`, method: "GET" })
-        .then((data) => setViewedStudent(data))
-        .catch(() => setViewedStudent(null));
-      return;
+        .then((data) => {
+          if (!current) return;
+          setViewedStudent(data);
+          setViewedStudentStatus("ready");
+        })
+        .catch((error: ApiError) => {
+          if (!current) return;
+          setViewedStudentStatus(error.status === 403 ? "forbidden" : error.status === 404 ? "not_found" : "error");
+        });
+      return () => { current = false; };
     }
     setViewedStudent(null);
+    setViewedStudentStatus("idle");
     const nextProfile = buildProfileFromUser(user);
     setProfileForm(nextProfile);
     setSavedProfile(nextProfile);
@@ -713,7 +732,15 @@ export function CabinetPage() {
   }
 
   if (viewingStudentId && !activeUser) {
-    return <div className="cabinet-page">Загрузка...</div>;
+    if (viewedStudentStatus === "loading" || viewedStudentStatus === "idle") {
+      return <div className="cabinet-page" role="status">Загрузка...</div>;
+    }
+    const message = viewedStudentStatus === "forbidden"
+      ? "Доступ к этому ученику не подтверждён."
+      : viewedStudentStatus === "not_found"
+        ? "Ученик не найден."
+        : "Не удалось загрузить профиль ученика.";
+    return <div className="cabinet-page" role="alert"><p>{message}</p><Button onClick={() => navigate("/cabinet", { replace: true })}>К списку учеников</Button></div>;
   }
 
   const isSelectedSchoolProfileLocked = Boolean(
@@ -818,7 +845,8 @@ export function CabinetPage() {
         }
       });
       if (tokens && !viewingStudentId) {
-        setSession(tokens, updated);
+        const current = storage.getTokens();
+        if (current) setSession(current, updated);
       } else if (viewingStudentId) {
         setViewedStudent(updated);
       }
@@ -895,7 +923,8 @@ export function CabinetPage() {
       setSchoolSubmissionMessage(null);
       if (tokens) {
         const refreshedUser = await client.auth.me();
-        setSession(tokens, refreshedUser);
+        const current = storage.getTokens();
+        if (current) setSession(current, refreshedUser);
       }
     } catch (error) {
       const apiError = error as ApiError;
@@ -1210,27 +1239,9 @@ export function CabinetPage() {
 
   const formatAnswer = (task: AttemptTask): React.ReactNode => {
     const payload = extractAnswerPayload(task.current_answer ?? task.answer_payload);
-    if (!payload) {
-      return "Нет ответа";
-    }
-    if (task.task_type === "short_text" && typeof (payload as { text?: string }).text === "string") {
-      return (payload as { text: string }).text;
-    }
-    if (task.task_type === "single_choice") {
-      const choiceId = (payload as { choice_id?: string }).choice_id;
-      if (!choiceId) {
-        return "Нет ответа";
-      }
-      const option = task.payload?.options?.find((item) => item.id === choiceId);
-      return option?.text ?? choiceId;
-    }
+    const labels = attemptAnswerLabels(payload, task.payload?.options);
+    if (labels.length === 0) return "Нет ответа";
     if (task.task_type === "multi_choice") {
-      const choiceIds = (payload as { choice_ids?: string[] }).choice_ids ?? [];
-      if (choiceIds.length === 0) {
-        return "Нет ответа";
-      }
-      const options = task.payload?.options ?? [];
-      const labels = choiceIds.map((id) => options.find((item) => item.id === id)?.text ?? id);
       return (
         <div className="cabinet-answer-chips">
           {labels.map((label, index) => (
@@ -1241,11 +1252,7 @@ export function CabinetPage() {
         </div>
       );
     }
-    try {
-      return JSON.stringify(payload);
-    } catch {
-      return String(payload);
-    }
+    return labels.join(", ");
   };
 
   const formatFullName = (parts: Array<string | null | undefined>) => {
@@ -1263,7 +1270,8 @@ export function CabinetPage() {
         body: { manual_teachers: mapManualTeachersToPayload(nextList) }
       });
       if (tokens) {
-        setSession(tokens, updated);
+        const current = storage.getTokens();
+        if (current) setSession(current, updated);
       }
       return true;
     } catch {
@@ -2165,6 +2173,7 @@ export function CabinetPage() {
         {attemptView ? (
           <div className="cabinet-attempt">
             <p className="cabinet-hint">{attemptView.olympiad_title}</p>
+            {formatAttemptElapsed(attemptView.attempt) ? <p className="cabinet-hint">Время прохождения: {formatAttemptElapsed(attemptView.attempt)}</p> : null}
             <div className="cabinet-attempt-tasks">
               {attemptView.tasks.map((task, index) => {
                 const imageUrl = task.image_key ? attemptImageUrls[task.image_key] : null;
@@ -2174,7 +2183,7 @@ export function CabinetPage() {
                     <h4>
                       Задание {index + 1}. {task.title}
                     </h4>
-                    <div className="cabinet-task-points">Баллы за задание: {task.max_score}</div>
+                    <div className="cabinet-task-points">Максимум баллов: {task.max_score}</div>
                     {imageUrl && imagePosition === "before" ? (
                       <img src={imageUrl} alt="Иллюстрация" className="cabinet-attempt-image" />
                     ) : null}

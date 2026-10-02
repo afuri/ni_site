@@ -107,17 +107,22 @@ async def readiness():
 )
 async def queues():
     queue_length = None
+    maintenance_queue_length = None
     client = await safe_redis_for_url(settings.CELERY_BROKER_URL)
     if client is not None:
         try:
             queue_length = await client.llen("celery")
             CELERY_QUEUE_LENGTH.labels(queue="celery").set(queue_length)
+            maintenance_queue_length = await client.llen("maintenance")
+            CELERY_QUEUE_LENGTH.labels(queue="maintenance").set(maintenance_queue_length)
         except Exception:
             queue_length = None
         finally:
             await client.aclose()
 
-    payload = {"queue": "celery", "length": queue_length}
+    from app.core.maintenance_monitor import read_maintenance_state
+    maintenance = await read_maintenance_state()
+    payload = {"queue": "celery", "length": queue_length, "maintenance_queue_length": maintenance_queue_length, "maintenance": maintenance}
     if queue_length is None:
         return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
     return payload

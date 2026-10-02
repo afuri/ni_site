@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, Integer, DateTime, Enum as SAEnum
+from sqlalchemy import CheckConstraint, ForeignKey, String, Boolean, Integer, DateTime, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
@@ -14,10 +14,16 @@ enum_values = lambda obj: [e.value for e in obj]
 
 class Olympiad(Base):
     __tablename__ = "olympiads"
+    __table_args__ = (
+        CheckConstraint("duration_sec > 0", name="ck_olympiads_duration"),
+        CheckConstraint("available_to > available_from", name="ck_olympiads_window"),
+        CheckConstraint("pass_percent BETWEEN 0 AND 100", name="ck_olympiads_pass_percent"),
+        CheckConstraint("attempts_limit = 1", name="ck_olympiads_attempt_limit"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    title: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     scope: Mapped[OlympiadScope] = mapped_column(
@@ -35,8 +41,11 @@ class Olympiad(Base):
 
     pass_percent: Mapped[int] = mapped_column(Integer, default=60)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    results_released: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    results_released: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    created_by_user_id: Mapped[int] = mapped_column(Integer, index=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    rules_locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", name="olympiads_created_by_user_id_fkey", ondelete="RESTRICT"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

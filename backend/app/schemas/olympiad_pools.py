@@ -7,7 +7,8 @@ from app.core.olympiad_pools import normalize_grade_group, normalize_subject
 class OlympiadPoolCreate(BaseModel):
     subject: str
     grade_group: str
-    olympiad_ids: list[int] = Field(min_length=1)
+    olympiad_ids: list[int] = Field(min_length=4, max_length=4)
+    is_trial: bool = False
     activate: bool = True
 
     @field_validator("subject", mode="before")
@@ -26,6 +27,7 @@ class OlympiadPoolRead(BaseModel):
     subject: str
     grade_group: str
     is_active: bool
+    is_trial: bool = False
     created_by_user_id: int
     created_at: datetime
     olympiad_ids: list[int]
@@ -34,9 +36,4 @@ class OlympiadPoolRead(BaseModel):
 
 
 class OlympiadAssignRequest(BaseModel):
-    subject: str
-
-    @field_validator("subject", mode="before")
-    @classmethod
-    def normalize_subject_field(cls, value: str):
-        return normalize_subject(value)
+    pool_id: int = Field(gt=0)

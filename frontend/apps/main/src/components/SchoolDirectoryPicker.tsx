@@ -246,7 +246,11 @@ export function SchoolDirectoryPicker({
       ) : (
         <>
           {selectedRegion?.is_other ? (
-            <p className="school-picker-note">Школу можно будет отправить на добавление из личного кабинета.</p>
+            value.schoolId !== null ? (
+              <p className="school-picker-note">Текущая школа: {value.schoolQuery || `№${value.schoolId}`}{value.schoolCity ? `, ${value.schoolCity}` : ""}</p>
+            ) : (
+              <p className="school-picker-note">Школу можно будет отправить на добавление из личного кабинета.</p>
+            )
           ) : (
             <div className="field school-picker-combobox">
               <label className="field-label" htmlFor={`${idPrefix}-school`}>

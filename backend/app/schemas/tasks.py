@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from datetime import datetime
+from typing import Any, Optional
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 from app.models.task import Subject, TaskType
@@ -90,4 +91,11 @@ class TaskRead(BaseModel):
     payload: dict[str, Any]
     created_by_user_id: int
 
+    archived_at: datetime | None = None
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class TaskPage(BaseModel):
+    items: list[TaskRead]
+    total: int | None = None

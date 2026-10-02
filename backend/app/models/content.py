@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum as SAEnum, String, Text
+from sqlalchemy import DateTime, Enum as SAEnum, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,11 +20,15 @@ class ContentStatus(str, enum.Enum):
 
 class ContentItem(Base):
     __tablename__ = "content_items"
+    __table_args__ = (
+        Index("ix_content_items_author", "author_id"),
+        Index("ix_content_items_type", "content_type"),
+        Index("ix_content_items_published_at", "published_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     content_type: Mapped[ContentType] = mapped_column(
         SAEnum(ContentType, name="content_type"),
-        index=True,
     )
     status: Mapped[ContentStatus] = mapped_column(
         SAEnum(ContentStatus, name="content_status"),
@@ -35,8 +39,8 @@ class ContentItem(Base):
     body: Mapped[str] = mapped_column(Text)
     image_keys: Mapped[list[str]] = mapped_column(JSONB, default=list)
 
-    author_id: Mapped[int] = mapped_column(index=True)
-    published_by_id: Mapped[int | None] = mapped_column(index=True, nullable=True)
+    author_id: Mapped[int] = mapped_column()
+    published_by_id: Mapped[int | None] = mapped_column(nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

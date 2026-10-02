@@ -8,6 +8,7 @@ import logoImage from "../assets/logo2.png";
 import instructionImage from "../assets/help.png";
 import { getAccountHomePath, LOGIN_REDIRECT_KEY } from "../routes/accountHome";
 import "../styles/olympiad.css";
+import { AttemptAnswers, type AnswerPayload, type AnswerState } from "../platform/attemptAnswers";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
@@ -17,6 +18,7 @@ type AttemptInfo = {
   started_at?: string | null;
   duration_sec: number;
   status: string;
+  answers_revision?: number | null;
 };
 
 type AttemptTask = {
@@ -37,6 +39,7 @@ type AttemptTask = {
 
 type AttemptView = {
   attempt: AttemptInfo;
+  server_now?: string;
   olympiad_title: string;
   tasks: AttemptTask[];
 };
@@ -48,11 +51,6 @@ type AttemptResult = {
   results_released?: boolean;
   olympiad_title?: string;
 };
-
-type AnswerPayload =
-  | { choice_id: string }
-  | { choice_ids: string[] }
-  | { text: string };
 
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
@@ -98,7 +96,7 @@ const parseServerDateToMs = (value?: string | null): number | null => {
 };
 
 export function OlympiadPage() {
-  const { user, signOut, setSession } = useAuth();
+  const { user, signOut } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const storage = useMemo(() => createMainAuthStorage(), []);
@@ -140,9 +138,15 @@ export function OlympiadPage() {
   const [viewError, setViewError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, AnswerPayload | null>>({});
+  const [answerState, setAnswerState] = useState<AnswerState>("saved");
+  const answerSessionRef = useRef<AttemptAnswers | null>(null);
+  const resultLoadRef = useRef<Promise<void> | null>(null);
+  const resultLoadedRef = useRef(false);
+  const deadlineCheckRef = useRef(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [shortTextErrors, setShortTextErrors] = useState<Record<number, string | null>>({});
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [isResyncing, setIsResyncing] = useState(false);
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [hasWarned, setHasWarned] = useState(false);
   const [isFinishOpen, setIsFinishOpen] = useState(false);
@@ -158,9 +162,9 @@ export function OlympiadPage() {
   const [savedTaskId, setSavedTaskId] = useState<number | null>(null);
   const saveFeedbackTimer = useRef<number | null>(null);
   const finishLockTimerRef = useRef<number | null>(null);
-  const refreshTimerRef = useRef<number | null>(null);
   const deadlineWarningShown = useRef(false);
   const hadPositiveRemainingRef = useRef(false);
+  const serverClockRef = useRef<{ serverMs: number; sampledAt: number } | null>(null);
 
   const sortedTasks = useMemo(
     () => (attemptView ? [...attemptView.tasks].sort((a, b) => a.sort_order - b.sort_order) : []),
@@ -196,13 +200,26 @@ export function OlympiadPage() {
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }, [remainingSeconds]);
 
-  const initializeAnswers = (view: AttemptView) => {
-    const initial: Record<number, AnswerPayload | null> = {};
-    view.tasks.forEach((task) => {
-      initial[task.task_id] = task.current_answer?.answer_payload ?? null;
-    });
-    setAnswers(initial);
-  };
+  const showResult = useCallback((): Promise<void> => {
+    if (resultLoadedRef.current) return Promise.resolve();
+    if (resultLoadRef.current) return resultLoadRef.current;
+    const pending = client.request<AttemptResult>({ path: `/attempts/${attemptIdNumber}/result`, method: "GET" })
+      .then(data => { resultLoadedRef.current = true; setResult(data); setIsResultOpen(true); })
+      .finally(() => { resultLoadRef.current = null; });
+    resultLoadRef.current = pending;
+    return pending;
+  }, [attemptIdNumber, client]);
+
+  useEffect(() => {
+    const leave = (event: BeforeUnloadEvent) => {
+      answerSessionRef.current?.persist();
+      if (answerState !== "saved" && !result) { event.preventDefault(); event.returnValue = ""; }
+    };
+    const online = () => answerSessionRef.current?.retry();
+    window.addEventListener("beforeunload", leave);
+    window.addEventListener("online", online);
+    return () => { window.removeEventListener("beforeunload", leave); window.removeEventListener("online", online); };
+  }, [answerState, result]);
 
   useEffect(() => {
     if (!attemptIdNumber || Number.isNaN(attemptIdNumber)) {
@@ -212,9 +229,15 @@ export function OlympiadPage() {
     }
     let isMounted = true;
     const loadAttempt = async () => {
+      answerSessionRef.current?.dispose();
+      answerSessionRef.current = null;
+      deadlineCheckRef.current = false;
+      resultLoadedRef.current = false;
+      setResult(null);
       setViewStatus("loading");
       setViewError(null);
       try {
+        const requestedAt = performance.now();
         const data = await client.request<AttemptView>({
           path: `/attempts/${attemptIdNumber}`,
           method: "GET"
@@ -222,8 +245,22 @@ export function OlympiadPage() {
         if (!isMounted) {
           return;
         }
+        const receivedAt = performance.now();
+        const serverMs = parseServerDateToMs(data.server_now);
+        serverClockRef.current = serverMs === null ? null : { serverMs: serverMs + (receivedAt - requestedAt) / 2, sampledAt: receivedAt };
         setAttemptView(data);
-        initializeAnswers(data);
+        const session = new AttemptAnswers({ client, userId: user?.id ?? 0, view: data,
+          onAnswers: setAnswers,
+          onState: (state, message) => {
+            setAnswerState(state);
+            setAnswerError(message ?? (state === "conflict" ? "Работа изменена в другой вкладке. Сохранённые ответы загружены; ваш черновик остался на устройстве."
+              : state === "offline" ? "Ответы ещё не сохранены на сервере. Черновик остался на устройстве." : null));
+          },
+          onSaved: taskId => triggerSaveFeedback(taskId),
+          onClosed: () => { if (isMounted) void showResult().catch(() => setAnswerError("Не удалось загрузить результат. Обновите страницу.")); }
+        });
+        answerSessionRef.current = session;
+        session.start();
         setActiveIndex(0);
         setViewStatus("idle");
         if (data.attempt.status !== "active") {
@@ -253,8 +290,37 @@ export function OlympiadPage() {
     void loadAttempt();
     return () => {
       isMounted = false;
+      answerSessionRef.current?.dispose();
     };
-  }, [attemptIdNumber, client]);
+  }, [attemptIdNumber, client, user?.id, showResult]);
+
+  useEffect(() => {
+    if (!attemptIdNumber || attemptView?.attempt.status !== "active" || isAuthInvalid) return;
+    let current = true;
+    const syncOnReturn = async () => {
+      if (document.hidden) return;
+      setIsResyncing(true);
+      try {
+        const requestedAt = performance.now();
+        const data = await client.request<AttemptView>({ path: `/attempts/${attemptIdNumber}`, method: "GET" });
+        if (!current) return;
+        const receivedAt = performance.now();
+        const serverMs = parseServerDateToMs(data.server_now);
+        if (serverMs !== null) serverClockRef.current = { serverMs: serverMs + (receivedAt - requestedAt) / 2, sampledAt: receivedAt };
+        answerSessionRef.current?.observe(data);
+        setAttemptView((previous) => previous?.attempt.id === data.attempt.id ? { ...previous, attempt: data.attempt, server_now: data.server_now } : previous);
+        if (data.attempt.status !== "active") {
+          if (current) await showResult();
+        }
+      } catch {
+        // The monotonic clock remains usable if this request fails.
+      } finally {
+        if (current) setIsResyncing(false);
+      }
+    };
+    document.addEventListener("visibilitychange", syncOnReturn);
+    return () => { current = false; document.removeEventListener("visibilitychange", syncOnReturn); };
+  }, [attemptIdNumber, attemptView?.attempt.status, client, isAuthInvalid]);
 
   useEffect(() => {
     attemptStatusRef.current = attemptView?.attempt ?? null;
@@ -278,7 +344,9 @@ export function OlympiadPage() {
       return;
     }
     const tick = () => {
-      const remaining = Math.max(Math.ceil((deadline - Date.now()) / 1000), 0);
+      const anchor = serverClockRef.current;
+      const serverNow = anchor ? anchor.serverMs + performance.now() - anchor.sampledAt : Date.now();
+      const remaining = Math.max(Math.ceil((deadline - serverNow) / 1000), 0);
       if (remaining > 0) {
         hadPositiveRemainingRef.current = true;
       }
@@ -312,40 +380,6 @@ export function OlympiadPage() {
       setIsDeadlineWarningOpen(true);
     }
   }, [attemptView]);
-
-  useEffect(() => {
-    if (refreshTimerRef.current) {
-      window.clearInterval(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-    if (!attemptView || attemptView.attempt.status !== "active" || isAuthInvalid) {
-      return;
-    }
-    let isMounted = true;
-    const refreshTokens = async () => {
-      try {
-        if (typeof document !== "undefined" && document.hidden) {
-          return;
-        }
-        const refreshed = await client.auth.refresh({ clearOnFail: false });
-        if (!isMounted || !refreshed) {
-          return;
-        }
-        setSession(refreshed, user ?? null);
-      } catch {
-        // ignore refresh errors; 401 will be handled by request flow
-      }
-    };
-    void refreshTokens();
-    refreshTimerRef.current = window.setInterval(refreshTokens, 45 * 60 * 1000);
-    return () => {
-      isMounted = false;
-      if (refreshTimerRef.current) {
-        window.clearInterval(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
-  }, [attemptView, client, isAuthInvalid, setSession, user]);
 
   useEffect(() => {
     return () => {
@@ -422,11 +456,12 @@ export function OlympiadPage() {
   }, [attemptView, client, imageUrls]);
 
   useEffect(() => {
-    if (remainingSeconds === null || isAuthInvalid || !attemptView) {
+    if (remainingSeconds === null || isAuthInvalid || !attemptView || isResyncing) {
       setIsTimeSyncWarningOpen(false);
       return;
     }
-    if (remainingSeconds <= 300 && remainingSeconds > 0 && !hasWarned) {
+    const warningThreshold = Math.min(300, Math.floor(attemptView.attempt.duration_sec / 2));
+    if (remainingSeconds <= warningThreshold && remainingSeconds > 0 && !hasWarned) {
       setIsWarningOpen(true);
       setHasWarned(true);
     }
@@ -438,12 +473,21 @@ export function OlympiadPage() {
       setIsTimeSyncWarningOpen(false);
       return;
     }
+    if (document.hidden) return;
     if (hadPositiveRemainingRef.current) {
-      void submitAttempt();
+      if (!deadlineCheckRef.current) {
+        deadlineCheckRef.current = true;
+        answerSessionRef.current?.persist();
+        void client.request<AttemptView>({ path: `/attempts/${attemptIdNumber}`, method: "GET" }).then(data => {
+          answerSessionRef.current?.observe(data);
+          if (data.attempt.status !== "active") return showResult();
+          setAnswerError("Ожидаем подтверждения завершения. Обновите страницу через несколько секунд.");
+        }).catch(() => setAnswerError("Время вышло. Нет связи с сервером; результат появится после восстановления связи."));
+      }
       return;
     }
     setIsTimeSyncWarningOpen(true);
-  }, [remainingSeconds, hasWarned, isSubmitting, result, attemptView, isAuthInvalid]);
+  }, [remainingSeconds, hasWarned, isSubmitting, result, attemptView, isAuthInvalid, isResyncing]);
 
   const isAnswered = (taskId: number) => {
     const payload = answers[taskId];
@@ -465,8 +509,11 @@ export function OlympiadPage() {
   );
   const hasUnanswered = unansweredCount > 0;
 
-  const updateAnswer = (taskId: number, payload: AnswerPayload | null) => {
+  const editingDisabled = isSubmitting || answerState === "conflict" || Boolean(result) || isAuthInvalid || attemptView?.attempt.status !== "active";
+  const updateAnswer = (taskId: number, payload: AnswerPayload | null, send = true) => {
+    if (editingDisabled) return;
     setAnswers((prev) => ({ ...prev, [taskId]: payload }));
+    answerSessionRef.current?.edit(taskId, payload, send);
   };
 
   const getShortTextError = useCallback(
@@ -500,26 +547,13 @@ export function OlympiadPage() {
     setShortTextErrors((prev) => ({ ...prev, [taskId]: message }));
   };
 
-  const saveAnswer = async (taskId: number, payload: AnswerPayload | null) => {
-    if (!payload || isAuthInvalid) {
-      return;
-    }
-    setAnswerError(null);
-    try {
-      await client.request({
-        path: `/attempts/${attemptIdNumber}/answers`,
-        method: "POST",
-        body: { task_id: taskId, answer_payload: payload }
-      });
-    } catch {
-      setAnswerError("Не удалось сохранить ответ.");
-    }
+  const saveAnswer = (taskId: number, payload: AnswerPayload | null) => {
+    if (!editingDisabled) answerSessionRef.current?.edit(taskId, payload);
   };
 
   const handleSingleChoice = (taskId: number, choiceId: string) => {
     const payload = { choice_id: choiceId };
     updateAnswer(taskId, payload);
-    void saveAnswer(taskId, payload);
   };
 
   const handleMultiChoice = (taskId: number, choiceId: string) => {
@@ -534,12 +568,11 @@ export function OlympiadPage() {
     }
     const payload = { choice_ids: next };
     updateAnswer(taskId, payload);
-    void saveAnswer(taskId, payload);
   };
 
   const handleShortTextChange = (taskId: number, text: string) => {
     setShortTextError(taskId, getShortTextError(taskId, text));
-    updateAnswer(taskId, { text });
+    updateAnswer(taskId, { text }, false);
   };
 
   const handleShortTextSave = (taskId: number) => {
@@ -551,10 +584,7 @@ export function OlympiadPage() {
       if (validationError) {
         return;
       }
-      if (trimmed) {
-        triggerSaveFeedback(taskId);
-        void saveAnswer(taskId, { text: trimmed });
-      }
+      saveAnswer(taskId, trimmed ? { text: trimmed } : null);
     }
   };
 
@@ -567,9 +597,7 @@ export function OlympiadPage() {
       if (validationError) {
         return;
       }
-      if (trimmed) {
-        void saveAnswer(taskId, { text: trimmed });
-      }
+      saveAnswer(taskId, trimmed ? { text: trimmed } : null);
     }
   };
 
@@ -583,9 +611,7 @@ export function OlympiadPage() {
         if (validationError) {
           return;
         }
-        if (trimmed) {
-          await saveAnswer(activeTask.task_id, { text: trimmed });
-        }
+        saveAnswer(activeTask.task_id, trimmed ? { text: trimmed } : null);
       }
     }
     setActiveIndex(Math.max(0, Math.min(index, sortedTasks.length - 1)));
@@ -598,47 +624,36 @@ export function OlympiadPage() {
     setIsSubmitting(true);
     setAnswerError(null);
     try {
-      const pending = Object.entries(answers)
-        .map(([key, payload]) => ({ taskId: Number(key), payload }))
-        .filter((item) => item.payload);
-      for (const item of pending) {
-        if (item.payload && "text" in item.payload) {
-          const trimmed = item.payload.text.trim();
-          const validationError = getShortTextError(item.taskId, trimmed);
-          setShortTextError(item.taskId, validationError);
+      for (const [id, payload] of Object.entries(answers)) {
+        if (payload && "text" in payload) {
+          const validationError = getShortTextError(Number(id), payload.text);
           if (validationError) {
-            continue;
+            setShortTextError(Number(id), validationError);
+            setActiveIndex(sortedTasks.findIndex(task => task.task_id === Number(id)));
+            setAnswerError("Исправьте ответ на выделенное задание перед завершением.");
+            return;
           }
-          if (!trimmed) {
-            continue;
-          }
-          await saveAnswer(item.taskId, { text: trimmed });
-          continue;
         }
-        await saveAnswer(item.taskId, item.payload);
       }
-      await client.request({
-        path: `/attempts/${attemptIdNumber}/submit`,
-        method: "POST"
-      });
-      const resultData = await client.request<AttemptResult>({
-        path: `/attempts/${attemptIdNumber}/result`,
-        method: "GET"
-      });
-      setResult(resultData);
-      setIsResultOpen(true);
+      if (!answerSessionRef.current) throw new Error("answers_not_loaded");
+      await answerSessionRef.current.submit();
+      await showResult();
     } catch (error) {
       const apiError =
         error && typeof error === "object" && "code" in error
           ? (error as { code?: string })
           : null;
       if (apiError?.code === "attempt_submit_too_early") {
-        setIsTimeSyncWarningOpen(true);
+        const seconds = error && typeof error === "object" && "details" in error
+          ? Number((error as { details?: { retry_after_seconds?: unknown } }).details?.retry_after_seconds)
+          : NaN;
         setAnswerError(
-          "Попытка только что запущена. Проверьте время на устройстве и обновите страницу."
+          Number.isFinite(seconds) && seconds > 0
+            ? `Попытка только что запущена. Завершение станет доступно через ${Math.ceil(seconds)} сек. Попробуйте позже.`
+            : "Попытка только что запущена. Завершение станет доступно через несколько секунд. Попробуйте позже."
         );
-      } else {
-        setAnswerError("Не удалось завершить олимпиаду.");
+      } else if (answerState !== "conflict" && !(error instanceof Error && error.message === "answers_conflict")) {
+        setAnswerError("Не удалось завершить олимпиаду. Ответы остаются в черновике; попробуйте снова.");
       }
     } finally {
       setIsSubmitting(false);
@@ -850,6 +865,7 @@ export function OlympiadPage() {
                     <label key={option.id} className="olympiad-option">
                       <input
                         type="radio"
+                        disabled={editingDisabled}
                         name={`task-${activeTask.task_id}`}
                         checked={
                           answers[activeTask.task_id] !== null &&
@@ -874,6 +890,7 @@ export function OlympiadPage() {
                       <label key={option.id} className="olympiad-option">
                         <input
                           type="checkbox"
+                          disabled={editingDisabled}
                           checked={Boolean(selected)}
                           onChange={() => handleMultiChoice(activeTask.task_id, option.id)}
                         />
@@ -887,6 +904,7 @@ export function OlympiadPage() {
                 <div className="olympiad-short-answer">
                   <TextInput
                     label="Ответ"
+                    disabled={editingDisabled}
                     name={`answer-${activeTask.task_id}`}
                     placeholder={
                       activeTask.payload?.subtype === "int"
@@ -909,6 +927,7 @@ export function OlympiadPage() {
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={editingDisabled}
                     onClick={() => handleShortTextSave(activeTask.task_id)}
                     className={[
                       "olympiad-save-button",
@@ -926,7 +945,13 @@ export function OlympiadPage() {
                   </Button>
                 </div>
               ) : null}
+              <p role="status">{answerState === "saved" ? "Ответы сохранены" : answerState === "pending" ? "Ответы ожидают сохранения" : "Есть несохранённые изменения"}</p>
               {answerError ? <p className="olympiad-error">{answerError}</p> : null}
+              {answerState === "offline" ? <Button variant="outline" onClick={() => answerSessionRef.current?.retry()}>Повторить сохранение</Button> : null}
+              {answerState === "conflict" ? <div>
+                <Button variant="outline" onClick={() => answerSessionRef.current?.restoreDraft()}>Восстановить мой черновик</Button>
+                <Button variant="outline" onClick={() => answerSessionRef.current?.discardDraft()}>Использовать сохранённые ответы</Button>
+              </div> : null}
             </div>
 
             <div className="olympiad-nav olympiad-nav-right">
@@ -990,7 +1015,7 @@ export function OlympiadPage() {
           <Button
             onClick={() => void handleFinishConfirm()}
             isLoading={isSubmitting}
-            disabled={isFinishLocked}
+            disabled={isFinishLocked || isSubmitting || answerState === "conflict"}
             className="olympiad-finish-danger"
           >
             Завершить
@@ -998,7 +1023,7 @@ export function OlympiadPage() {
           <Button
             variant="outline"
             onClick={() => setIsFinishOpen(false)}
-            disabled={isFinishLocked}
+            disabled={isFinishLocked || isSubmitting || answerState === "conflict"}
             className="olympiad-finish-back"
           >
             Вернуться
@@ -1023,9 +1048,9 @@ export function OlympiadPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={isWarningOpen} onClose={() => setIsWarningOpen(false)} title="Осталось 5 минут">
+      <Modal isOpen={isWarningOpen} onClose={() => setIsWarningOpen(false)} title="Проверьте ответы">
         <div className="olympiad-modal-body">
-          <p>Осталось 5 минут до окончания олимпиады. Проверьте ответы перед отправкой.</p>
+          <p>До окончания олимпиады осталось {timeLabel}. Проверьте ответы перед отправкой.</p>
         </div>
         <div className="olympiad-modal-actions">
           <Button onClick={() => setIsWarningOpen(false)}>Понятно</Button>

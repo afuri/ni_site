@@ -34,5 +34,11 @@ export function AccountRoute({ area, children }: AccountRouteProps) {
     return <Navigate to={homePath} replace />;
   }
 
+  if (user.role === "student" && user.class_grade !== 0 &&
+      ["missing", "submission_rejected"].includes(user.school_status) &&
+      ["/platform", "/platform/"].includes(location.pathname)) {
+    return <Navigate to="/platform/profile" replace />;
+  }
+
   return children;
 }

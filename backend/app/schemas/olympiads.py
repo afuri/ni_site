@@ -4,6 +4,9 @@ from pydantic import BaseModel, ConfigDict
 
 class OlympiadPublicRead(BaseModel):
     id: int
+    pool_id: int | None = None
+    subject: str | None = None
+    is_trial: bool = False
     title: str
     description: str | None
     age_group: str

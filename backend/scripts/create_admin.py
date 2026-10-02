@@ -32,9 +32,6 @@ async def run() -> None:
     password = _get_env("ADMIN_PASSWORD")
     surname = _get_env("ADMIN_SURNAME")
     name = _get_env("ADMIN_NAME")
-    country = _get_env("ADMIN_COUNTRY")
-    city = _get_env("ADMIN_CITY")
-    school = _get_env("ADMIN_SCHOOL")
     father_name = os.environ.get("ADMIN_FATHER_NAME")
     gender = os.environ.get("ADMIN_GENDER")
     subscription_raw = os.environ.get("ADMIN_SUBSCRIPTION", "0")
@@ -61,9 +58,6 @@ async def run() -> None:
             surname=surname,
             name=name,
             father_name=father_name,
-            country=country,
-            city=city,
-            school=school,
             class_grade=None,
             subject=None,
             gender=gender,

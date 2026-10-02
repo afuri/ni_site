@@ -42,6 +42,7 @@ async def create_pool(
     try:
         pool, items = await service.create_pool(
             subject=payload.subject,
+            is_trial=payload.is_trial,
             grade_group=payload.grade_group,
             olympiad_ids=payload.olympiad_ids,
             activate=payload.activate,
@@ -57,13 +58,14 @@ async def create_pool(
             raise http_error(422, codes.OLYMPIAD_POOL_EMPTY)
         if code == codes.OLYMPIAD_NOT_FOUND:
             raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
-        raise
+        raise http_error(409, str(e))
 
     return {
         "id": pool.id,
         "subject": pool.subject,
         "grade_group": pool.grade_group,
         "is_active": pool.is_active,
+        "is_trial": pool.is_trial,
         "created_by_user_id": pool.created_by_user_id,
         "created_at": pool.created_at,
         "olympiad_ids": [item.olympiad_id for item in items],
@@ -96,7 +98,7 @@ async def list_pools(
     except ValueError as e:
         if str(e) == codes.INVALID_SUBJECT:
             raise http_error(422, codes.INVALID_SUBJECT)
-        raise
+        raise http_error(409, str(e))
 
 
 @router.post(
@@ -124,4 +126,13 @@ async def activate_pool(
     except ValueError as e:
         if str(e) == codes.OLYMPIAD_POOL_NOT_FOUND:
             raise http_error(404, codes.OLYMPIAD_POOL_NOT_FOUND)
-        raise
+        raise http_error(409, str(e))
+
+
+@router.post("/{pool_id}/copy", response_model=OlympiadPoolRead, status_code=201, tags=["admin"])
+async def copy_pool(pool_id: int, db: AsyncSession = Depends(get_db), admin: User = Depends(require_role(UserRole.admin))):
+    service = OlympiadPoolsService(OlympiadPoolsRepo(db), OlympiadAssignmentsRepo(db), OlympiadsRepo(db))
+    try:
+        return await service.copy_pool(pool_id, admin.id)
+    except ValueError as exc:
+        raise http_error(404 if str(exc) == codes.OLYMPIAD_POOL_NOT_FOUND else 409, str(exc))

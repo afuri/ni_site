@@ -18,20 +18,6 @@ from app.services.school_profile import SchoolProfileService
 router = APIRouter(prefix="/users")
 
 
-@router.get(
-    "/me",
-    response_model=UserRead,
-    tags=["users"],
-    description="Получить профиль пользователя",
-    responses={
-        200: response_model_example(UserRead, EXAMPLE_USER_READ),
-        401: response_example(codes.MISSING_TOKEN),
-    },
-)
-async def get_me(user: User = Depends(get_current_user)):
-    return user
-
-
 @router.put(
     "/me",
     response_model=UserRead,

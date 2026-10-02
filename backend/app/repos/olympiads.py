@@ -20,8 +20,8 @@ class OlympiadsRepo:
         res = await self.db.execute(select(Olympiad).where(Olympiad.id == olympiad_id))
         return res.scalar_one_or_none()
 
-    async def list(self, created_by_user_id: int | None, limit: int, offset: int) -> list[Olympiad]:
-        stmt = select(Olympiad)
+    async def list(self, created_by_user_id: int | None, limit: int, offset: int, archived: bool = False) -> list[Olympiad]:
+        stmt = select(Olympiad).where(Olympiad.archived_at.is_not(None) if archived else Olympiad.archived_at.is_(None))
         if created_by_user_id is not None:
             stmt = stmt.where(Olympiad.created_by_user_id == created_by_user_id)
         stmt = stmt.order_by(Olympiad.id.desc()).limit(limit).offset(offset)
@@ -31,7 +31,7 @@ class OlympiadsRepo:
     async def list_published(self, limit: int, offset: int) -> list[Olympiad]:
         stmt = (
             select(Olympiad)
-            .where(Olympiad.is_published.is_(True))
+            .where(Olympiad.is_published.is_(True), Olympiad.archived_at.is_(None))
             .order_by(Olympiad.available_from.desc(), Olympiad.id.desc())
             .limit(limit)
             .offset(offset)
@@ -56,5 +56,4 @@ class OlympiadsRepo:
         return olympiad
 
     async def delete(self, obj: Olympiad) -> None:
-        await self.db.delete(obj)
-        await self.db.commit()
+        raise ValueError("physical_delete_disabled")

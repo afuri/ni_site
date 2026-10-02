@@ -132,7 +132,6 @@ type AttemptRow = {
   school_id: number | null;
   school_status: "selected" | "missing" | "submission_pending" | "submission_rejected" | "not_required" | null;
   teachers: string | null;
-  linked_teachers?: string | null;
   started_at: string;
   completed_at: string | null;
   duration_sec: number;
@@ -262,6 +261,8 @@ const escapeCsv = (value: string | number | null | undefined) => {
 export function ResultsPage() {
   const [olympiads, setOlympiads] = useState<OlympiadItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [attemptPage, setAttemptPage] = useState(0);
+  const [attemptTotal, setAttemptTotal] = useState(0);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [attemptsStatus, setAttemptsStatus] = useState<"idle" | "loading" | "error">("idle");
   const [attemptsError, setAttemptsError] = useState<string | null>(null);
@@ -293,26 +294,34 @@ export function ResultsPage() {
     setAttemptsError(null);
   }, []);
 
+  useEffect(() => { setAttemptPage(0); }, [selectedId]);
+
   useEffect(() => {
     if (!selectedId) {
       return;
     }
+    const controller = new AbortController();
     setAttemptsStatus("loading");
     setAttemptsError(null);
     adminApiClient
-      .request<AttemptRow[]>({
-        path: `/admin/results/olympiads/${selectedId}/attempts`,
-        method: "GET"
+      .request<{items: AttemptRow[]; total: number}>({
+        path: `/admin/results/olympiads/${selectedId}/attempts?limit=200&offset=${attemptPage*200}&include_total=true`,
+        method: "GET",
+        signal: controller.signal
       })
       .then((data) => {
-        setAttempts(data ?? []);
+        if (controller.signal.aborted) return;
+        setAttempts(data?.items ?? []);
+        setAttemptTotal(data?.total ?? 0);
         setAttemptsStatus("idle");
       })
       .catch(() => {
+        if (controller.signal.aborted) return;
         setAttemptsStatus("error");
         setAttemptsError("Не удалось загрузить результаты.");
       });
-  }, [selectedId]);
+    return () => controller.abort();
+  }, [selectedId, attemptPage]);
 
   useEffect(() => {
     if (!attemptView) {
@@ -392,10 +401,18 @@ export function ResultsPage() {
     setAttemptImageUrls({});
   };
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     if (!attempts.length || !selectedId) {
       return;
     }
+    const exportItems: AttemptRow[] = [];
+    try {
+      for (let offset=0; ; offset+=500) {
+        const page = await adminApiClient.request<{items: AttemptRow[]}>({path: `/admin/results/olympiads/${selectedId}/attempts?limit=500&offset=${offset}`, method:"GET"});
+        exportItems.push(...page.items);
+        if (page.items.length < 500) break;
+      }
+    } catch { setAttemptsError("Не удалось загрузить данные для экспорта."); return; }
     const header = [
       "№",
       "ID попытки",
@@ -419,7 +436,7 @@ export function ResultsPage() {
       "Проценты",
       "Диплом"
     ];
-    const rows = attempts.map((item, index) => [
+    const rows = exportItems.map((item, index) => [
       index + 1,
       item.id,
       formatDateOnly(item.started_at),
@@ -437,7 +454,7 @@ export function ResultsPage() {
       item.city ?? "—",
       item.school ?? "—",
       item.school_status ?? "—",
-      item.teachers ?? item.linked_teachers ?? "—",
+      item.teachers ?? "—",
       `${item.score_total}/${item.score_max}`,
       `${item.percent}%`,
       item.school_status === "selected" || item.school_status === "not_required"
@@ -488,10 +505,11 @@ export function ResultsPage() {
       </div>
       {selectedId ? (
         <p className="admin-hint">
-          Всего попыток: {attemptsStatus === "loading" ? "..." : attempts.length}
+          Всего попыток: {attemptsStatus === "loading" ? "..." : attemptTotal}
         </p>
       ) : null}
 
+      <div><Button type="button" variant="outline" disabled={attemptPage === 0} onClick={() => setAttemptPage((page) => page-1)}>Назад</Button><span> Страница {attemptPage+1} </span><Button type="button" variant="outline" disabled={(attemptPage+1)*200 >= attemptTotal} onClick={() => setAttemptPage((page) => page+1)}>Вперёд</Button></div>
       {attemptsStatus === "error" && attemptsError ? <div className="admin-alert">{attemptsError}</div> : null}
 
       {selectedId ? (
@@ -564,7 +582,7 @@ export function ResultsPage() {
                     <td>{item.city ?? "—"}</td>
                     <td>{item.school ?? "—"}</td>
                     <td>{item.school_status ?? "—"}</td>
-                    <td>{item.teachers ?? item.linked_teachers ?? "—"}</td>
+                    <td>{item.teachers ?? "—"}</td>
                     <td>
                       {item.score_total} / {item.score_max}
                     </td>

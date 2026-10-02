@@ -22,7 +22,6 @@ from app.services.olympiad_pdf import build_olympiad_pdf_bytes
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import (
     EXAMPLE_OLYMPIAD_READ,
-    EXAMPLE_OLYMPIAD_TASK_FULL_READ_LIST,
     EXAMPLE_OLYMPIAD_TASK_READ,
     EXAMPLE_LISTS,
     response_model_example,
@@ -74,6 +73,7 @@ async def create_olympiad(
     },
 )
 async def list_olympiads(
+    archived: bool = Query(default=False),
     mine: bool = Query(default=True, description="If true, only olympiads created by current admin"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -82,7 +82,7 @@ async def list_olympiads(
 ):
     repo = OlympiadsRepo(db)
     created_by = admin.id if mine else None
-    return await repo.list(created_by_user_id=created_by, limit=limit, offset=offset)
+    return await repo.list(created_by_user_id=created_by, limit=limit, offset=offset, archived=archived)
 
 
 @router.get(
@@ -195,8 +195,7 @@ async def delete_olympiad(
         raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
-    await service.delete(olympiad=obj)
-    return None
+    raise http_error(410, "physical_delete_disabled", message="Используйте архивирование олимпиады.")
 
 
 @router.post(
@@ -243,7 +242,7 @@ async def add_task_to_olympiad(
 
 @router.get(
     "/{olympiad_id}/tasks",
-    response_model=list[OlympiadTaskRead],
+    response_model=list[OlympiadTaskFullRead] | list[OlympiadTaskRead],
     tags=["admin"],
     description="Список заданий олимпиады",
     responses={
@@ -255,6 +254,7 @@ async def add_task_to_olympiad(
 )
 async def list_olympiad_tasks(
     olympiad_id: int,
+    with_details: bool = Query(False),
     db: AsyncSession = Depends(get_read_db),
     admin: User = Depends(require_role(UserRole.admin)),
 ):
@@ -264,21 +264,11 @@ async def list_olympiad_tasks(
         raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
 
     repo = OlympiadTasksRepo(db)
+    if with_details:
+        return await list_olympiad_tasks_full(olympiad_id, db, admin)
     return await repo.list_by_olympiad(olympiad_id)
 
 
-@router.get(
-    "/{olympiad_id}/tasks/full",
-    response_model=list[OlympiadTaskFullRead],
-    tags=["admin"],
-    description="Список заданий олимпиады с деталями",
-    responses={
-        200: response_model_list_example(EXAMPLE_OLYMPIAD_TASK_FULL_READ_LIST),
-        401: response_example(codes.MISSING_TOKEN),
-        403: response_example(codes.FORBIDDEN),
-        404: response_example(codes.OLYMPIAD_NOT_FOUND),
-    },
-)
 async def list_olympiad_tasks_full(
     olympiad_id: int,
     db: AsyncSession = Depends(get_read_db),
@@ -368,9 +358,7 @@ async def set_publish(
     try:
         return await service.publish(olympiad=obj, publish=publish)
     except ValueError as e:
-        if str(e) == codes.CANNOT_PUBLISH_EMPTY:
-            raise http_error(409, codes.CANNOT_PUBLISH_EMPTY)
-        raise
+        raise http_error(409, str(e))
 
 
 @router.get(
@@ -411,3 +399,24 @@ async def export_olympiad_pdf(
     file_name = f"olympiad_{olympiad_id}.pdf"
     headers = {"Content-Disposition": f'attachment; filename="{file_name}"'}
     return StreamingResponse(BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+
+
+@router.post("/{olympiad_id}/archive", response_model=OlympiadRead, tags=["admin"])
+async def archive_olympiad(olympiad_id: int, db: AsyncSession = Depends(get_db), admin: User = Depends(require_role(UserRole.admin))):
+    repo = OlympiadsRepo(db)
+    obj = await repo.get(olympiad_id)
+    if not obj:
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+    return await AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db)).archive(olympiad=obj)
+
+
+@router.post("/{olympiad_id}/copy", response_model=OlympiadRead, status_code=201, tags=["admin"])
+async def copy_olympiad(olympiad_id: int, db: AsyncSession = Depends(get_db), admin: User = Depends(require_role(UserRole.admin))):
+    repo = OlympiadsRepo(db)
+    obj = await repo.get(olympiad_id)
+    if not obj:
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+    try:
+        return await AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db)).copy(olympiad=obj, admin_id=admin.id)
+    except ValueError as exc:
+        raise http_error(409, str(exc))

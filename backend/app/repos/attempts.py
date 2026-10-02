@@ -1,6 +1,6 @@
 """Attempt repository."""
 from datetime import datetime
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, text, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
@@ -9,6 +9,7 @@ from app.models.olympiad import Olympiad
 from app.models.olympiad_task import OlympiadTask
 from app.models.task import Task
 from app.models.user import User
+from app.repos.olympiad_tasks import OlympiadTasksRepo
 
 
 class AttemptsRepo:
@@ -18,43 +19,35 @@ class AttemptsRepo:
     async def lock_user_for_start(self, user_id: int) -> None:
         # Serializes only starts for this user, across all API replicas. The
         # transaction is held until create_attempt commits (or the request rolls back).
+        await self.db.execute(text("SET LOCAL lock_timeout = '5s'"))
         await self.db.execute(select(User.id).where(User.id == user_id).with_for_update())
 
-    async def has_active_attempt(self, user_id: int, now: datetime) -> bool:
-        res = await self.db.execute(select(Attempt.id).where(
-            Attempt.user_id == user_id,
-            Attempt.status == AttemptStatus.active,
-            Attempt.deadline_at >= now,
-        ).limit(1))
-        return res.scalar_one_or_none() is not None
-
-    async def expire_overdue_attempts(self, user_id: int, now: datetime) -> None:
-        await self.db.execute(update(Attempt).where(
-            Attempt.user_id == user_id,
-            Attempt.status == AttemptStatus.active,
-            Attempt.deadline_at < now,
-        ).values(status=AttemptStatus.expired))
-        # Grading remains in the existing expiry flow. Commit with the new start,
-        # not here, so the per-user transaction lock is never released early.
+    async def get_active_attempt(self, user_id: int) -> Attempt | None:
+        return await self.db.scalar(select(Attempt).where(Attempt.user_id == user_id,
+            Attempt.status == AttemptStatus.active).order_by(Attempt.id).with_for_update()
+            .execution_options(populate_existing=True))
 
     async def get_olympiad(self, olympiad_id: int) -> Olympiad | None:
         res = await self.db.execute(select(Olympiad).where(Olympiad.id == olympiad_id))
         return res.scalar_one_or_none()
 
-    async def list_tasks(self, olympiad_id: int) -> list[tuple[OlympiadTask, Task]]:
-        res = await self.db.execute(
-            select(OlympiadTask, Task)
-            .join(Task, Task.id == OlympiadTask.task_id)
-            .where(OlympiadTask.olympiad_id == olympiad_id)
-            .order_by(OlympiadTask.sort_order.asc(), OlympiadTask.id.asc())
-        )
-        return list(res.all())
+    async def list_tasks_full(self, olympiad_id: int):
+        return await OlympiadTasksRepo(self.db).list_full_by_olympiad(olympiad_id)
 
-    async def list_tasks_full(
-        self,
-        olympiad_id: int,
-    ) -> list[tuple[OlympiadTask, Task]]:
-        return await self.list_tasks(olympiad_id)
+    async def get_task_for_answer(self, olympiad_id: int, task_id: int):
+        return (await self.db.execute(select(OlympiadTask, Task).join(Task, Task.id == OlympiadTask.task_id)
+            .where(OlympiadTask.olympiad_id == olympiad_id, OlympiadTask.task_id == task_id))).first()
+
+    async def delete_answer(self, attempt_id: int, task_id: int):
+        await self.db.execute(delete(AttemptAnswer).where(AttemptAnswer.attempt_id == attempt_id,
+                                                         AttemptAnswer.task_id == task_id))
+
+    async def replace_answers(self, attempt_id: int, answers: dict, updated_at: datetime):
+        await self.db.execute(delete(AttemptAnswer).where(AttemptAnswer.attempt_id == attempt_id))
+        rows = [{"attempt_id": attempt_id, "task_id": tid, "answer_payload": payload,
+                 "updated_at": updated_at} for tid, payload in answers.items() if payload is not None]
+        if rows:
+            await self.db.execute(insert(AttemptAnswer), rows)
 
     async def get_attempt(self, attempt_id: int) -> Attempt | None:
         res = await self.db.execute(select(Attempt).where(Attempt.id == attempt_id))
@@ -74,71 +67,11 @@ class AttemptsRepo:
             deadline_at=deadline_at,
             duration_sec=duration_sec,
             status=AttemptStatus.active,
+            answers_revision=0,
         )
         self.db.add(obj)
-        await self.db.commit()
-        await self.db.refresh(obj)
+        await self.db.flush()
         return obj
-
-    async def mark_submitted(self, attempt_id: int) -> None:
-        await self.db.execute(
-            update(Attempt)
-            .where(Attempt.id == attempt_id)
-            .values(status=AttemptStatus.submitted)
-        )
-        await self.db.commit()
-
-    async def mark_submitted_with_grade(
-        self,
-        *,
-        attempt_id: int,
-        score_total: int,
-        score_max: int,
-        passed: bool,
-        graded_at: datetime,
-    ) -> None:
-        await self.db.execute(
-            update(Attempt)
-            .where(Attempt.id == attempt_id)
-            .values(
-                status=AttemptStatus.submitted,
-                score_total=score_total,
-                score_max=score_max,
-                passed=passed,
-                graded_at=graded_at,
-            )
-        )
-        await self.db.commit()
-
-    async def mark_expired(self, attempt_id: int) -> None:
-        await self.db.execute(
-            update(Attempt)
-            .where(Attempt.id == attempt_id)
-            .values(status=AttemptStatus.expired)
-        )
-        await self.db.commit()
-
-    async def mark_expired_with_grade(
-        self,
-        *,
-        attempt_id: int,
-        score_total: int,
-        score_max: int,
-        passed: bool,
-        graded_at: datetime,
-    ) -> None:
-        await self.db.execute(
-            update(Attempt)
-            .where(Attempt.id == attempt_id)
-            .values(
-                status=AttemptStatus.expired,
-                score_total=score_total,
-                score_max=score_max,
-                passed=passed,
-                graded_at=graded_at,
-            )
-        )
-        await self.db.commit()
 
     async def list_answers(self, attempt_id: int) -> list[AttemptAnswer]:
         res = await self.db.execute(select(AttemptAnswer).where(AttemptAnswer.attempt_id == attempt_id))
@@ -156,7 +89,7 @@ class AttemptsRepo:
         ).returning(AttemptAnswer)
 
         res = await self.db.execute(stmt)
-        await self.db.commit()
+        await self.db.flush()
         row = res.scalar_one()
         return row
 
@@ -165,35 +98,6 @@ class AttemptsRepo:
             select(AttemptTaskGrade).where(AttemptTaskGrade.attempt_id == attempt_id)
         )
         return list(res.scalars().all())
-
-    async def delete_grades(self, attempt_id: int) -> None:
-        await self.db.execute(
-            delete(AttemptTaskGrade).where(AttemptTaskGrade.attempt_id == attempt_id)
-        )
-        await self.db.commit()
-
-    async def add_grade(
-        self,
-        *,
-        attempt_id: int,
-        task_id: int,
-        is_correct: bool,
-        score: int,
-        max_score: int,
-        graded_at: datetime,
-    ) -> AttemptTaskGrade:
-        obj = AttemptTaskGrade(
-            attempt_id=attempt_id,
-            task_id=task_id,
-            is_correct=is_correct,
-            score=score,
-            max_score=max_score,
-            graded_at=graded_at,
-        )
-        self.db.add(obj)
-        await self.db.commit()
-        await self.db.refresh(obj)
-        return obj
 
     async def list_attempts_for_olympiad(self, olympiad_id: int) -> list[Attempt]:
         res = await self.db.execute(
