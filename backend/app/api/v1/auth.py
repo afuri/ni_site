@@ -9,11 +9,12 @@ from app.core.config import settings
 from app.core.metrics import RATE_LIMIT_BLOCKS
 from app.repos.users import UsersRepo
 from app.repos.auth_tokens import AuthTokensRepo
-from app.services.auth import AuthService
+from app.services.auth import AuthService, TemporaryPasswordReset
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
     TokenPair,
+    TemporaryPasswordResetRequired,
     EmailVerificationRequest,
     EmailVerificationConfirm,
     PasswordResetRequest,
@@ -167,7 +168,7 @@ async def register(
 
 @router.post(
     "/login",
-    response_model=TokenPair,
+    response_model=TokenPair | TemporaryPasswordResetRequired,
     tags=["auth"],
     description="Вход по логину и паролю",
     responses={
@@ -193,11 +194,16 @@ async def login(
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         login_value = payload.login.strip().lower()
-        access, refresh, must_change_password = await service.login(login_value, payload.password)
+        result = await service.login(login_value, payload.password)
     except ValueError as e:
         if str(e) == codes.TEMP_PASSWORD_EXPIRED:
             raise http_error(409, codes.TEMP_PASSWORD_EXPIRED)
         raise http_error(status.HTTP_401_UNAUTHORIZED, codes.INVALID_CREDENTIALS)
+    if isinstance(result, TemporaryPasswordReset):
+        return TemporaryPasswordResetRequired(
+            reset_token=result.token, expires_in_seconds=result.expires_in_seconds
+        )
+    access, refresh, must_change_password = result
     return TokenPair(access_token=access, refresh_token=refresh, must_change_password=must_change_password)
 
 

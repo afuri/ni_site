@@ -65,6 +65,16 @@ class AuthTokensRepo:
         await self.db.refresh(obj)
         return obj
 
+    async def replace_password_reset(
+        self, *, user_id: int, token_hash: str, created_at: datetime, expires_at: datetime
+    ) -> None:
+        """Replace outstanding reset links atomically while the caller holds the user lock."""
+        await self.db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user_id))
+        self.db.add(PasswordResetToken(
+            user_id=user_id, token_hash=token_hash, created_at=created_at, expires_at=expires_at
+        ))
+        await self.db.commit()
+
     async def get_password_reset_by_hash(self, token_hash: str) -> PasswordResetToken | None:
         res = await self.db.execute(
             select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)

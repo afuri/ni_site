@@ -336,3 +336,51 @@ docker compose -f docker-compose.local.yml exec -T db \
 Production-переход описан в `PRODUCTION_SCHOOL_MIGRATION.md`.
 Исходный зашифрованный снимок и резервные копии остаются основой восстановления;
 рабочая папка и Docker-тома не заменяют резервную копию.
+
+
+2.3.0
+
+Причина найдена: локальный контейнер `db` остановлен (`Exited (0)`). Команда миграции запущена с `--no-deps`, поэтому Compose не поднимает БД автоматически. Из-за этого Alembic не может найти хост `db`; до выполнения миграции дело не дошло.
+
+Из корня проекта выполните:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --wait db
+docker compose -f docker-compose.local.yml run --rm --no-deps api alembic upgrade head
+docker compose -f docker-compose.local.yml run --rm --no-deps api alembic current
+```
+
+Для запуска всего локального приложения затем поднимите также Redis и MinIO — они сейчас тоже остановлены:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --wait db redis minio
+docker compose -f docker-compose.local.yml --profile worker up -d api worker beat
+```
+
+Если изменён только серверный код и новая миграция не требуется:
+
+```bash
+cd /Users/alexfedosov/Documents/ni_site_v2
+docker compose -f docker-compose.local.yml --profile worker up -d --build api worker
+```
+
+
+### 4.2. Основное приложение
+
+В отдельном терминале:
+
+```bash
+cd /Users/alexfedosov/Documents/ni_site_v2/frontend
+npm --workspace @ni/app-main run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+Адрес: http://127.0.0.1:5173/
+
+### 4.3. Админ-панель
+
+Ещё в одном терминале:
+
+```bash
+cd /Users/alexfedosov/Documents/ni_site_v2/frontend
+npm --workspace @ni/app-admin run dev -- --host 127.0.0.1 --port 5174 --strictPort
+```

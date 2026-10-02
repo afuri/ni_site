@@ -4,6 +4,7 @@ import type { ApiError, UserRead } from "@api";
 import { adminApiClient } from "../lib/adminClient";
 import { formatDate } from "../lib/formatters";
 import { AccountDeletionPanel } from "../components/AccountDeletionPanel";
+import { DuplicateAccountsPanel } from "../components/DuplicateAccountsPanel";
 
 type UserUpdateForm = {
   userId: string;
@@ -981,6 +982,7 @@ export function UsersPage() {
             </div>
         </div>
 
+        <DuplicateAccountsPanel />
         <section className="admin-section admin-temp-password" aria-label="Временный пароль">
             <h2>Временный пароль</h2>
             <p className="admin-hint">Укажите ID в этом блоке. Генерация сразу устанавливает новый временный пароль и требует его смены при входе. Старый пароль перестанет работать.</p>

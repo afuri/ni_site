@@ -84,6 +84,12 @@ class TokenPair(BaseModel):
     must_change_password: bool = False
 
 
+class TemporaryPasswordResetRequired(BaseModel):
+    status: Literal["password_reset_required"] = "password_reset_required"
+    reset_token: str
+    expires_in_seconds: int
+
+
 class EmailVerificationRequest(BaseModel):
     email: EmailStr
 

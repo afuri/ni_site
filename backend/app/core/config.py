@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     EMAIL_VERIFY_TTL_HOURS: int = 24
     PASSWORD_RESET_TTL_HOURS: int = 2
     TEMP_PASSWORD_TTL_HOURS: int = 24
+    TEMP_PASSWORD_RESET_TTL_MINUTES: int = 15
     EMAIL_SEND_ENABLED: bool = False
     EMAIL_PROVIDER: str = "smtp"
     PASSWORD_MIN_LEN: int = 8

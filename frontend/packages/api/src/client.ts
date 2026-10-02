@@ -2,6 +2,7 @@ import type {
   ApiError,
   ApiErrorResponse,
   AuthStorage,
+  AuthLoginResponse,
   RegionLookup,
   SchoolLookup,
   SchoolSubmission,
@@ -56,7 +57,7 @@ type RegisterPayload = {
 type ApiClient = {
   request: <T>(options: RequestOptions) => Promise<T>;
   auth: {
-    login: (payload: LoginPayload) => Promise<TokenPair>;
+    login: (payload: LoginPayload) => Promise<AuthLoginResponse>;
     refresh: (payload?: RefreshPayload) => Promise<TokenPair | null>;
     logout: (payload: RefreshPayload) => Promise<void>;
     register: (payload: RegisterPayload) => Promise<UserRead>;
@@ -375,7 +376,7 @@ export function createApiClient(options: ClientOptions): ApiClient {
     request,
     auth: {
       login: (payload) =>
-        request<TokenPair>({
+        request<AuthLoginResponse>({
           path: "/auth/login",
           method: "POST",
           body: payload,

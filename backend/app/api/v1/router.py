@@ -11,6 +11,7 @@ from app.api.v1.admin_tasks import router as admin_tasks_router
 from app.api.v1.admin_olympiads import router as admin_olympiads_router
 from app.api.v1.olympiads import router as olympiads_router
 from app.api.v1.admin_users import router as admin_users_router
+from app.api.v1.admin_user_duplicates import router as admin_user_duplicates_router
 from app.api.v1.admin_audit import router as admin_audit_router
 from app.api.v1.admin_results import router as admin_results_router
 from app.api.v1.admin_stats import router as admin_stats_router
@@ -40,6 +41,7 @@ router.include_router(admin_tasks_router, tags=["admin"])
 router.include_router(admin_olympiads_router, tags=["admin_olymp"])
 router.include_router(olympiads_router, tags=["olympiads"])
 router.include_router(admin_users_router, tags=["admin"])
+router.include_router(admin_user_duplicates_router, tags=["admin"])
 router.include_router(admin_audit_router, tags=["admin"])
 router.include_router(admin_results_router, tags=["admin"])
 router.include_router(admin_stats_router, tags=["admin"])

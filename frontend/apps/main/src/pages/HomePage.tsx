@@ -589,6 +589,7 @@ export function HomePage() {
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoveryStatus, setRecoveryStatus] = useState<"idle" | "loading" | "error">("idle");
   const [resetToken, setResetToken] = useState<string | null>(null);
+  const [resetMode, setResetMode] = useState<"email" | "temporary">("email");
   const [resetPassword, setResetPassword] = useState("");
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [resetErrors, setResetErrors] = useState<ResetErrors>({});
@@ -1005,6 +1006,7 @@ export function HomePage() {
     }
     window.localStorage.removeItem(RESET_TOKEN_STORAGE_KEY);
     setResetToken(token);
+    setResetMode("email");
     setResetErrors({});
     setResetPassword("");
     setResetPasswordConfirm("");
@@ -1080,7 +1082,7 @@ export function HomePage() {
     event.preventDefault();
     setResetErrors({});
     if (!resetToken) {
-      setResetErrors({ form: "Ссылка для восстановления недействительна." });
+      setResetErrors({ form: "Токен смены пароля недействителен." });
       return;
     }
     const errors = validateResetPassword();
@@ -1108,7 +1110,7 @@ export function HomePage() {
       if (apiError?.code === "weak_password") {
         setResetErrors({ password: buildPasswordRequirementMessage(resetPassword) });
       } else if (apiError?.code === "invalid_token") {
-        setResetErrors({ form: "Ссылка для восстановления недействительна или устарела." });
+        setResetErrors({ form: "Токен смены пароля уже использован или устарел. Войдите с временным паролем снова." });
       } else {
         setResetErrors({ form: "Не удалось изменить пароль. Попробуйте позже." });
       }
@@ -1169,9 +1171,20 @@ export function HomePage() {
     }
     setLoginStatus("loading");
     try {
-      const signedInUser = await signIn({ login: loginForm.login, password: loginForm.password });
+      const result = await signIn({ login: loginForm.login, password: loginForm.password });
       setLoginStatus("idle");
       setIsLoginOpen(false);
+      if (result.kind === "password_reset_required") {
+        setLoginForm((prev) => ({ ...prev, password: "" }));
+        setResetMode("temporary");
+        setResetToken(result.resetToken);
+        setResetPassword("");
+        setResetPasswordConfirm("");
+        setResetErrors({});
+        setResetStatus("idle");
+        setIsResetOpen(true);
+        return;
+      }
       if (typeof window !== "undefined") {
         const redirectPath = window.localStorage.getItem(LOGIN_REDIRECT_KEY);
         if (redirectPath) {
@@ -1180,7 +1193,7 @@ export function HomePage() {
           return;
         }
       }
-      navigate(getAccountHomePath(signedInUser));
+      navigate(getAccountHomePath(result.user));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Ошибка входа.";
       setLoginErrorMessage(message);
@@ -2121,12 +2134,18 @@ export function HomePage() {
 
         <Modal
           isOpen={isResetOpen}
-          onClose={() => setIsResetOpen(false)}
-          title="Восстановление пароля"
+          onClose={() => {
+            setIsResetOpen(false);
+            setResetToken(null);
+          }}
+          title={resetMode === "temporary" ? "Создайте новый пароль" : "Восстановление пароля"}
           className="auth-modal"
           closeOnBackdrop={false}
         >
           <form className="auth-form auth-form-centered" onSubmit={handleResetSubmit}>
+            {resetMode === "temporary" ? (
+              <p className="auth-success-message">Временный пароль принят. Создайте новый пароль в течение 15 минут.</p>
+            ) : null}
             <div className="auth-grid auth-grid-single">
               <TextInput
                 label="Новый пароль"
@@ -2165,7 +2184,7 @@ export function HomePage() {
         <Modal
           isOpen={isResetSuccessOpen}
           onClose={() => setIsResetSuccessOpen(false)}
-          title="Восстановление пароля"
+          title={resetMode === "temporary" ? "Пароль изменён" : "Восстановление пароля"}
           className="auth-modal"
           closeOnBackdrop={false}
         >
