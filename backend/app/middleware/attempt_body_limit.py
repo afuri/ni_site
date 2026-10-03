@@ -9,19 +9,23 @@ from app.core.request_id import get_request_id
 
 
 class AttemptBodyLimitMiddleware:
-    def __init__(self, app: ASGIApp, max_bytes: int):
+    def __init__(self, app: ASGIApp, max_bytes: int, *,
+                 path_pattern: str = r"/api/v1/attempts/\d+/(answers|submit)/?",
+                 error_code: str = "attempt_payload_too_large"):
         self.app = app
         self.max_bytes = max_bytes
+        self.path_pattern = re.compile(path_pattern)
+        self.error_code = error_code
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if (scope["type"] != "http" or scope["method"] != "POST"
-                or not re.fullmatch(r"/api/v1/attempts/\d+/(answers|submit)/?", scope["path"])):
+                or not self.path_pattern.fullmatch(scope["path"])):
             await self.app(scope, receive, send)
             return
 
         async def reject() -> None:
             response = JSONResponse(status_code=413, content={
-                "error": api_error("attempt_payload_too_large", details={"max_bytes": self.max_bytes}),
+                "error": api_error(self.error_code, details={"max_bytes": self.max_bytes}),
                 "request_id": get_request_id(),
             })
             await response(scope, receive, send)

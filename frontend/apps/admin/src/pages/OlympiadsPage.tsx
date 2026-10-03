@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Modal, Table, TextInput } from "@ui";
 import { adminApiClient, adminStorage } from "../lib/adminClient";
 import { formatDate, fromDateTimeLocal, toDateTimeLocal } from "../lib/formatters";
+import { AdminIconButton } from "../components/AdminIconButton";
 
 type OlympiadItem = {
   archived_at?: string | null;
@@ -894,13 +895,11 @@ export function OlympiadsPage() {
                     <Button type="button" size="sm" variant="outline" disabled={Boolean(item.rules_locked_at || item.archived_at)} onClick={() => openEdit(item)}>
                       Редактировать
                     </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={async () => {
+                    <AdminIconButton icon="copy" label="Создать копию" onClick={async () => {
                       try { await adminApiClient.request({ path: `/admin/olympiads/${item.id}/copy`, method: "POST" }); await loadOlympiads(); }
                       catch { setError("Не удалось создать копию олимпиады."); setStatus("error"); }
-                    }}>Создать копию</Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => openPreview(item)}>
-                      Предпросмотр
-                    </Button>
+                    }} />
+                    <AdminIconButton icon="preview" label="Предпросмотр" onClick={() => openPreview(item)} />
                     <Button type="button" size="sm" variant="outline" onClick={() => openPdfExport(item)}>
                       PDF
                     </Button>
@@ -922,9 +921,9 @@ export function OlympiadsPage() {
                     >
                       {item.results_released ? "Скрыть результаты" : "Показать результаты"}
                     </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setDeleteTarget(item)}>
-                      В архив
-                    </Button>
+                    <AdminIconButton icon="archive" label="В архив" disabled={Boolean(item.archived_at)} onClick={() => {
+                      setDeleteStatus("idle"); setDeleteTarget(item);
+                    }} />
                   </div>
                 </td>
               </tr>

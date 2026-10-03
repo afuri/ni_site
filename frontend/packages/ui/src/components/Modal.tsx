@@ -9,6 +9,7 @@ export type ModalProps = {
   className?: string;
   backdropClassName?: string;
   closeOnBackdrop?: boolean;
+  showCloseButton?: boolean;
   onClose: () => void;
 };
 
@@ -21,6 +22,7 @@ export function Modal({
   className,
   backdropClassName,
   closeOnBackdrop = true,
+  showCloseButton = true,
   onClose
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -33,7 +35,10 @@ export function Modal({
   useEffect(() => {
     if (!isOpen) return;
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
+    const initialFocus = closeButtonRef.current ?? dialogRef.current?.querySelector<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+    ) ?? dialogRef.current;
+    initialFocus?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && closeOnBackdrop) {
@@ -106,9 +111,9 @@ export function Modal({
               </p>
             ) : null}
           </div>
-          <button ref={closeButtonRef} type="button" className="modal-close" onClick={onClose} aria-label="Закрыть модальное окно">
+          {showCloseButton ? <button ref={closeButtonRef} type="button" className="modal-close" onClick={onClose} aria-label="Закрыть модальное окно">
             ×
-          </button>
+          </button> : null}
         </header>
         {children ? <div className="modal-body">{children}</div> : null}
         {footer ? <div className="modal-footer">{footer}</div> : null}

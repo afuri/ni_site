@@ -129,6 +129,12 @@ def cleanup_audit_logs() -> int:
     return _run_maintenance("cleanup_audit_logs", _cleanup_audit_logs, retention_days=settings.AUDIT_LOG_RETENTION_DAYS)
 
 
+@celery_app.task(name="maintenance.cleanup_task_uploads")
+def cleanup_task_uploads():
+    from app.services.task_uploads import cleanup_uploads
+    return _run_maintenance("cleanup_task_uploads", cleanup_uploads)
+
+
 @celery_app.task(name="maintenance.warmup_olympiad_cache")
 def warmup_olympiad_cache() -> int:
     return _run_maintenance("warmup_olympiad_cache", _warmup_olympiad_cache)

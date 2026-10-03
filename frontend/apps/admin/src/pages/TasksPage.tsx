@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Button, Modal, Table, TextInput, useAuth } from "@ui";
 import type { UserRead } from "@api";
 import { adminApiClient } from "../lib/adminClient";
+import { TaskArchiveUpload } from "../components/TaskArchiveUpload";
+import { AdminIconButton } from "../components/AdminIconButton";
+import { useTaskImageUpload } from "../hooks/useTaskImageUpload";
 
 const MOCK_S3_STORAGE_KEY = "ni_admin_s3_mock";
 const PAGE_SIZE = 200;
@@ -15,6 +18,7 @@ type TaskItem = {
   image_key: string | null;
   payload: Record<string, unknown>;
   archived_at?: string | null;
+  can_delete?: boolean;
   created_by_user_id: number;
 };
 
@@ -90,37 +94,6 @@ const loadMockS3 = () => {
   } catch {
     return {};
   }
-};
-
-const saveMockS3 = (data: Record<string, string>) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(MOCK_S3_STORAGE_KEY, JSON.stringify(data));
-};
-
-const storeMockS3Object = (key: string, value: string) => {
-  mockS3Memory.set(key, value);
-  const data = loadMockS3();
-  data[key] = value;
-  try {
-    saveMockS3(data);
-  } catch {
-    // Quota exceeded, fallback to memory only.
-  }
-};
-
-const dataUrlToBlob = (dataUrl: string) => {
-  const [header, base64] = dataUrl.split(",", 2);
-  const mimeMatch = header.match(/data:(.*?);base64/);
-  const mime = mimeMatch ? mimeMatch[1] : "image/png";
-  const binary = atob(base64);
-  const length = binary.length;
-  const bytes = new Uint8Array(length);
-  for (let i = 0; i < length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: mime });
 };
 
 const getMockS3Object = (key: string) => {
@@ -261,11 +234,14 @@ export function TasksPage() {
   const [copyingId, setCopyingId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TaskItem | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
+  const [removeTarget, setRemoveTarget] = useState<TaskItem | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [rawImageDataUrl, setRawImageDataUrl] = useState<string | null>(null);
-  const [rawImageType, setRawImageType] = useState<string | null>(null);
-  const [rawImageName, setRawImageName] = useState<string | null>(null);
+  const [rawImageFile, setRawImageFile] = useState<File | null>(null);
   const [imageResizeWidth, setImageResizeWidth] = useState<number | "original">(1200);
+  const imageUpload = useTaskImageUpload(rawImageFile, imageResizeWidth, isFormOpen);
+  const isImagePending = Boolean(rawImageFile) && imageUpload.status !== "ready";
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<TaskPreview | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -439,6 +415,7 @@ export function TasksPage() {
     setEditingTaskId(null);
     setFormError(null);
     setImagePreviewUrl(null);
+    setRawImageFile(null);
     setPreviewData(null);
     setIsFormOpen(true);
   };
@@ -494,6 +471,7 @@ export function TasksPage() {
       shortAnswer
     });
     setImagePreviewUrl(resolveImageUrl(task.image_key));
+    setRawImageFile(null);
     setFormError(null);
     setPreviewData(null);
     setIsFormOpen(true);
@@ -719,125 +697,30 @@ export function TasksPage() {
     setIsPreviewOpen(true);
   };
 
-  const uploadToStorage = async (dataUrl: string, contentType: string) => {
-    try {
-      const presign = await adminApiClient.request<{
-        key: string;
-        upload_url: string;
-        headers: Record<string, string>;
-        public_url?: string | null;
-      }>({
-        path: "/uploads/presign",
-        method: "POST",
-        body: {
-          prefix: "tasks",
-          content_type: contentType
-        }
-      });
-      const blob = dataUrlToBlob(dataUrl);
-      await fetch(presign.upload_url, {
-        method: "PUT",
-        headers: presign.headers ?? {},
-        body: blob
-      });
-      return presign.key;
-    } catch {
-      return null;
-    }
-  };
-
-  const processAndUploadImage = (dataUrl: string, contentType: string, fileName: string) => {
-    const image = new Image();
-    image.onload = () => {
-      const targetWidth = imageResizeWidth === "original" ? null : imageResizeWidth;
-      const shouldResize = targetWidth && image.width > targetWidth;
-      const now = new Date();
-      const key = `tasks/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(
-        now.getDate()
-      ).padStart(2, "0")}/${Date.now()}-${fileName}`;
-
-      if (!shouldResize) {
-        void (async () => {
-          const uploadedKey = await uploadToStorage(dataUrl, contentType);
-          if (uploadedKey) {
-            setForm((prev) => ({ ...prev, imageKey: uploadedKey }));
-          } else {
-            storeMockS3Object(key, dataUrl);
-            setForm((prev) => ({ ...prev, imageKey: key }));
-          }
-          setImagePreviewUrl(dataUrl);
-        })();
-        return;
-      }
-
-      const scale = targetWidth / image.width;
-      const outputWidth = Math.round(image.width * scale);
-      const outputHeight = Math.round(image.height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = outputWidth;
-      canvas.height = outputHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        return;
-      }
-      ctx.drawImage(image, 0, 0, outputWidth, outputHeight);
-      const mime = contentType;
-      let resizedDataUrl =
-        mime === "image/jpeg" || mime === "image/jpg"
-          ? canvas.toDataURL(mime, 0.9)
-          : canvas.toDataURL(mime);
-      if (!resizedDataUrl || resizedDataUrl === "data:") {
-        resizedDataUrl = canvas.toDataURL("image/png");
-      }
-      void (async () => {
-        const uploadedKey = await uploadToStorage(resizedDataUrl, contentType);
-        if (uploadedKey) {
-          setForm((prev) => ({ ...prev, imageKey: uploadedKey }));
-        } else {
-          storeMockS3Object(key, resizedDataUrl);
-          setForm((prev) => ({ ...prev, imageKey: key }));
-        }
-        setImagePreviewUrl(resizedDataUrl);
-      })();
-    };
-    image.src = dataUrl;
-  };
-
   const handleImageUpload = (file: File | null) => {
-    if (!file) {
-      return;
-    }
-    const originalType = file.type && file.type.startsWith("image/") ? file.type : "image/png";
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : null;
-      if (!result) {
-        return;
-      }
-      setRawImageDataUrl(result);
-      setRawImageType(originalType);
-      setRawImageName(file.name);
-      processAndUploadImage(result, originalType, file.name);
-    };
-    reader.readAsDataURL(file);
+    if (!file) return;
+    setForm((prev) => ({ ...prev, imageKey: "" }));
+    setImagePreviewUrl(null);
+    setRawImageFile(file);
   };
 
   useEffect(() => {
-    if (!rawImageDataUrl || !rawImageType || !rawImageName) {
-      return;
-    }
-    processAndUploadImage(rawImageDataUrl, rawImageType, rawImageName);
-  }, [imageResizeWidth]);
+    if (!imageUpload.result) return;
+    setForm((prev) => ({ ...prev, imageKey: imageUpload.result!.key }));
+    setImagePreviewUrl(imageUpload.result.url);
+  }, [imageUpload.result]);
 
   const handleImageClear = () => {
     setForm((prev) => ({ ...prev, imageKey: "" }));
     setImagePreviewUrl(null);
-    setRawImageDataUrl(null);
-    setRawImageType(null);
-    setRawImageName(null);
+    setRawImageFile(null);
   };
 
   const handleSave = async () => {
+    if (isImagePending) {
+      setFormError(imageUpload.error ?? "Дождитесь успешной загрузки изображения.");
+      return;
+    }
     setFormError(null);
     const result =
       form.taskType === "short_text" ? buildShortAnswerPayload() : buildChoicePayload();
@@ -852,7 +735,7 @@ export function TasksPage() {
         title: form.title,
         content: form.content,
         task_type: form.taskType,
-        image_key: form.imageKey ? form.imageKey : null,
+        image_key: rawImageFile ? imageUpload.result?.key ?? null : form.imageKey || null,
         payload: result.payload
       };
       if (formMode === "create") {
@@ -916,6 +799,26 @@ export function TasksPage() {
     }
   };
 
+  const handleRemove = async () => {
+    if (!removeTarget?.can_delete || isRemoving) return;
+    setIsRemoving(true);
+    setRemoveError(null);
+    try {
+      await adminApiClient.request({ path: `/admin/tasks/${removeTarget.id}`, method: "DELETE" });
+      setRemoveTarget(null);
+      await loadTasks();
+    } catch (failure) {
+      const error = failure as { code?: string; message?: string };
+      if (error.code === "task_in_olympiad") {
+        setRemoveTarget((current) => current ? { ...current, can_delete: false } : null);
+        void loadTasks();
+      }
+      setRemoveError(error.message ?? "Не удалось удалить задание.");
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
   return (
     <section className="admin-section">
       <div className="admin-toolbar">
@@ -925,6 +828,7 @@ export function TasksPage() {
         </div>
         <label><input type="checkbox" checked={showArchive} onChange={(event) => setShowArchive(event.target.checked)} /> Показать архив</label>
       <div className="admin-toolbar-actions">
+          {user?.role === "admin" ? <TaskArchiveUpload userId={user.id} renderMarkdown={renderMarkdown} onTasksChanged={() => loadTasks(1)} /> : null}
           <Button type="button" onClick={openCreate}>
             Создать задание
           </Button>
@@ -999,24 +903,15 @@ export function TasksPage() {
                 <td>{authors[task.created_by_user_id] ?? `ID ${task.created_by_user_id}`}</td>
                 <td>
                   <div className="admin-table-actions">
-                    <Button type="button" size="sm" variant="outline" onClick={() => openEdit(task)}>
-                      Создать изменённую копию
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => openPreviewFromTask(task)}>
-                      Предпросмотр
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopy(task)}
-                      isLoading={copyingId === task.id}
-                    >
-                      Скопировать
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" disabled={Boolean(task.archived_at)} onClick={() => setDeleteTarget(task)}>
-                      В архив
-                    </Button>
+                    <AdminIconButton icon="edit-copy" label="Создать изменённую копию" onClick={() => openEdit(task)} />
+                    <AdminIconButton icon="preview" label="Предпросмотр" onClick={() => openPreviewFromTask(task)} />
+                    <AdminIconButton icon="copy" label="Скопировать" onClick={() => handleCopy(task)} isLoading={copyingId === task.id} />
+                    <AdminIconButton icon="archive" label="В архив" disabled={Boolean(task.archived_at)} onClick={() => {
+                      setDeleteStatus("idle"); setDeleteTarget(task);
+                    }} />
+                    <AdminIconButton icon="delete" label="Удалить" disabled={!task.can_delete}
+                      tooltip={task.can_delete ? "Удалить" : "Удалить — недоступно: задание связано с олимпиадой или результатами участников"}
+                      onClick={() => { setRemoveError(null); setRemoveTarget(task); }} />
                   </div>
                 </td>
               </tr>
@@ -1086,13 +981,14 @@ export function TasksPage() {
               <label className="admin-upload">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  aria-label="Изображение задания"
                   className="admin-upload-input"
                   onChange={(event) => handleImageUpload(event.target.files?.[0] ?? null)}
                 />
                 <span className="admin-upload-label">Загрузить изображение</span>
               </label>
-              <Button type="button" size="sm" variant="outline" onClick={() => setIsImagePreviewOpen(true)}>
+              <Button type="button" size="sm" variant="outline" onClick={() => setIsImagePreviewOpen(true)} disabled={isImagePending}>
                 Предпросмотр
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={handleImageClear}>
@@ -1104,11 +1000,15 @@ export function TasksPage() {
               <select
                 className="field-input"
                 value={imageResizeWidth}
-                onChange={(event) =>
+                onChange={(event) => {
+                  if (rawImageFile) {
+                    setForm((prev) => ({ ...prev, imageKey: "" }));
+                    setImagePreviewUrl(null);
+                  }
                   setImageResizeWidth(
                     event.target.value === "original" ? "original" : Number(event.target.value)
-                  )
-                }
+                  );
+                }}
               >
                 <option value="original">Исходный размер</option>
                 <option value="200">200</option>
@@ -1121,6 +1021,11 @@ export function TasksPage() {
                 <option value="1600">1600</option>
               </select>
             </label>
+            {imageUpload.status === "loading" ? <p role="status">Обработка и загрузка изображения…</p> : null}
+            {imageUpload.error ? <div role="alert">
+              <p className="admin-error">{imageUpload.error}</p>
+              <Button type="button" size="sm" variant="outline" onClick={imageUpload.retry}>Повторить загрузку изображения</Button>
+            </div> : null}
             <label className="field">
               <span className="field-label">Расположение изображения</span>
               <select
@@ -1141,6 +1046,7 @@ export function TasksPage() {
               label="Ключ изображения"
               name="imageKey"
               value={form.imageKey}
+              disabled={Boolean(rawImageFile)}
               onChange={(event) => setForm((prev) => ({ ...prev, imageKey: event.target.value }))}
             />
           </div>
@@ -1234,7 +1140,7 @@ export function TasksPage() {
             <Button type="button" variant="outline" onClick={openPreviewFromForm}>
               Предпросмотр
             </Button>
-            <Button type="button" onClick={handleSave} isLoading={isSaving}>
+            <Button type="button" onClick={handleSave} isLoading={isSaving} disabled={isImagePending}>
               Сохранить
             </Button>
           </div>
@@ -1251,6 +1157,17 @@ export function TasksPage() {
           <Button type="button" onClick={handleDelete} isLoading={deleteStatus === "deleting"}>
             В архив
           </Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={Boolean(removeTarget)} onClose={() => { if (!isRemoving) setRemoveTarget(null); }}
+        title="Удалить задание" closeOnBackdrop={false} showCloseButton={!isRemoving}>
+        <p>Полностью удалить задание “{removeTarget?.title}” (ID {removeTarget?.id}) из базы данных?</p>
+        <p className="admin-hint">Это действие нельзя отменить.</p>
+        {removeError ? <p role="alert" className="admin-error">{removeError}</p> : null}
+        <div className="admin-modal-actions">
+          <Button type="button" variant="outline" disabled={isRemoving} onClick={() => setRemoveTarget(null)}>Отмена</Button>
+          <Button type="button" onClick={handleRemove} isLoading={isRemoving} disabled={!removeTarget?.can_delete}>Удалить</Button>
         </div>
       </Modal>
 

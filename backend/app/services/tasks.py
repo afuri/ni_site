@@ -54,4 +54,4 @@ class TasksService:
             pass
 
     async def delete(self, *, task: Task) -> None:
-        raise ValueError("physical_delete_disabled")
+        await self.repo.delete(task)

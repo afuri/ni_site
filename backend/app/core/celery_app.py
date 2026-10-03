@@ -21,6 +21,11 @@ beat_schedule["cleanup-deleted-account-files"] = {
     "task": "maintenance.cleanup_deleted_account_files",
     "schedule": timedelta(minutes=5),
 }
+if settings.TASK_UPLOAD_CLEANUP_INTERVAL_SEC > 0:
+    beat_schedule["cleanup-task-uploads"] = {
+        "task": "maintenance.cleanup_task_uploads",
+        "schedule": timedelta(seconds=settings.TASK_UPLOAD_CLEANUP_INTERVAL_SEC),
+    }
 if settings.CACHE_WARMUP_INTERVAL_SEC > 0:
     beat_schedule["warmup-olympiad-cache"] = {
         "task": "maintenance.warmup_olympiad_cache",

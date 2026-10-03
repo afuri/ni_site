@@ -246,3 +246,27 @@ def list_object_keys(prefix: str) -> list[str]:
         if not token:
             break
     return keys
+
+
+def put_object(key: str, data: bytes, content_type: str) -> None:
+    client = _get_s3_client()
+    if client is None:
+        raise RuntimeError("storage_not_configured")
+    client.put_object(Bucket=settings.STORAGE_BUCKET, Key=key, Body=data, ContentType=content_type)
+
+
+def delete_object(key: str) -> None:
+    client = _get_s3_client()
+    if client is None:
+        raise RuntimeError("storage_not_configured")
+    client.delete_object(Bucket=settings.STORAGE_BUCKET, Key=key)
+
+
+def old_import_image_keys(cutoff) -> list[str]:
+    client = _get_s3_client()
+    if client is None:
+        raise RuntimeError("storage_not_configured")
+    keys = []
+    for page in client.get_paginator("list_objects_v2").paginate(Bucket=settings.STORAGE_BUCKET, Prefix="tasks/imports/"):
+        keys.extend(obj["Key"] for obj in page.get("Contents", []) if obj["LastModified"] < cutoff)
+    return keys

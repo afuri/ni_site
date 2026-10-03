@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,9 @@ from app.schemas.uploads import (
     UploadPresignResponse,
     UploadPresignPostResponse,
     UploadGetResponse,
+    TaskImageUploadResponse,
 )
+from app.services.task_images import TaskImageError, image_work, upload_task_image
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import (
     EXAMPLE_UPLOAD_GET,
@@ -180,6 +182,35 @@ async def presign_upload_post(
         expires_in=result.expires_in,
         max_size_bytes=result.max_size_bytes,
     )
+
+
+@router.post(
+    "/task-image", response_model=TaskImageUploadResponse, tags=["uploads"],
+    description="Проверить и уменьшить изображение задания общей с ZIP функцией, затем сохранить в bucket",
+    responses={401: {"description": "Необходима авторизация"},
+               403: {"description": "Доступ только администратору или модератору"},
+               413: {"description": "Изображение превышает допустимый размер"},
+               422: {"description": "Некорректное изображение или ширина"},
+               503: {"description": "Хранилище недоступно"}},
+)
+async def upload_image(image: UploadFile = File(...), width: str = Form("original"),
+                       user=Depends(require_admin_or_moderator()), db: AsyncSession = Depends(get_db)):
+    limit = settings.STORAGE_MAX_UPLOAD_MB * 1024 * 1024
+    try:
+        raw = await image.read(limit + 1)
+    finally:
+        await image.close()
+    if len(raw) > limit:
+        raise http_error(413, "task_image_too_large", "Изображение превышает допустимый размер.")
+    if width != "original" and not re.fullmatch(r"[1-9]\d{0,3}", width):
+        raise http_error(422, "task_image_invalid", "Недопустимая ширина изображения.")
+    await db.commit()
+    try:
+        return await image_work(upload_task_image, raw, image.filename or "", int(width) if width != "original" else width)
+    except TaskImageError as exc:
+        raise http_error(422, "task_image_invalid", str(exc)) from exc
+    except Exception as exc:
+        raise http_error(503, "storage_unavailable", "Не удалось сохранить изображение в хранилище. Повторите загрузку.") from exc
 
 
 @router.get(
