@@ -38,7 +38,7 @@ const buildYears = (): YearEntry[] => {
 const buildDocPath = (subject: "math" | "cs", stage: "first" | "second" | "final", year: YearEntry) =>
   `/docs/results/${subject}_${stage}_${year.startYear}_${year.endYear}.pdf`;
 
-function PdfLinkButton({
+function PdfLinkRow({
   href,
   label,
   exists
@@ -48,15 +48,17 @@ function PdfLinkButton({
   exists: boolean;
 }) {
   if (!exists) {
-    return <span className="results-missing-info">Информация будет добавлена позже</span>;
+    return null;
   }
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="results-doc-button">
-      <span className="results-doc-icon" aria-hidden="true">
-        PDF
-      </span>
-      <span>{label}</span>
-    </a>
+    <li>
+      <a href={href} target="_blank" rel="noreferrer" className="results-doc-button">
+        <span className="results-doc-icon" aria-hidden="true">
+          PDF
+        </span>
+        <span>{label}</span>
+      </a>
+    </li>
   );
 }
 
@@ -257,51 +259,39 @@ export function ArchivePage() {
                     <h3>Задания и решения</h3>
                     <h4>Математика</h4>
                     <ul className="results-links">
-                      <li>
-                        <PdfLinkButton
-                          href={buildDocPath("math", "first", year)}
-                          label="Задания и решения первого дистанционного тура по математике"
-                          exists={Boolean(existsMap[buildDocPath("math", "first", year)])}
-                        />
-                      </li>
-                      <li>
-                        <PdfLinkButton
-                          href={buildDocPath("math", "second", year)}
-                          label="Задания и решения второго отборочного дистанционного тура по математике"
-                          exists={Boolean(existsMap[buildDocPath("math", "second", year)])}
-                        />
-                      </li>
-                      <li>
-                        <PdfLinkButton
-                          href={buildDocPath("math", "final", year)}
-                          label="Задания и решения заключительного очного тура по математике"
-                          exists={Boolean(existsMap[buildDocPath("math", "final", year)])}
-                        />
-                      </li>
+                      <PdfLinkRow
+                        href={buildDocPath("math", "first", year)}
+                        label="Задания и решения первого дистанционного тура по математике"
+                        exists={Boolean(existsMap[buildDocPath("math", "first", year)])}
+                      />
+                      <PdfLinkRow
+                        href={buildDocPath("math", "second", year)}
+                        label="Задания и решения второго отборочного дистанционного тура по математике"
+                        exists={Boolean(existsMap[buildDocPath("math", "second", year)])}
+                      />
+                      <PdfLinkRow
+                        href={buildDocPath("math", "final", year)}
+                        label="Задания и решения заключительного очного тура по математике"
+                        exists={Boolean(existsMap[buildDocPath("math", "final", year)])}
+                      />
                     </ul>
                     <h4>Информатика</h4>
                     <ul className="results-links">
-                      <li>
-                        <PdfLinkButton
-                          href={buildDocPath("cs", "first", year)}
-                          label="Задания и решения первого дистанционного тура по информатике"
-                          exists={Boolean(existsMap[buildDocPath("cs", "first", year)])}
-                        />
-                      </li>
-                      <li>
-                        <PdfLinkButton
-                          href={buildDocPath("cs", "second", year)}
-                          label="Задания и решения второго отборочного дистанционного тура по информатике"
-                          exists={Boolean(existsMap[buildDocPath("cs", "second", year)])}
-                        />
-                      </li>
-                      <li>
-                        <PdfLinkButton
-                          href={buildDocPath("cs", "final", year)}
-                          label="Задания и решения заключительного очного тура по информатике"
-                          exists={Boolean(existsMap[buildDocPath("cs", "final", year)])}
-                        />
-                      </li>
+                      <PdfLinkRow
+                        href={buildDocPath("cs", "first", year)}
+                        label="Задания и решения первого дистанционного тура по информатике"
+                        exists={Boolean(existsMap[buildDocPath("cs", "first", year)])}
+                      />
+                      <PdfLinkRow
+                        href={buildDocPath("cs", "second", year)}
+                        label="Задания и решения второго отборочного дистанционного тура по информатике"
+                        exists={Boolean(existsMap[buildDocPath("cs", "second", year)])}
+                      />
+                      <PdfLinkRow
+                        href={buildDocPath("cs", "final", year)}
+                        label="Задания и решения заключительного очного тура по информатике"
+                        exists={Boolean(existsMap[buildDocPath("cs", "final", year)])}
+                      />
                     </ul>
                   </div>
                 </details>

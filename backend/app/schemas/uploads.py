@@ -27,3 +27,9 @@ class UploadGetResponse(BaseModel):
     url: str
     public_url: str | None = None
     expires_in: int
+
+
+class TaskImageUploadResponse(BaseModel):
+    key: str
+    url: str
+    content_type: str

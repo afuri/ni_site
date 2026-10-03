@@ -10,3 +10,11 @@ export const adminApiClient = createApiClient({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
   storage: adminStorage
 });
+
+export const uploadApiClient = createApiClient({
+  baseUrl: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
+  storage: adminStorage,
+  timeoutMs: 120000
+});
+
+export const taskUploadApiClient = uploadApiClient;

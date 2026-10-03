@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
-from app.core.deps_auth import require_admin_or_moderator
+from app.core.deps_auth import require_admin_or_moderator, require_role
 from app.core.errors import http_error
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.task import Subject, TaskType
 from app.repos.tasks import TasksRepo
 from app.services.tasks import TasksService
@@ -125,24 +125,30 @@ async def update_task(
     "/{task_id}",
     status_code=204,
     tags=["admin"],
-    description="Физическое удаление запрещено: используйте архивирование",
+    description="Полностью удалить задание без связей с олимпиадами или результатами. Только администратор.",
     responses={
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.TASK_NOT_FOUND),
-        410: {"description": "physical_delete_disabled"},
+        409: response_example(codes.TASK_IN_OLYMPIAD),
     },
 )
 async def delete_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_admin_or_moderator()),
+    user: User = Depends(require_role(UserRole.admin)),
 ):
     repo = TasksRepo(db)
-    task = await repo.get(task_id)
+    task = await repo.get(task_id, for_update=True)
     if not task:
         raise http_error(404, codes.TASK_NOT_FOUND)
-    raise http_error(410, "physical_delete_disabled", message="Используйте архивирование задания.")
+    try:
+        await TasksService(repo).delete(task=task)
+    except ValueError as error:
+        if str(error) == codes.TASK_IN_OLYMPIAD:
+            raise http_error(409, codes.TASK_IN_OLYMPIAD,
+                message="Нельзя удалить задание: оно связано с олимпиадой или результатами участников.") from error
+        raise
 
 
 @router.post("/{task_id}/archive", response_model=TaskRead, tags=["admin"])

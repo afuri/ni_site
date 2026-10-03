@@ -1,5 +1,6 @@
 import "@ui/styles/global.css";
 import "./styles/admin.css";
+import "./styles/admin-buttons.css";
 import { AuthProvider, useAuth } from "@ui";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { adminApiClient, adminStorage } from "./lib/adminClient";

@@ -1,0 +1,68 @@
+/* One button style for every admin page, including login and dialogs. */
+@font-face {
+  font-family: "Manrope Platform";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("../../../main/src/assets/fonts/manrope-cyrillic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "Manrope Platform";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("../../../main/src/assets/fonts/manrope-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:is(.admin-app, .admin-login) :is(button, .admin-upload-label) {
+  display: inline-flex;
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #c5b6ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #5634bb;
+  box-shadow: none;
+  font: 650 13px/1.5 "Manrope Platform", "Manrope", Arial, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+:is(.admin-app, .admin-login) .btn-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+:is(.admin-app, .admin-login) .btn-primary { border-color: #6542dc; background: #6542dc; color: #fff; }
+:is(.admin-app, .admin-login) .btn-ghost { background: transparent; color: #5634bb; }
+:is(.admin-app, .admin-login) button:hover:not(:disabled) { transform: none; background: #f5f2ff; box-shadow: none; }
+:is(.admin-app, .admin-login) .btn-primary:hover:not(:disabled) { background: #5634cc; }
+:is(.admin-app, .admin-login) .btn-ghost:hover:not(:disabled) { background: #f5f2ff; }
+:is(.admin-app, .admin-login) button:disabled { border-color: #d6dfeb; background: #edf1f6; color: #66758a; box-shadow: none; opacity: 1; cursor: not-allowed; }
+:is(.admin-app, .admin-login) :is(button, .admin-upload-label):focus-visible { outline: 2px solid #7d9fed; outline-offset: 3px; }
+.admin-app .layout-header .btn-outline { border-color: #c5b6ee; background: #f5f2ff; color: #5634bb; }
+
+.admin-app button:is(.modal-close, .toast-close) { width: 32px; flex: 0 0 auto; }
+.admin-icon-action { display: inline-flex; flex: 0 0 auto; }
+.admin-app .admin-icon-button { position: relative; width: 38px; flex: 0 0 auto; }
+.admin-icon-button .btn-label { display: flex; align-items: center; justify-content: center; }
+.admin-icon-button svg { display: block; flex: 0 0 auto; }
+.admin-icon-button:disabled { pointer-events: none; }
+.admin-app .admin-icon-button.btn-loading .btn-label { visibility: hidden; }
+.admin-icon-button .btn-spinner { position: absolute; width: 14px; height: 14px; border-color: #d9d1f4; border-top-color: #6542dc; }
+.admin-app .admin-candidate-list button { width: 100%; justify-content: space-between; text-align: left; }
+.admin-app .admin-candidate-list button :is(strong, span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.admin-app .admin-candidate-list button strong { flex: 1; }
+.admin-app .admin-candidate-list button span { max-width: 40%; }
+.admin-app .admin-candidate-list button.is-selected { border-color: #6542dc; background: #f5f2ff; color: #5634bb; }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.admin-app, .admin-login) button { transition: none; }
+}

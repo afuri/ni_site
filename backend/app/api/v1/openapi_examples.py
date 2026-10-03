@@ -60,6 +60,7 @@ EXAMPLE_TASK_READ: dict = {
     "image_key": None,
     "payload": {"options": [{"id": "a", "text": "4"}, {"id": "b", "text": "5"}], "correct_option_id": "a"},
     "created_by_user_id": 1,
+    "can_delete": True,
 }
 
 EXAMPLE_OLYMPIAD_READ: dict = {

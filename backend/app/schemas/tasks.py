@@ -92,6 +92,7 @@ class TaskRead(BaseModel):
     created_by_user_id: int
 
     archived_at: datetime | None = None
+    can_delete: bool = Field(default=False, description="Нет связей с олимпиадами, ответами или результатами участников")
 
     model_config = ConfigDict(from_attributes=True)
 

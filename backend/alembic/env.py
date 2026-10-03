@@ -15,6 +15,7 @@ from alembic import context
 from app.db.base import Base
 from app.models.user import User  # noqa
 from app.models.task import Task  # noqa
+from app.models.task_upload import TaskUploadSession  # noqa
 from app.models.teacher_student import TeacherStudent  # noqa
 from app.models.user_change import UserChange  # noqa
 from app.models.olympiad import Olympiad  # noqa

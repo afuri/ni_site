@@ -57,6 +57,12 @@ APP_DESCRIPTION = """
 
 app = FastAPI(title=settings.APP_NAME, description=APP_DESCRIPTION)
 app.add_middleware(AttemptBodyLimitMiddleware, max_bytes=settings.ATTEMPT_MAX_BODY_BYTES)
+app.add_middleware(AttemptBodyLimitMiddleware,
+                   max_bytes=settings.TASK_UPLOAD_MAX_MB * 1024 * 1024 + 65536,
+                   path_pattern=r"/api/v1/admin/task-uploads/?", error_code="task_archive_too_large")
+app.add_middleware(AttemptBodyLimitMiddleware,
+                   max_bytes=settings.STORAGE_MAX_UPLOAD_MB * 1024 * 1024 + 65536,
+                   path_pattern=r"/api/v1/uploads/task-image/?", error_code="task_image_too_large")
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(GlobalRateLimitMiddleware)
 app.add_middleware(AuditMiddleware)

@@ -5,6 +5,7 @@ from app.models.school import School
 from app.models.school_import import SchoolImportBatch, SchoolSourceMap
 from app.models.school_submission import SchoolSubmission, SchoolSubmissionStatus
 from app.models.user import Gender, SchoolStatus, User, UserRole
+from app.models.task_upload import TaskUploadSession
 
 __all__ = [
     "City",
