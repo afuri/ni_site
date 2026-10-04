@@ -85,16 +85,16 @@
 .student-now-content > .student-primary-action { margin-top: 22px; }
 .student-hero-olympiads { display: grid; gap: 12px; margin-top: 22px; }
 .student-hero-empty { margin: 0; padding: 22px 12px; color: var(--student-muted); text-align: center; font-size: .95rem; }
-.student-hero-olympiad { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px; border: 1px solid #dddaf5; border-radius: 13px; background: rgba(255, 255, 255, .7); }
+.student-hero-olympiad { display: grid; grid-template-columns: minmax(0, 1fr); align-content: space-between; gap: 14px; min-width: 0; padding: 15px; border: 1px solid #dddaf5; border-radius: 13px; background: rgba(255, 255, 255, .7); }
 .student-hero-olympiad-info { min-width: 0; }
 .student-hero-olympiad-info h3 { margin: 0 0 9px; font-size: 1rem; overflow-wrap: anywhere; }
-.student-hero-olympiad-info p { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0 0; color: #50627f; font-size: .78rem; }
+.student-hero-olympiad-info p { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0 0; color: #50627f; font-size: .78rem; overflow-wrap: anywhere; }
+.student-hero-olympiad-info p > span { min-width: 0; }
 .student-hero-olympiad-info svg { flex-shrink: 0; }
-.student-hero-olympiad-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; justify-content: flex-end; }
-.student-hero-olympiad-actions button { min-width: 118px; white-space: nowrap; }
+.student-hero-olympiad-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; align-self: end; justify-content: flex-end; align-items: flex-end; }
+.student-hero-olympiad-actions button { flex: 0 0 auto; min-width: min(118px, 100%); max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .student-hero-olympiad-info p.student-hero-olympiad-description { display: block; white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 10px; }
 .student-hero-more { justify-self: start; margin-top: 4px; }
-@media (max-width: 1100px) { .student-hero-olympiad { flex-wrap: wrap; } }
 .student-subject-visual { position: relative; min-width: 0; min-height: 170px; align-self: stretch; overflow: hidden; }
 .student-subject-orbit { position: absolute; width: 210px; height: 210px; right: 8%; bottom: 5%; border: 26px solid #e5dffb; border-radius: 50%; background: #f0eaff; }
 .student-subject-symbol { position: absolute; top: 17%; right: 18%; color: #826ceb; font: 700 2.2rem Georgia, serif; opacity: .55; }
