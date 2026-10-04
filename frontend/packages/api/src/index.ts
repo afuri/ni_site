@@ -1,4 +1,5 @@
 export { createApiClient } from "./client";
+export { saveDownloadedBlob, openPdfInNewTab, PdfPopupBlockedError } from "./download";
 export type {
   ApiClient,
   LoginPayload,

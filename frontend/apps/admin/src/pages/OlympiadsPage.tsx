@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Button, Modal, Table, TextInput } from "@ui";
-import { adminApiClient, adminStorage } from "../lib/adminClient";
+import { adminApiClient } from "../lib/adminClient";
 import { formatDate, fromDateTimeLocal, toDateTimeLocal } from "../lib/formatters";
 import { AdminIconButton } from "../components/AdminIconButton";
+import { openPdfInNewTab, PdfPopupBlockedError, type ApiError } from "@api";
 
 type OlympiadItem = {
+  is_standalone?: boolean;
+  has_participant_pdf?: boolean;
   archived_at?: string | null;
   rules_locked_at?: string | null;
+  can_return_to_draft?: boolean;
   id: number;
   title: string;
   description: string | null;
@@ -23,6 +27,7 @@ type OlympiadItem = {
 };
 
 type OlympiadForm = {
+  isStandalone: boolean;
   title: string;
   description: string;
   classGrades: number[];
@@ -87,6 +92,7 @@ type PdfExportOptions = {
 };
 
 const emptyForm: OlympiadForm = {
+  isStandalone: false,
   title: "",
   description: "",
   classGrades: [7, 8],
@@ -96,7 +102,7 @@ const emptyForm: OlympiadForm = {
   passPercent: "60"
 };
 
-const CLASS_GRADE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+const CLASS_GRADE_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 const SUBJECT_OPTIONS = [
   { value: "math", label: "Математика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "7-8", "1-8"] },
   { value: "cs", label: "Информатика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "7-8", "1-8"] }
@@ -227,6 +233,9 @@ export function OlympiadsPage() {
   const [deleteTarget, setDeleteTarget] = useState<OlympiadItem | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "error">("idle");
   const [publishStatus, setPublishStatus] = useState<number | null>(null);
+  const [draftTarget, setDraftTarget] = useState<OlympiadItem | null>(null);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const [resultsStatus, setResultsStatus] = useState<number | null>(null);
   const [taskCatalog, setTaskCatalog] = useState<TaskCatalogItem[]>([]);
   const [taskSelection, setTaskSelection] = useState<Record<number, TaskSelection>>({});
@@ -248,12 +257,18 @@ export function OlympiadsPage() {
   const [poolFormError, setPoolFormError] = useState<string | null>(null);
   const [poolSaving, setPoolSaving] = useState(false);
   const [poolActionStatus, setPoolActionStatus] = useState<number | null>(null);
+  const [poolDeleteTarget, setPoolDeleteTarget] = useState<PoolItem | null>(null);
+  const [poolDeleteError, setPoolDeleteError] = useState<string | null>(null);
   const [previewTarget, setPreviewTarget] = useState<OlympiadItem | null>(null);
   const [previewTasks, setPreviewTasks] = useState<OlympiadPreviewTask[]>([]);
   const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewImageUrls, setPreviewImageUrls] = useState<Record<string, string>>({});
   const [pdfTarget, setPdfTarget] = useState<OlympiadItem | null>(null);
+  const [participantPdfTarget, setParticipantPdfTarget] = useState<OlympiadItem | null>(null);
+  const [participantPdfFile, setParticipantPdfFile] = useState<File | null>(null);
+  const [participantPdfError, setParticipantPdfError] = useState<string | null>(null);
+  const [participantPdfBusy, setParticipantPdfBusy] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>({
@@ -403,6 +418,7 @@ export function OlympiadsPage() {
     setFormMode("edit");
     setEditingId(olympiad.id);
     setForm({
+      isStandalone: Boolean(olympiad.is_standalone),
       title: olympiad.title,
       description: olympiad.description ?? "",
       classGrades: parseAgeGroup(olympiad.age_group),
@@ -519,7 +535,7 @@ export function OlympiadsPage() {
 
   const normalizeGrades = (grades: number[]) => {
     const unique = Array.from(new Set(grades));
-    return unique.filter((grade) => grade >= 1 && grade <= 8).sort((a, b) => a - b);
+    return unique.filter((grade) => grade >= 0 && grade <= 8).sort((a, b) => a - b);
   };
 
   const prepareTaskEntries = () => {
@@ -587,8 +603,8 @@ export function OlympiadsPage() {
       return;
     }
     const durationMinutes = Number(form.durationMinutes);
-    if (Number.isNaN(durationMinutes) || durationMinutes <= 0) {
-      setFormError("Укажите корректную длительность в минутах.");
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 1 || durationMinutes > 360) {
+      setFormError("Укажите длительность от 1 до 360 минут.");
       return;
     }
     const preparedTasks = prepareTaskEntries();
@@ -599,6 +615,7 @@ export function OlympiadsPage() {
     setIsSaving(true);
     try {
       const body = {
+        is_standalone: form.isStandalone,
         title: form.title,
         description: form.description,
         age_group: classGrades,
@@ -632,8 +649,10 @@ export function OlympiadsPage() {
       }
       setIsFormOpen(false);
       await loadOlympiads();
-    } catch {
-      setFormError("Не удалось сохранить олимпиаду.");
+    } catch (error) {
+      setFormError((error as ApiError).code === "standalone_olympiad_in_pool"
+        ? "Общая олимпиада не может входить в пул. Сначала удалите её пул."
+        : "Не удалось сохранить олимпиаду.");
     } finally {
       setIsSaving(false);
     }
@@ -666,6 +685,32 @@ export function OlympiadsPage() {
     }
   };
 
+  const closeDraftReturn = () => {
+    if (draftSaving) return;
+    setDraftTarget(null);
+    setDraftError(null);
+  };
+
+  const handleReturnToDraft = async () => {
+    if (!draftTarget || draftSaving) return;
+    setDraftSaving(true);
+    setDraftError(null);
+    try {
+      await adminApiClient.request({ path: `/admin/olympiads/${draftTarget.id}/return-to-draft`, method: "POST" });
+      setDraftTarget(null);
+      await loadOlympiads();
+    } catch (error) {
+      const code = (error as ApiError)?.code;
+      setDraftError(code === "cannot_return_olympiad_to_draft"
+        ? "Олимпиаду нельзя вернуть в черновик: она архивирована, входит в пул или имеет попытки/назначения. Обновите список."
+        : code === "olympiad_not_found"
+          ? "Олимпиада не найдена. Обновите список."
+          : "Не удалось вернуть олимпиаду в черновик. Попробуйте ещё раз.");
+    } finally {
+      setDraftSaving(false);
+    }
+  };
+
   const toggleResultsRelease = async (item: OlympiadItem) => {
     setResultsStatus(item.id);
     try {
@@ -677,6 +722,51 @@ export function OlympiadsPage() {
     } finally {
       setResultsStatus(null);
     }
+  };
+
+  const openParticipantPdf = (item: OlympiadItem) => {
+    setParticipantPdfTarget(item);
+    setParticipantPdfFile(null);
+    setParticipantPdfError(null);
+  };
+
+  const changeParticipantPdf = async (remove = false) => {
+    if (!participantPdfTarget || participantPdfBusy) return;
+    setParticipantPdfError(null);
+    if (!remove && (!participantPdfFile || !participantPdfFile.name.toLowerCase().endsWith(".pdf"))) {
+      setParticipantPdfError("Выберите проверенный PDF-файл.");
+      return;
+    }
+    if (!remove && participantPdfFile!.size > 20 * 1024 * 1024) {
+      setParticipantPdfError("Размер PDF не должен превышать 20 МБ.");
+      return;
+    }
+    setParticipantPdfBusy(true);
+    try {
+      const data = new FormData();
+      if (!remove) data.append("file", participantPdfFile!);
+      await adminApiClient.request<OlympiadItem>({ path: `/admin/olympiads/${participantPdfTarget.id}/participant-pdf`,
+        method: remove ? "DELETE" : "PUT", body: remove ? undefined : data, timeoutMs: 120000 });
+      setParticipantPdfTarget(null);
+      setParticipantPdfFile(null);
+      await loadOlympiads();
+    } catch (error) {
+      setParticipantPdfError((error as ApiError).message || "Не удалось изменить PDF для участника.");
+    } finally { setParticipantPdfBusy(false); }
+  };
+
+  const downloadParticipantPdf = async () => {
+    if (!participantPdfTarget || participantPdfBusy) return;
+    setParticipantPdfBusy(true);
+    setParticipantPdfError(null);
+    try {
+      await openPdfInNewTab(() => adminApiClient.request<Blob>({ path: `/admin/olympiads/${participantPdfTarget.id}/participant-pdf`, responseType: "blob", timeoutMs: 120000 }));
+    } catch (error) {
+      setParticipantPdfError(error instanceof PdfPopupBlockedError
+        ? "Разрешите открытие новых вкладок для этого сайта и повторите действие."
+        : "Не удалось открыть PDF для проверки.");
+    }
+    finally { setParticipantPdfBusy(false); }
   };
 
   const openPdfExport = (item: OlympiadItem) => {
@@ -703,27 +793,16 @@ export function OlympiadsPage() {
         include_task_and_answer_type: String(pdfOptions.includeTaskAndAnswerType),
         include_correct_answer: String(pdfOptions.includeCorrectAnswer)
       });
-      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
-      const token = adminStorage.getTokens()?.access_token;
-      const response = await fetch(`${baseUrl}/admin/olympiads/${pdfTarget.id}/pdf?${query.toString()}`, {
-        method: "GET",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined
-      });
-      if (!response.ok) {
-        throw new Error("pdf_download_failed");
-      }
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = `olympiad_${pdfTarget.id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(objectUrl);
+      await openPdfInNewTab(() => adminApiClient.request<Blob>({
+        path: `/admin/olympiads/${pdfTarget.id}/pdf?${query.toString()}`,
+        responseType: "blob",
+        timeoutMs: 120000
+      }));
       setPdfTarget(null);
-    } catch {
-      setPdfError("Не удалось сформировать PDF.");
+    } catch (error) {
+      setPdfError(error instanceof PdfPopupBlockedError
+        ? "Разрешите открытие новых вкладок для этого сайта и повторите действие."
+        : "Не удалось сформировать PDF.");
     } finally {
       setPdfExporting(false);
     }
@@ -752,6 +831,7 @@ export function OlympiadsPage() {
       });
       setPoolForm((prev) => ({ ...prev, olympiadIds: "" }));
       await loadPools();
+      await loadOlympiads();
     } catch {
       setPoolFormError("Не удалось создать пул.");
     } finally {
@@ -777,6 +857,34 @@ export function OlympiadsPage() {
         method: "POST"
       });
       await loadPools();
+    } finally {
+      setPoolActionStatus(null);
+    }
+  };
+
+  const closePoolDelete = () => {
+    if (poolActionStatus !== null) return;
+    setPoolDeleteTarget(null);
+    setPoolDeleteError(null);
+  };
+
+  const handleDeletePool = async () => {
+    if (!poolDeleteTarget || poolActionStatus !== null) return;
+    const poolId = poolDeleteTarget.id;
+    setPoolActionStatus(poolId);
+    setPoolDeleteError(null);
+    try {
+      await adminApiClient.request({ path: `/admin/olympiad-pools/${poolId}`, method: "DELETE" });
+      setPools((current) => current.filter((pool) => pool.id !== poolId));
+      setPoolDeleteTarget(null);
+      await loadOlympiads();
+    } catch (error) {
+      const code = (error as ApiError)?.code;
+      setPoolDeleteError(code === "olympiad_pool_has_attempts"
+        ? "Пул нельзя удалить: в одной из его олимпиад есть начатая, завершённая или истёкшая попытка."
+        : code === "olympiad_pool_not_found"
+          ? "Пул уже удалён. Обновите страницу."
+          : "Не удалось удалить пул. Попробуйте ещё раз.");
     } finally {
       setPoolActionStatus(null);
     }
@@ -875,7 +983,7 @@ export function OlympiadsPage() {
             olympiads.map((item) => (
               <tr key={item.id}>
                 <td>{item.id}</td>
-                <td>{item.title}</td>
+                <td>{item.title}{item.is_standalone ? <div className="admin-tag admin-tag-muted">Общая · без пула</div> : null}</td>
                 <td>{item.age_group}</td>
                 <td>
                   {formatDate(item.available_from)} — {formatDate(item.available_to)}
@@ -895,6 +1003,9 @@ export function OlympiadsPage() {
                     <Button type="button" size="sm" variant="outline" disabled={Boolean(item.rules_locked_at || item.archived_at)} onClick={() => openEdit(item)}>
                       Редактировать
                     </Button>
+                    {item.can_return_to_draft ? <AdminIconButton icon="return-draft" label="Вернуть в черновик"
+                      disabled={draftSaving || publishStatus === item.id || poolSaving || poolActionStatus !== null}
+                      onClick={() => { setDraftTarget(item); setDraftError(null); }} /> : null}
                     <AdminIconButton icon="copy" label="Создать копию" onClick={async () => {
                       try { await adminApiClient.request({ path: `/admin/olympiads/${item.id}/copy`, method: "POST" }); await loadOlympiads(); }
                       catch { setError("Не удалось создать копию олимпиады."); setStatus("error"); }
@@ -903,6 +1014,9 @@ export function OlympiadsPage() {
                     <Button type="button" size="sm" variant="outline" onClick={() => openPdfExport(item)}>
                       PDF
                     </Button>
+                    {item.is_standalone ? <Button type="button" size="sm" variant="outline" onClick={() => openParticipantPdf(item)}>
+                      PDF для участника{item.has_participant_pdf ? " ✓" : ""}
+                    </Button> : null}
                     <Button
                       type="button"
                       size="sm"
@@ -1051,21 +1165,24 @@ export function OlympiadsPage() {
                   </td>
                   <td>{formatDate(pool.created_at)}</td>
                   <td>
-                    {!pool.is_active ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleActivatePool(pool.id)}
-                        disabled={poolActionStatus === pool.id}
-                      >
-                        Активировать
-                      </Button>
-                    ) : (
-                      <span className="admin-hint">Активен</span>
-                    )}
+                    <div className="admin-table-actions">
+                      {!pool.is_active ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleActivatePool(pool.id)}
+                          disabled={poolActionStatus !== null}
+                        >
+                          Активировать
+                        </Button>
+                      ) : null}
                       <Button type="button" size="sm" variant="outline" onClick={() => handleCopyPool(pool.id)} disabled={poolActionStatus !== null}>Создать копию работы</Button>
-
+                      <Button type="button" size="sm" variant="outline" disabled={poolActionStatus !== null} onClick={() => {
+                        setPoolDeleteError(null);
+                        setPoolDeleteTarget(pool);
+                      }}>Удалить пул</Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -1089,7 +1206,7 @@ export function OlympiadsPage() {
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
             />
-            <label className="field">
+            <div className="field" role="group" aria-label="Классы">
               <span className="field-label">Классы</span>
               <div className="admin-class-grid">
                 {CLASS_GRADE_OPTIONS.map((grade) => {
@@ -1116,8 +1233,13 @@ export function OlympiadsPage() {
                   );
                 })}
               </div>
-            </label>
+            </div>
           </div>
+          <label className="admin-class-option">
+            <input type="checkbox" checked={form.isStandalone} onChange={(event) => setForm((prev) => ({ ...prev, isStandalone: event.target.checked }))} />
+            <span>Общая олимпиада без пула</span>
+          </label>
+          {form.isStandalone ? <p className="admin-hint">Одинаковая работа для всех выбранных классов. После сохранения загрузите проверенный файл через кнопку «PDF для участника» в списке олимпиад. При изменении состава заданий PDF нужно загрузить заново.</p> : null}
           <label className="field">
             <span className="field-label">Описание</span>
             <textarea
@@ -1256,13 +1378,54 @@ export function OlympiadsPage() {
           {formError ? <span className="admin-error">{formError}</span> : null}
           {taskAttachError ? <span className="admin-error">{taskAttachError}</span> : null}
           <div className="admin-modal-actions">
-            <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+            <Button type="button" size="sm" variant="outline" onClick={() => setIsFormOpen(false)}>
               Отмена
             </Button>
-            <Button type="button" onClick={handleSave} isLoading={isSaving}>
+            <Button type="button" size="sm" onClick={handleSave} isLoading={isSaving}>
               Сохранить
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={Boolean(participantPdfTarget)} onClose={() => { if (!participantPdfBusy) setParticipantPdfTarget(null); }}
+        title={participantPdfTarget ? `PDF для участника: ${participantPdfTarget.title}` : "PDF для участника"} closeOnBackdrop={false}>
+        <div className="admin-form">
+          <p>Загрузите проверенный PDF без правильных ответов. Участник сможет скачать его до старта в период проведения и во время активной попытки. После завершения или истечения попытки PDF недоступен. Скачивание не запускает попытку.</p>
+          <p>Файл: {participantPdfTarget?.has_participant_pdf ? "загружен" : "не загружен"}. Максимальный размер — 20 МБ.</p>
+          {participantPdfTarget?.rules_locked_at || participantPdfTarget?.is_published || participantPdfTarget?.archived_at
+            ? <p className="admin-hint">Замена и удаление возможны только в редактируемом черновике. Использованную олимпиаду менять нельзя.</p>
+            : <label className="field"><span className="field-label">Проверенный PDF</span><input type="file" accept=".pdf,application/pdf"
+                disabled={participantPdfBusy} onChange={(event) => setParticipantPdfFile(event.target.files?.[0] ?? null)} /></label>}
+          {participantPdfError ? <p role="alert" className="admin-error">{participantPdfError}</p> : null}
+          <div className="admin-modal-actions">
+            {participantPdfTarget?.has_participant_pdf ? <Button type="button" size="sm" variant="outline" disabled={participantPdfBusy} onClick={downloadParticipantPdf}>Скачать для проверки</Button> : null}
+            {!participantPdfTarget?.rules_locked_at && !participantPdfTarget?.is_published && !participantPdfTarget?.archived_at ? <>
+              {participantPdfTarget?.has_participant_pdf ? <Button type="button" size="sm" variant="outline" disabled={participantPdfBusy} onClick={() => void changeParticipantPdf(true)}>Удалить PDF</Button> : null}
+              <Button type="button" size="sm" disabled={!participantPdfFile || participantPdfBusy} onClick={() => void changeParticipantPdf()}>Загрузить PDF</Button>
+            </> : null}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={Boolean(draftTarget)} onClose={closeDraftReturn} title="Вернуть олимпиаду в черновик" closeOnBackdrop={false}>
+        <p>Вернуть олимпиаду №{draftTarget?.id} «{draftTarget?.title}» в черновик?</p>
+        <p>Олимпиада будет снята с публикации, её параметры и задания станут доступны для редактирования. ID и состав заданий сохранятся.</p>
+        <p>Действие возможно только вне пула и при отсутствии любых попыток и назначений.</p>
+        {draftError ? <p className="admin-error" role="alert">{draftError}</p> : null}
+        <div className="admin-modal-actions">
+          <Button type="button" variant="outline" onClick={closeDraftReturn} disabled={draftSaving}>Отмена</Button>
+          <Button type="button" onClick={() => void handleReturnToDraft()} isLoading={draftSaving}>Вернуть в черновик</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={Boolean(poolDeleteTarget)} onClose={closePoolDelete} title="Удалить пул олимпиад" closeOnBackdrop={false}>
+        <p>Удалить пул №{poolDeleteTarget?.id} ({formatSubject(poolDeleteTarget?.subject ?? "")} · класс {poolDeleteTarget?.grade_group})?</p>
+        <p>Олимпиады {poolDeleteTarget?.olympiad_ids.join(", ")} и их задания сохранятся. Удаление возможно, только если ни в одной из этих олимпиад нет начатых попыток.</p>
+        {poolDeleteError ? <p className="admin-error" role="alert">{poolDeleteError}</p> : null}
+        <div className="admin-modal-actions">
+          <Button type="button" variant="outline" onClick={closePoolDelete} disabled={poolActionStatus !== null}>Отмена</Button>
+          <Button type="button" onClick={() => void handleDeletePool()} isLoading={poolActionStatus !== null}>Удалить пул</Button>
         </div>
       </Modal>
 

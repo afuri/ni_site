@@ -90,7 +90,9 @@
 .student-hero-olympiad-info h3 { margin: 0 0 9px; font-size: 1rem; overflow-wrap: anywhere; }
 .student-hero-olympiad-info p { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0 0; color: #50627f; font-size: .78rem; }
 .student-hero-olympiad-info svg { flex-shrink: 0; }
-.student-hero-olympiad > button { flex-shrink: 0; min-width: 118px; white-space: nowrap; }
+.student-hero-olympiad-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; justify-content: flex-end; }
+.student-hero-olympiad-actions button { min-width: 118px; white-space: nowrap; }
+.student-hero-olympiad-info p.student-hero-olympiad-description { display: block; white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 10px; }
 .student-hero-more { justify-self: start; margin-top: 4px; }
 @media (max-width: 1100px) { .student-hero-olympiad { flex-wrap: wrap; } }
 .student-subject-visual { position: relative; min-width: 0; min-height: 170px; align-self: stretch; overflow: hidden; }

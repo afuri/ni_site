@@ -3,6 +3,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class OlympiadPublicRead(BaseModel):
+    is_standalone: bool = False
+    has_participant_pdf: bool = False
     id: int
     pool_id: int | None = None
     subject: str | None = None

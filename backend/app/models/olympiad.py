@@ -19,12 +19,19 @@ class Olympiad(Base):
         CheckConstraint("available_to > available_from", name="ck_olympiads_window"),
         CheckConstraint("pass_percent BETWEEN 0 AND 100", name="ck_olympiads_pass_percent"),
         CheckConstraint("attempts_limit = 1", name="ck_olympiads_attempt_limit"),
+        CheckConstraint("participant_pdf_key IS NULL OR is_standalone", name="ck_olympiads_participant_pdf_standalone"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
     title: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    is_standalone: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    participant_pdf_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    @property
+    def has_participant_pdf(self) -> bool:
+        return bool(self.is_standalone and self.participant_pdf_key)
 
     scope: Mapped[OlympiadScope] = mapped_column(
         SAEnum(OlympiadScope, values_callable=enum_values, name="olympiadscope"),

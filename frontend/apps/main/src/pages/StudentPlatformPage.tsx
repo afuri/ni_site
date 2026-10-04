@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@ui";
 import { createApiClient, type AttemptResult, type AttemptView } from "@api";
+import { openPdfInNewTab, PdfPopupBlockedError } from "@api";
 import { PlatformShell, type PlatformSection } from "../platform/PlatformShell";
 import { PlatformContent } from "../platform/PlatformContent";
 import { createPlatformApi } from "../platform/platformApi";
@@ -43,6 +44,7 @@ export function StudentPlatformPage() {
   const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
   const [downloadingAttemptId, setDownloadingAttemptId] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null);
 
   useEffect(() => {
     if (activeSection === "profile" && tokens) void refreshUser();
@@ -65,6 +67,21 @@ export function StudentPlatformPage() {
   };
 
   const continueAttempt = (attemptId: number) => navigate(`/olympiad?attemptId=${attemptId}`);
+
+  const handleDownloadPdf = async (olympiadId: number) => {
+    if (downloadingPdfId !== null) return;
+    setDownloadingPdfId(olympiadId);
+    setActionMessage(null);
+    try {
+      await openPdfInNewTab(() => platformApi.getParticipantPdf(olympiadId));
+    } catch (error) {
+      setActionMessage(error instanceof PdfPopupBlockedError
+        ? "Разрешите открытие новых вкладок для этого сайта и нажмите «Скачать PDF» ещё раз."
+        : "Не удалось открыть PDF. Проверьте, что олимпиада или ваша попытка ещё активна, и попробуйте снова.");
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
 
   const handleOlympiadAction = (action: OlympiadAction) => {
     setActionMessage(null);
@@ -146,6 +163,8 @@ export function StudentPlatformPage() {
         onContinueAttempt={continueAttempt}
         onViewAttempt={(result) => void handleViewAttempt(result)}
         onDownloadDiploma={(result) => void handleDownloadDiploma(result)}
+        downloadingPdfId={downloadingPdfId}
+        onDownloadPdf={(id) => void handleDownloadPdf(id)}
         onRefresh={overview.refresh}
         profileContent={(
           <StudentProfile

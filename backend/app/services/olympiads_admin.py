@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from sqlalchemy import select, or_
 from app.models.attempt import Attempt
-from app.models.olympiad_pool import OlympiadAssignment
+from app.models.olympiad_pool import OlympiadAssignment, OlympiadPoolItem
+from app.services.audit_events import add_audit_event
 from app.schemas.tasks import TaskCreate
 
 from app.models.olympiad import Olympiad, OlympiadScope
@@ -40,6 +41,7 @@ class AdminOlympiadsService:
         obj = Olympiad(
             title=data["title"],
             description=data.get("description"),
+            is_standalone=data.get("is_standalone", False),
             scope=OlympiadScope.global_,
             age_group=data["age_group"],
             attempts_limit=data["attempts_limit"],
@@ -66,9 +68,52 @@ class AdminOlympiadsService:
         if olympiad.archived_at or olympiad.rules_locked_at or olympiad.is_published or used:
             raise ValueError(codes.CANNOT_CHANGE_PUBLISHED_RULES)
 
+    async def returnable_ids(self, olympiad_ids: list[int], *, require_locked: bool = True) -> set[int]:
+        if not olympiad_ids:
+            return set()
+        stmt = select(Olympiad.id).where(
+            Olympiad.id.in_(olympiad_ids), Olympiad.archived_at.is_(None),
+            ~select(Attempt.id).where(Attempt.olympiad_id == Olympiad.id).exists(),
+            ~select(OlympiadAssignment.id).where(OlympiadAssignment.olympiad_id == Olympiad.id).exists(),
+            ~select(OlympiadPoolItem.id).where(OlympiadPoolItem.olympiad_id == Olympiad.id).exists(),
+        )
+        if require_locked:
+            stmt = stmt.where(or_(Olympiad.is_published.is_(True), Olympiad.rules_locked_at.is_not(None)))
+        return set((await self.olympiads.db.scalars(stmt)).all())
+
+    async def return_to_draft(self, *, olympiad: Olympiad, admin_id: int) -> Olympiad:
+        # Pool creation and attempt admission also lock the variant. Recheck after
+        # taking this lock so a concurrent pool/start cannot bypass the guard.
+        olympiad = await self._lock(olympiad)
+        if olympiad.id not in await self.returnable_ids([olympiad.id], require_locked=False):
+            raise ValueError(codes.CANNOT_RETURN_OLYMPIAD_TO_DRAFT)
+        if not olympiad.is_published and not olympiad.rules_locked_at and not olympiad.results_released:
+            return olympiad
+        previous = {"is_published": olympiad.is_published,
+                    "rules_locked_at": olympiad.rules_locked_at.isoformat() if olympiad.rules_locked_at else None,
+                    "results_released": olympiad.results_released}
+        olympiad.is_published = False
+        olympiad.rules_locked_at = None
+        olympiad.results_released = False
+        olympiad.updated_at = datetime.now(timezone.utc)
+        add_audit_event(self.olympiads.db, actor_user_id=admin_id, action="olympiad_returned_to_draft",
+                        method="POST", path=f"/api/v1/admin/olympiads/{olympiad.id}/return-to-draft",
+                        details={"olympiad_id": olympiad.id, "previous": previous})
+        saved = await self.olympiads.save(olympiad)
+        await self._invalidate_cache(olympiad.id)
+        return saved
+
     async def update(self, *, olympiad: Olympiad, patch: dict) -> Olympiad:
         olympiad = await self._lock(olympiad)
         await self._ensure_editable(olympiad)
+
+        if patch.get("is_standalone") is True and not olympiad.is_standalone:
+            if await self.olympiads.db.scalar(select(OlympiadPoolItem.id).where(OlympiadPoolItem.olympiad_id == olympiad.id).limit(1)):
+                raise ValueError(codes.STANDALONE_OLYMPIAD_IN_POOL)
+        if "is_standalone" in patch and patch["is_standalone"] is None:
+            raise ValueError(codes.INVALID_STANDALONE_MODE)
+        if patch.get("is_standalone") is False:
+            olympiad.participant_pdf_key = None
 
         if "available_from" in patch or "available_to" in patch:
             af = patch.get("available_from", olympiad.available_from)
@@ -101,6 +146,7 @@ class AdminOlympiadsService:
             return existing
 
         obj = OlympiadTask(olympiad_id=olympiad.id, task_id=task_id, sort_order=sort_order, max_score=max_score)
+        olympiad.participant_pdf_key = None  # The checked file must match the new composition.
         created = await self.olympiad_tasks.add(obj)
         await self._invalidate_cache(olympiad.id)
         return created
@@ -116,6 +162,7 @@ class AdminOlympiadsService:
         existing = await self.olympiad_tasks.get_by_olympiad_task(olympiad.id, task_id)
         if not existing:
             return
+        olympiad.participant_pdf_key = None
         await self.olympiad_tasks.delete(existing)
         await self._invalidate_cache(olympiad.id)
 
@@ -164,6 +211,7 @@ class AdminOlympiadsService:
             raise ValueError("archived_tasks_in_copy")
         copied = Olympiad(title=(olympiad.title[:249] + " копия"), description=olympiad.description,
             scope=olympiad.scope, age_group=olympiad.age_group, attempts_limit=1,
+            is_standalone=olympiad.is_standalone,
             duration_sec=olympiad.duration_sec, available_from=olympiad.available_from,
             available_to=olympiad.available_to, pass_percent=olympiad.pass_percent,
             is_published=False, results_released=False, created_by_user_id=admin_id)

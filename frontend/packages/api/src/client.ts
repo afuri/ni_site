@@ -18,6 +18,8 @@ type RequestOptions = {
   auth?: boolean;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  responseType?: "json" | "blob";
+  timeoutMs?: number;
 };
 
 type ClientOptions = {
@@ -131,7 +133,7 @@ export function createApiClient(options: ClientOptions): ApiClient {
   const { baseUrl, storage, onAuthError } = options;
   const timeoutMs = options.timeoutMs ?? 15000;
   const sessionChanged = () => ({ status: 401, code: "session_changed", message: "Вход изменён в другой вкладке.", details: {} });
-  const fetchBody = async <T,>(url: string, init: RequestInit): Promise<{ response: Response; body: T | null }> => {
+  const fetchBody = async <T,>(url: string, init: RequestInit, responseType: "json" | "blob" = "json", requestTimeoutMs = timeoutMs): Promise<{ response: Response; body: T | null }> => {
     const controller = new AbortController();
     const abort = () => controller.abort();
     init.signal?.addEventListener("abort", abort, { once: true });
@@ -141,10 +143,10 @@ export function createApiClient(options: ClientOptions): ApiClient {
       return await Promise.race([
         (async () => {
           const response = await fetch(url, { ...init, signal: controller.signal });
-          return { response, body: await parseJson<T>(response) };
+          return { response, body: response.ok && responseType === "blob" ? await response.blob() as T : await parseJson<T>(response) };
         })(),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => { controller.abort(); reject(new Error("request_timeout")); }, timeoutMs);
+          timer = setTimeout(() => { controller.abort(); reject(new Error("request_timeout")); }, requestTimeoutMs);
         })
       ]);
     } finally {
@@ -168,7 +170,9 @@ export function createApiClient(options: ClientOptions): ApiClient {
       body,
       auth = true,
       headers = {},
-      signal
+      signal,
+      responseType = "json",
+      timeoutMs: requestTimeoutMs = timeoutMs
     } = requestOptions;
 
     const sessionId = storage?.getSessionId?.();
@@ -196,7 +200,7 @@ export function createApiClient(options: ClientOptions): ApiClient {
             ? body
             : JSON.stringify(body),
       signal
-    });
+    }, responseType, requestTimeoutMs);
 
     ensureSession();
     if (response.status === 401 && retryOnAuth && auth && storage) {

@@ -126,6 +126,8 @@ export type TeacherRelation = {
 };
 
 export type OlympiadPublic = {
+  is_standalone?: boolean;
+  has_participant_pdf?: boolean;
   pool_id?: number | null;
   subject?: "math" | "cs" | null;
   is_trial?: boolean;

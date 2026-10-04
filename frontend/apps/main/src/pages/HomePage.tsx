@@ -152,6 +152,12 @@ const getStartErrorMessage = (error: unknown): string => {
     if (code === "olympiad_not_published") {
       return "Олимпиада ещё не опубликована.";
     }
+    if (code === "attempt_already_used") {
+      return "Попытка этой олимпиады уже использована. Повторное прохождение невозможно; результат доступен в личном кабинете.";
+    }
+    if (code === "invalid_olympiad_code") {
+      return "Введите корректный код тестирования.";
+    }
     if (code === "active_attempt_exists") {
       return "У вас уже есть активная попытка. Сначала завершите её.";
     }
@@ -541,7 +547,6 @@ export function HomePage() {
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const testingCodeLookupTimer = useRef<number | null>(null);
   const testingCodeLookupRequestId = useRef(0);
-  const cachedPublishedOlympiads = useRef<PublicOlympiad[] | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterSuccessOpen, setIsRegisterSuccessOpen] = useState(false);
@@ -601,12 +606,12 @@ export function HomePage() {
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleTargetIso, setScheduleTargetIso] = useState<string | null>(null);
   const [pendingOlympiad, setPendingOlympiad] = useState<PublicOlympiad | null>(null);
+  const [pendingTestingCode, setPendingTestingCode] = useState<string | null>(null);
   const [startStatus, setStartStatus] = useState<"idle" | "loading" | "error">("idle");
   const [assignStatus, setAssignStatus] = useState<"idle" | "loading" | "error">("idle");
   const [testingCode, setTestingCode] = useState("");
   const [testingCodeOlympiad, setTestingCodeOlympiad] = useState<PublicOlympiad | null>(null);
   const [testingCodeStatus, setTestingCodeStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [testingCodeStartStatus, setTestingCodeStartStatus] = useState<"idle" | "loading" | "error">("idle");
   const [testingCodeError, setTestingCodeError] = useState<string | null>(null);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
 
@@ -662,6 +667,7 @@ export function HomePage() {
           setAssignStatus("error");
         } else {
           setPendingOlympiad(olympiad);
+          setPendingTestingCode(null);
           setIsInstructionOpen(true);
           setAssignStatus("idle");
         }
@@ -755,40 +761,27 @@ export function HomePage() {
     setTestingCodeStatus("loading");
     testingCodeLookupTimer.current = window.setTimeout(async () => {
       try {
-        if (cachedPublishedOlympiads.current === null) {
-          const olympiads = await publicClient.request<PublicOlympiad[]>({
-            path: "/olympiads?limit=500&offset=0",
-            method: "GET",
-            auth: false
-          });
-          cachedPublishedOlympiads.current = olympiads ?? [];
-        }
+        const candidate = await publicClient.request<PublicOlympiad>({
+          path: `/olympiads/by-code/${encodeURIComponent(normalizedCode)}`,
+          method: "GET", auth: false
+        });
 
         if (requestId !== testingCodeLookupRequestId.current) {
-          return;
-        }
-
-        const publishedOlympiads = cachedPublishedOlympiads.current ?? [];
-        const candidate = publishedOlympiads.find((item) => item.id === olympiadId);
-        if (!candidate) {
-          setTestingCodeStatus("error");
-          setTestingCodeError("Олимпиада по этому коду не найдена.");
-          return;
-        }
-        if (!isOlympiadAvailableNow(candidate)) {
-          setTestingCodeStatus("error");
-          setTestingCodeError("Олимпиада по этому коду сейчас недоступна.");
           return;
         }
 
         setTestingCodeOlympiad(candidate);
         setTestingCodeStatus("idle");
-      } catch {
+      } catch (error) {
         if (requestId !== testingCodeLookupRequestId.current) {
           return;
         }
         setTestingCodeStatus("error");
-        setTestingCodeError("Не удалось проверить код тестирования.");
+        const code = (error as ApiError)?.code;
+        setTestingCodeError(code === "olympiad_not_found" ? "Олимпиада по этому коду не найдена или не опубликована."
+          : code === "olympiad_not_available" ? "Олимпиада по этому коду сейчас недоступна."
+          : code === "invalid_olympiad_code" ? "Введите корректный код тестирования."
+          : "Не удалось проверить код тестирования.");
       }
     }, 250);
 
@@ -1220,18 +1213,19 @@ export function HomePage() {
   };
 
   const handleConfirmStart = async () => {
-    if (!pendingOlympiad) {
+    if (!pendingOlympiad || startStatus === "loading") {
       return;
     }
     setStartStatus("loading");
     try {
       const attempt = await authedClient.request<{ id: number }>({
-        path: "/attempts/start",
+        path: pendingTestingCode === null ? "/attempts/start" : "/attempts/start-by-code",
         method: "POST",
-        body: { olympiad_id: pendingOlympiad.id }
+        body: pendingTestingCode === null ? { olympiad_id: pendingOlympiad.id } : { code: pendingTestingCode }
       });
       setIsInstructionOpen(false);
       setPendingOlympiad(null);
+      setPendingTestingCode(null);
       setStartStatus("idle");
       navigate(`/olympiad?attemptId=${attempt.id}`);
     } catch (error) {
@@ -1240,6 +1234,7 @@ export function HomePage() {
       const existingId = Number(apiError?.details?.attempt_id);
       setContinueAttemptId(apiError?.code === "active_attempt_exists" && existingId > 0 ? existingId : null);
       setStartError(message);
+      if (pendingTestingCode !== null) setTestingCodeError(message);
       setStartStatus("error");
       setIsInstructionOpen(false);
     }
@@ -1264,19 +1259,11 @@ export function HomePage() {
       return;
     }
 
-    setTestingCodeStartStatus("loading");
-    try {
-      const attempt = await authedClient.request<{ id: number }>({
-        path: "/attempts/start",
-        method: "POST",
-        body: { olympiad_id: testingCodeOlympiad.id }
-      });
-      setTestingCodeStartStatus("idle");
-      navigate(`/olympiad?attemptId=${attempt.id}`);
-    } catch (error) {
-      setTestingCodeError(getStartErrorMessage(error));
-      setTestingCodeStartStatus("error");
-    }
+    setStartError(null);
+    setStartStatus("idle");
+    setPendingOlympiad(testingCodeOlympiad);
+    setPendingTestingCode(testingCode.trim());
+    setIsInstructionOpen(true);
   };
 
   const hasNews = newsItems.length > 0;
@@ -1453,7 +1440,7 @@ export function HomePage() {
                   интеллектуальных конкурсов на 2026/27 учебный год, утвержденный
                   проектом приказом Министерства просвещения РФ от 16.07.2026.
                 </p>
-                <a href="https://base.garant.ru/57060592/" target="_blank" rel="noreferrer">
+                <a href="/docs/perechen.pdf" target="_blank" rel="noreferrer">
                   <img src={minprosImage} alt="Министерство просвещения РФ" className="home-minpros" />
                 </a>
               </div>
@@ -1463,7 +1450,7 @@ export function HomePage() {
                   <a href="/docs/polozhenie.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
                     Положение (PDF)
                   </a>
-                  <a href="https://base.garant.ru/57060592/" target="_blank" rel="noreferrer" className="home-doc-link">
+                  <a href="/docs/perechen.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
                     Перечень (PDF)
                   </a>
                   <a href="/docs/instruction.pdf" target="_blank" rel="noreferrer" className="home-doc-link">
@@ -1638,10 +1625,10 @@ export function HomePage() {
                 <Button
                   type="button"
                   onClick={handleTestingCodeStart}
-                  isLoading={testingCodeStartStatus === "loading"}
+                  isLoading={startStatus === "loading" && pendingTestingCode !== null}
                   disabled={
                     testingCodeStatus === "loading" ||
-                    testingCodeStartStatus === "loading" ||
+                    startStatus === "loading" ||
                     !testingCodeOlympiad
                   }
                 >
@@ -1689,7 +1676,7 @@ export function HomePage() {
               <li>Ответы сохраняются автоматически при переходе между заданиями.</li>
               <li>Можно досрочно закончить олимпиаду по кнопке "Завершить".</li>
               <li>Если случайно вышли из олимпиады, вы можете продолжить, осуществив повторное подключение.</li>
-              <li>Результаты и дипломы будут доступны после завершения всего второго отборочного тура.</li>
+              <li>Результаты и дипломы будут доступны после завершения всего первого тура.</li>
               <li>Внимательно читайте условие заданий.</li>
             </ul>
             <div className="home-instruction-actions">

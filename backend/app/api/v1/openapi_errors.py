@@ -4,6 +4,8 @@ from app.schemas.errors import ErrorResponse
 REQUEST_ID_EXAMPLE = "req-123e4567-e89b-12d3-a456-426614174000"
 
 ERROR_EXAMPLES = {
+    codes.INVALID_OLYMPIAD_CODE: {"error": {"code": codes.INVALID_OLYMPIAD_CODE, "message": "Некорректный код олимпиады."}},
+    codes.ATTEMPT_ALREADY_USED: {"error": {"code": codes.ATTEMPT_ALREADY_USED, "message": "Попытка этой олимпиады уже использована."}},
     codes.ACTIVE_ATTEMPT_EXISTS: {"error": {"code": codes.ACTIVE_ATTEMPT_EXISTS, "message": codes.ACTIVE_ATTEMPT_EXISTS}},
     codes.OLYMPIAD_NOT_ASSIGNED: {"error": {"code": codes.OLYMPIAD_NOT_ASSIGNED, "message": codes.OLYMPIAD_NOT_ASSIGNED}},
     codes.ROLE_TRANSITION_NOT_ALLOWED: {"error": {"code": codes.ROLE_TRANSITION_NOT_ALLOWED, "message": codes.ROLE_TRANSITION_NOT_ALLOWED}},
@@ -47,6 +49,10 @@ ERROR_EXAMPLES = {
     codes.CANNOT_CHANGE_PUBLISHED_RULES: {
         "error": {"code": codes.CANNOT_CHANGE_PUBLISHED_RULES, "message": codes.CANNOT_CHANGE_PUBLISHED_RULES}
     },
+    codes.CANNOT_RETURN_OLYMPIAD_TO_DRAFT: {
+        "error": {"code": codes.CANNOT_RETURN_OLYMPIAD_TO_DRAFT,
+                  "message": "Возврат в черновик запрещён: олимпиада архивирована, входит в пул или имеет попытки/назначения."}
+    },
     codes.CANNOT_MODIFY_PUBLISHED: {"error": {"code": codes.CANNOT_MODIFY_PUBLISHED, "message": codes.CANNOT_MODIFY_PUBLISHED}},
     codes.CANNOT_PUBLISH_EMPTY: {"error": {"code": codes.CANNOT_PUBLISH_EMPTY, "message": codes.CANNOT_PUBLISH_EMPTY}},
     codes.CONTENT_NOT_FOUND: {"error": {"code": codes.CONTENT_NOT_FOUND, "message": codes.CONTENT_NOT_FOUND}},
@@ -56,6 +62,7 @@ ERROR_EXAMPLES = {
     codes.OLYMPIAD_POOL_NOT_FOUND: {"error": {"code": codes.OLYMPIAD_POOL_NOT_FOUND, "message": codes.OLYMPIAD_POOL_NOT_FOUND}},
     codes.OLYMPIAD_POOL_NOT_ACTIVE: {"error": {"code": codes.OLYMPIAD_POOL_NOT_ACTIVE, "message": codes.OLYMPIAD_POOL_NOT_ACTIVE}},
     codes.OLYMPIAD_POOL_EMPTY: {"error": {"code": codes.OLYMPIAD_POOL_EMPTY, "message": codes.OLYMPIAD_POOL_EMPTY}},
+    codes.OLYMPIAD_POOL_HAS_ATTEMPTS: {"error": {"code": codes.OLYMPIAD_POOL_HAS_ATTEMPTS, "message": "Пул нельзя удалить: хотя бы одна олимпиада уже имеет начатую попытку."}},
     codes.INVALID_SUBJECT: {"error": {"code": codes.INVALID_SUBJECT, "message": codes.INVALID_SUBJECT}},
     codes.INVALID_AGE_GROUP: {"error": {"code": codes.INVALID_AGE_GROUP, "message": codes.INVALID_AGE_GROUP}},
     codes.CLASS_GRADE_REQUIRED: {"error": {"code": codes.CLASS_GRADE_REQUIRED, "message": codes.CLASS_GRADE_REQUIRED}},
@@ -76,6 +83,12 @@ ERROR_EXAMPLES = {
 }
 
 for _code in (
+    codes.STANDALONE_OLYMPIAD_IN_POOL,
+    codes.INVALID_STANDALONE_MODE,
+    codes.PARTICIPANT_PDF_NOT_ALLOWED,
+    codes.PARTICIPANT_PDF_NOT_FOUND,
+    codes.PARTICIPANT_PDF_INVALID,
+    codes.PARTICIPANT_PDF_TOO_LARGE,
     codes.ATTEMPT_PAYLOAD_TOO_LARGE,
     codes.ANSWERS_REVISION_REQUIRED,
     codes.ANSWERS_REVISION_CONFLICT,
