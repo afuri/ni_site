@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-ALLOWED_CLASS_GRADES = set(range(1, 9))
+ALLOWED_CLASS_GRADES = set(range(0, 9))
 
 
 def parse_class_grades(value) -> list[int]:

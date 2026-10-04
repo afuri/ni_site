@@ -1,7 +1,7 @@
 """Attempt schemas."""
 from datetime import datetime
 from typing import Any, List, Optional
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from app.models.task import TaskType
 
 from app.models.attempt import AttemptStatus
@@ -9,6 +9,15 @@ from app.models.attempt import AttemptStatus
 
 class AttemptStartRequest(BaseModel):
     olympiad_id: int
+
+
+class AttemptStartByCodeRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
+
+    @field_validator("code", mode="before")
+    @classmethod
+    def strip_code(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
 
 class AttemptRead(BaseModel):

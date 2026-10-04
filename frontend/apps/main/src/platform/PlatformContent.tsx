@@ -27,6 +27,8 @@ type Props = {
   onDownloadDiploma: (result: AttemptResult) => void;
   profileContent: React.ReactNode;
   onRefresh?: () => void;
+  downloadingPdfId?: number | null;
+  onDownloadPdf?: (olympiadId: number) => void;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -148,7 +150,7 @@ export function PlatformContent(props: Props) {
   const seasonResults = completedResults.filter((result) => resultSeason(result) === currentSeason);
   return <div className="student-dashboard">
     {p.schoolNotifications.map((item) => <a className="student-school-alert" href="/platform/profile" key={item.id}><PlatformIcon name="info" /><span><strong>{item.title}</strong>{item.text}</span><PlatformIcon name="arrow" /></a>)}
-    <HeroOlympiads olympiads={p.olympiads} results={p.results} activeAttempt={p.activeAttempt} user={p.user} startingId={p.startingOlympiadId} onAction={p.onOlympiadAction} onRefresh={p.onRefresh} />
+    <HeroOlympiads olympiads={p.olympiads} results={p.results} activeAttempt={p.activeAttempt} user={p.user} startingId={p.startingOlympiadId} onAction={p.onOlympiadAction} onRefresh={p.onRefresh} downloadingPdfId={p.downloadingPdfId} onDownloadPdf={p.onDownloadPdf} />
     <section className="student-season-section"><header className="student-section-heading"><h2>Мой сезон {seasonLabel(currentSeason)}</h2><a href="/platform/results">Все результаты<PlatformIcon name="arrow" size={17} /></a></header>
       {p.results.status === "ready" && completedResults.length > 0 && seasonResults.length === 0 ? <p className="student-resource-state">{completedResults.some((result) => resultSeason(result) === null) ? "Даты сезона для части работ пока недоступны. Все работы можно посмотреть в разделе «Результаты и дипломы»." : "В этом сезоне завершённых работ пока нет. Предыдущие работы доступны в разделе «Результаты и дипломы»."}</p> : <ResultList {...resultsProps} items={seasonResults} illustrated />}
     </section>

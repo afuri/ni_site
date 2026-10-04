@@ -13,6 +13,8 @@ type Props = {
   startingId: number | null;
   onAction: (action: OlympiadAction) => void;
   onRefresh?: () => void;
+  downloadingPdfId?: number | null;
+  onDownloadPdf?: (olympiadId: number) => void;
 };
 
 const dates = new Intl.DateTimeFormat("ru-RU", {
@@ -28,7 +30,7 @@ export function countdown(until: string, now: number): string {
   return `${days ? `${days} д ` : ""}${hh}:${mm}:${ss}`;
 }
 
-export function HeroOlympiads({ olympiads, results, activeAttempt, user, startingId, onAction, onRefresh }: Props) {
+export function HeroOlympiads({ olympiads, results, activeAttempt, user, startingId, onAction, onRefresh, downloadingPdfId, onDownloadPdf }: Props) {
   const [now, setNow] = useState(Date.now);
   const [expanded, setExpanded] = useState(false);
   const refreshedBoundaries = useRef(new Set<string>());
@@ -64,7 +66,8 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
   const candidates = olympiads.data.filter((item) => {
     if (!item.is_published) return false;
     const schedule = getOlympiadScheduleState(item, user.class_grade, now);
-    if (schedule === "finished" || schedule === "other-grade") return false;
+    const continuingCommon = item.is_standalone && item.id === active?.olympiad_id && deadline !== null && now <= deadline;
+    if ((schedule === "finished" && !continuingCommon) || schedule === "other-grade") return false;
     const attempt = results.data.find((result) => result.olympiad_id === item.id);
     if (attempt && attempt.status !== "active") return false;
     return !(attempt?.attempt_id === active?.id && deadline !== null && now > deadline);
@@ -95,16 +98,25 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
           const busy = startingId !== null;
           const checkingActive = action.kind === "continue" && activeAttempt.status !== "ready";
           const label = startingId === item.id ? "Запускаем…" : soon ? countdown(item.available_from, now) : action.label;
+          const pdfAvailable = item.is_standalone && item.has_participant_pdf && onDownloadPdf
+            && (getOlympiadScheduleState(item, user.class_grade, now) === "available"
+                || (item.id === active?.olympiad_id && deadline !== null && now <= deadline));
           return <article className="student-hero-olympiad" key={item.id}>
             <div className="student-hero-olympiad-info">
               <h3>{item.title}</h3>
+              {item.is_standalone && item.description ? <p className="student-hero-olympiad-description">{item.description}</p> : null}
               <p><PlatformIcon name="calendar" size={15} /><span>{dates.format(new Date(item.available_from))} — {dates.format(new Date(item.available_to))} (МСК)</span></p>
               <p><PlatformIcon name="tasks" size={15} /><span>Время прохождения: {Math.ceil(item.duration_sec / 60)} мин</span></p>
             </div>
-            <button type="button" className="student-primary-action" disabled={soon || action.kind === "disabled" || busy || checkingActive}
-              aria-label={soon ? `До начала олимпиады «${item.title}»: ${label}` : `${label}: ${item.title}`}
-              title={soon ? "Олимпиада ещё не началась" : action.kind === "disabled" ? action.reason : undefined}
-              onClick={() => onAction(action)}>{label}</button>
+            <div className="student-hero-olympiad-actions">
+              <button type="button" className="student-primary-action" disabled={soon || action.kind === "disabled" || busy || checkingActive}
+                aria-label={soon ? `До начала олимпиады «${item.title}»: ${label}` : `${label}: ${item.title}`}
+                title={soon ? "Олимпиада ещё не началась" : action.kind === "disabled" ? action.reason : undefined}
+                onClick={() => onAction(action)}>{label}</button>
+              {pdfAvailable ? <button type="button" className="student-secondary-action" disabled={downloadingPdfId != null || !user.is_email_verified}
+                aria-label={`Скачать PDF: ${item.title}`} onClick={() => onDownloadPdf?.(item.id)}>
+                {downloadingPdfId === item.id ? "Открываем…" : "Скачать PDF"}</button> : null}
+            </div>
           </article>;
         })}
         {candidates.length > 3 ? <button type="button" className="student-secondary-action student-hero-more" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{expanded ? "Скрыть" : "Показать еще"}</button> : null}

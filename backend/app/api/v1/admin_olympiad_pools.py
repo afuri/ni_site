@@ -10,6 +10,7 @@ from app.repos.olympiad_assignments import OlympiadAssignmentsRepo
 from app.repos.olympiad_pools import OlympiadPoolsRepo
 from app.repos.olympiads import OlympiadsRepo
 from app.schemas.olympiad_pools import OlympiadPoolCreate, OlympiadPoolRead
+from app.schemas.auth import MessageResponse
 from app.services.olympiad_pools import OlympiadPoolsService
 from app.api.v1.openapi_errors import response_example, response_examples
 
@@ -28,6 +29,7 @@ router = APIRouter(prefix="/admin/olympiad-pools")
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),
+        409: response_example(codes.STANDALONE_OLYMPIAD_IN_POOL),
         422: response_examples(codes.INVALID_SUBJECT, codes.INVALID_AGE_GROUP, codes.OLYMPIAD_POOL_EMPTY),
     },
 )
@@ -111,6 +113,7 @@ async def list_pools(
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_POOL_NOT_FOUND),
+        409: response_example(codes.STANDALONE_OLYMPIAD_IN_POOL),
     },
 )
 async def activate_pool(
@@ -136,3 +139,38 @@ async def copy_pool(pool_id: int, db: AsyncSession = Depends(get_db), admin: Use
         return await service.copy_pool(pool_id, admin.id)
     except ValueError as exc:
         raise http_error(404 if str(exc) == codes.OLYMPIAD_POOL_NOT_FOUND else 409, str(exc))
+
+
+@router.delete(
+    "/{pool_id}",
+    response_model=MessageResponse,
+    tags=["admin"],
+    description=(
+        "Удалить пул без начатых попыток (включая active, submitted и expired). "
+        "Олимпиады и задания сохраняются; состав пула и назначения удаляются."
+    ),
+    responses={
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_POOL_NOT_FOUND),
+        409: response_example(codes.OLYMPIAD_POOL_HAS_ATTEMPTS),
+    },
+)
+async def delete_pool(
+    pool_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    service = OlympiadPoolsService(
+        OlympiadPoolsRepo(db), OlympiadAssignmentsRepo(db), OlympiadsRepo(db)
+    )
+    try:
+        await service.delete_pool(pool_id, admin.id)
+    except ValueError as exc:
+        code = str(exc)
+        if code == codes.OLYMPIAD_POOL_NOT_FOUND:
+            raise http_error(404, code)
+        if code == codes.OLYMPIAD_POOL_HAS_ATTEMPTS:
+            raise http_error(409, code, message="Пул нельзя удалить: хотя бы одна олимпиада уже имеет начатую попытку.")
+        raise
+    return {"status": "ok"}

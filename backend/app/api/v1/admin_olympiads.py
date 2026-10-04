@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,13 +12,14 @@ from app.repos.olympiads import OlympiadsRepo
 from app.repos.olympiad_tasks import OlympiadTasksRepo
 from app.repos.tasks import TasksRepo
 from app.schemas.olympiads_admin import (
-    OlympiadCreate, OlympiadUpdate, OlympiadRead,
+    OlympiadCreate, OlympiadUpdate, OlympiadRead, OlympiadListRead,
     OlympiadTaskAdd, OlympiadTaskRead,
 )
 from app.services.olympiads_admin import AdminOlympiadsService
 from app.schemas.olympiads_admin import OlympiadTaskFullRead
 from app.schemas.tasks import TaskRead
 from app.services.olympiad_pdf import build_olympiad_pdf_bytes
+from app.services.participant_pdf import ParticipantPdfService
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import (
     EXAMPLE_OLYMPIAD_READ,
@@ -63,11 +64,11 @@ async def create_olympiad(
 
 @router.get(
     "",
-    response_model=list[OlympiadRead],
+    response_model=list[OlympiadListRead],
     tags=["admin"],
     description="Список олимпиад админа",
     responses={
-        200: response_model_list_example(EXAMPLE_LISTS["olympiads"]),
+        200: response_model_list_example([{**item, "can_return_to_draft": False} for item in EXAMPLE_LISTS["olympiads"]]),
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
     },
@@ -82,7 +83,43 @@ async def list_olympiads(
 ):
     repo = OlympiadsRepo(db)
     created_by = admin.id if mine else None
-    return await repo.list(created_by_user_id=created_by, limit=limit, offset=offset, archived=archived)
+    items = await repo.list(created_by_user_id=created_by, limit=limit, offset=offset, archived=archived)
+    service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
+    returnable = await service.returnable_ids([item.id for item in items])
+    return [OlympiadListRead(**OlympiadRead.model_validate(item).model_dump(),
+                            can_return_to_draft=item.id in returnable) for item in items]
+
+
+@router.post(
+    "/{olympiad_id}/return-to-draft",
+    response_model=OlympiadRead,
+    tags=["admin"],
+    description="Вернуть в черновик неархивированную олимпиаду вне пула, без любых попыток и назначений. ID и задания сохраняются.",
+    responses={
+        200: response_model_example(OlympiadRead, EXAMPLE_OLYMPIAD_READ),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_example(codes.FORBIDDEN),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
+        409: response_example(codes.CANNOT_RETURN_OLYMPIAD_TO_DRAFT),
+    },
+)
+async def return_olympiad_to_draft(
+    olympiad_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_role(UserRole.admin)),
+):
+    repo = OlympiadsRepo(db)
+    obj = await repo.get(olympiad_id)
+    if not obj:
+        raise http_error(404, codes.OLYMPIAD_NOT_FOUND)
+    service = AdminOlympiadsService(repo, OlympiadTasksRepo(db), TasksRepo(db))
+    try:
+        return await service.return_to_draft(olympiad=obj, admin_id=admin.id)
+    except ValueError as exc:
+        if str(exc) == codes.CANNOT_RETURN_OLYMPIAD_TO_DRAFT:
+            raise http_error(409, codes.CANNOT_RETURN_OLYMPIAD_TO_DRAFT,
+                             message="Возврат в черновик запрещён: олимпиада архивирована, входит в пул или имеет попытки/назначения.")
+        raise
 
 
 @router.get(
@@ -119,8 +156,8 @@ async def get_olympiad(
         401: response_example(codes.MISSING_TOKEN),
         403: response_example(codes.FORBIDDEN),
         404: response_example(codes.OLYMPIAD_NOT_FOUND),
-        409: response_examples(codes.CANNOT_CHANGE_PUBLISHED_RULES),
-        422: response_example(codes.INVALID_AVAILABILITY),
+        409: response_examples(codes.CANNOT_CHANGE_PUBLISHED_RULES, codes.STANDALONE_OLYMPIAD_IN_POOL),
+        422: response_examples(codes.INVALID_AVAILABILITY, codes.INVALID_STANDALONE_MODE),
     },
 )
 async def update_olympiad(
@@ -143,6 +180,10 @@ async def update_olympiad(
             raise http_error(422, codes.INVALID_AVAILABILITY)
         if code == codes.CANNOT_CHANGE_PUBLISHED_RULES:
             raise http_error(409, codes.CANNOT_CHANGE_PUBLISHED_RULES)
+        if code == codes.STANDALONE_OLYMPIAD_IN_POOL:
+            raise http_error(409, code, message="Общая олимпиада не может входить в пул. Сначала удалите её пул.")
+        if code == codes.INVALID_STANDALONE_MODE:
+            raise http_error(422, code)
         raise
 
 
@@ -359,6 +400,40 @@ async def set_publish(
         return await service.publish(olympiad=obj, publish=publish)
     except ValueError as e:
         raise http_error(409, str(e))
+
+
+@router.put("/{olympiad_id}/participant-pdf", response_model=OlympiadRead, tags=["admin"],
+    description="Загрузить проверенный PDF до 20 МБ для общей олимпиады. Только редактируемый черновик, приватное хранилище.",
+    responses={401: response_example(codes.MISSING_TOKEN), 403: response_example(codes.FORBIDDEN),
+               404: response_example(codes.OLYMPIAD_NOT_FOUND),
+               409: response_examples(codes.CANNOT_CHANGE_PUBLISHED_RULES, codes.PARTICIPANT_PDF_NOT_ALLOWED),
+               413: response_example(codes.PARTICIPANT_PDF_TOO_LARGE), 422: response_example(codes.PARTICIPANT_PDF_INVALID),
+               503: response_example(codes.STORAGE_UNAVAILABLE)})
+async def upload_participant_pdf(olympiad_id: int, file: UploadFile = File(...), db: AsyncSession = Depends(get_db),
+                                 admin: User = Depends(require_role(UserRole.admin))):
+    try:
+        return await ParticipantPdfService(db).upload(olympiad_id, file, admin.id)
+    finally:
+        await file.close()
+
+
+@router.delete("/{olympiad_id}/participant-pdf", response_model=OlympiadRead, tags=["admin"],
+    description="Отключить PDF участника в редактируемом черновике.",
+    responses={401: response_example(codes.MISSING_TOKEN), 403: response_example(codes.FORBIDDEN),
+               404: response_example(codes.OLYMPIAD_NOT_FOUND),
+               409: response_examples(codes.CANNOT_CHANGE_PUBLISHED_RULES, codes.PARTICIPANT_PDF_NOT_ALLOWED)})
+async def remove_participant_pdf(olympiad_id: int, db: AsyncSession = Depends(get_db),
+                                 admin: User = Depends(require_role(UserRole.admin))):
+    return await ParticipantPdfService(db).remove(olympiad_id, admin.id)
+
+
+@router.get("/{olympiad_id}/participant-pdf", tags=["admin"], response_class=StreamingResponse, description="Скачать загруженный PDF для проверки администратором.",
+    responses={200: {"content": {"application/pdf": {}}}, 401: response_example(codes.MISSING_TOKEN), 403: response_example(codes.FORBIDDEN),
+               404: response_examples(codes.OLYMPIAD_NOT_FOUND, codes.PARTICIPANT_PDF_NOT_FOUND),
+               409: response_example(codes.PARTICIPANT_PDF_NOT_ALLOWED), 503: response_example(codes.STORAGE_UNAVAILABLE)})
+async def preview_participant_pdf(olympiad_id: int, db: AsyncSession = Depends(get_db),
+                                 admin: User = Depends(require_role(UserRole.admin))):
+    return await ParticipantPdfService(db).download(olympiad_id, admin)
 
 
 @router.get(

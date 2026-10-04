@@ -26,6 +26,8 @@ export function createPlatformApi(client: ApiClient) {
       }),
     getMyResults: (signal?: AbortSignal) =>
       client.request<AttemptResult[]>({ path: "/attempts/results/my", method: "GET", signal }),
+    getParticipantPdf: (olympiadId: number) =>
+      client.request<Blob>({ path: `/olympiads/${olympiadId}/participant-pdf`, responseType: "blob", timeoutMs: 120000 }),
     getAnnouncements: (signal?: AbortSignal) =>
       client.request<UserAnnouncement[]>({ path: "/users/me/announcements", method: "GET", signal }),
     getAttempt: (attemptId: number, signal?: AbortSignal) =>

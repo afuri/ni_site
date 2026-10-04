@@ -14,6 +14,7 @@ class OlympiadTaskFullRead(BaseModel):
 
 
 class OlympiadCreate(BaseModel):
+    is_standalone: bool = Field(default=False, description="Общая олимпиада без пула для всех выбранных классов")
     title: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
 
@@ -37,6 +38,7 @@ class OlympiadCreate(BaseModel):
 
 
 class OlympiadUpdate(BaseModel):
+    is_standalone: bool | None = Field(default=None, description="Общий режим; включить можно только вне пула в редактируемом черновике")
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
 
@@ -76,6 +78,8 @@ class OlympiadTaskRead(BaseModel):
 
 
 class OlympiadRead(BaseModel):
+    is_standalone: bool = False
+    has_participant_pdf: bool = False
     id: int
     title: str
     description: str | None
@@ -93,3 +97,7 @@ class OlympiadRead(BaseModel):
     created_by_user_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OlympiadListRead(OlympiadRead):
+    can_return_to_draft: bool = Field(description="Можно вернуть в черновик: вне пула, без попыток/назначений, не архивирована")

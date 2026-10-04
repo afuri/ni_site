@@ -40,6 +40,31 @@ class OlympiadPoolsRepo:
         return await self.db.scalar(select(OlympiadPoolItem.pool_id).where(
             OlympiadPoolItem.olympiad_id == olympiad_id).order_by(OlympiadPoolItem.pool_id).limit(1))
 
+    async def lock_variant_for_code_start(self, olympiad_id: int) -> Olympiad | None:
+        # Same order as regular admission: pool, then variant. Savepoint rollback
+        # releases these locks if pool membership changed while acquiring them.
+        # Never require the pool to be active, and never lock sibling variants.
+        for _ in range(3):
+            savepoint = await self.db.begin_nested()
+            try:
+                pool_id = await self.pool_id_for_variant(olympiad_id)
+                if pool_id is not None:
+                    pool = await self.db.scalar(select(OlympiadPool).where(OlympiadPool.id == pool_id)
+                                                .with_for_update(read=True))
+                    if pool is None:
+                        pool_id = None
+                olympiad = await self.db.scalar(select(Olympiad).where(Olympiad.id == olympiad_id)
+                    .with_for_update(read=True).execution_options(populate_existing=True))
+                if await self.pool_id_for_variant(olympiad_id) != pool_id:
+                    await savepoint.rollback()
+                    continue
+                await savepoint.commit()
+                return olympiad
+            except Exception:
+                await savepoint.rollback()
+                raise
+        raise ValueError("olympiad_not_available")
+
     async def list_pools(self, subject: str | None, limit: int, offset: int) -> list[OlympiadPool]:
         stmt = select(OlympiadPool)
         if subject:

@@ -17,6 +17,9 @@ from app.core.metrics import (
 from app.core.redis import safe_redis
 from app.core.cache import olympiad_tasks_key, olympiad_meta_key
 from app.core.age_groups import class_grades_allow, normalize_age_group
+from app.core.olympiad_codes import olympiad_id_from_code
+from app.schemas.tasks import TaskCreate
+from app.services.audit_events import add_audit_event
 from app.models.attempt import Attempt, AttemptStatus, AttemptTaskGrade
 from app.models.task import TaskType
 from sqlalchemy import select, text
@@ -355,6 +358,12 @@ class AttemptsService:
         return False
 
     async def start_attempt(self, *, user: User, olympiad_id: int):
+        return await self._start_attempt(user=user, olympiad_id=olympiad_id, by_code=False)
+
+    async def start_attempt_by_code(self, *, user: User, code: str):
+        return await self._start_attempt(user=user, olympiad_id=olympiad_id_from_code(code), by_code=True)
+
+    async def _start_attempt(self, *, user: User, olympiad_id: int, by_code: bool):
         olympiad = await self.repo.get_olympiad(olympiad_id)
         if not olympiad:
             raise ValueError(codes.OLYMPIAD_NOT_FOUND)
@@ -374,6 +383,9 @@ class AttemptsService:
                 existing = await self._ensure_attempt_access(user=user, attempt_id=existing.id)
                 await self._finalize_locked(existing, expired=True)
             await self.repo.db.commit()
+            if by_code and existing.status != AttemptStatus.active:
+                raise http_error(409, codes.ATTEMPT_ALREADY_USED,
+                                 details={"attempt_id": existing.id, "status": existing.status.value})
             return existing, olympiad
 
         if user.school_status not in {
@@ -396,22 +408,47 @@ class AttemptsService:
         if active:
             raise http_error(409, codes.ACTIVE_ATTEMPT_EXISTS, details={"attempt_id": active.id, "action": "continue"})
         pools = OlympiadPoolsRepo(self.repo.db)
-        pool_id = await pools.pool_id_for_variant(olympiad_id)
-        if pool_id is None:
-            raise ValueError(codes.OLYMPIAD_NOT_ASSIGNED)
-        service = OlympiadPoolsService(pools, OlympiadAssignmentsRepo(self.repo.db), OlympiadsRepo(self.repo.db))
-        bundle = await pools.load_bundle(pool_id, lock="share", full=False)
-        chosen = await service.chosen_variant(user, bundle, now=self._now_utc())
-        if chosen.id != olympiad_id:
-            raise ValueError(codes.OLYMPIAD_NOT_ASSIGNED)
-        olympiad = chosen
+        if by_code or getattr(olympiad, "is_standalone", False):
+            olympiad = await pools.lock_variant_for_code_start(olympiad_id)
+            if olympiad is None:
+                raise ValueError(codes.OLYMPIAD_NOT_FOUND)
+            if not by_code and not olympiad.is_standalone:
+                raise ValueError(codes.OLYMPIAD_NOT_ASSIGNED)
+            if olympiad.archived_at:
+                raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
+            if not olympiad.is_published:
+                raise ValueError(codes.OLYMPIAD_NOT_PUBLISHED)
+            if not self._age_group_allows(class_grade=user.class_grade, age_group=olympiad.age_group):
+                raise ValueError(codes.OLYMPIAD_AGE_GROUP_MISMATCH)
+            rows = await self.repo.list_tasks_full(olympiad_id)
+            if not rows:
+                raise ValueError(codes.OLYMPIAD_HAS_NO_TASKS)
+            for link, task in rows:
+                if link.max_score <= 0 or link.sort_order < 0:
+                    raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
+                try:
+                    TaskCreate(subject=task.subject, title=task.title, content=task.content,
+                               task_type=task.task_type, image_key=task.image_key, payload=task.payload)
+                except ValueError:
+                    raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
+        else:
+            pool_id = await pools.pool_id_for_variant(olympiad_id)
+            if pool_id is None:
+                raise ValueError(codes.OLYMPIAD_NOT_ASSIGNED)
+            service = OlympiadPoolsService(pools, OlympiadAssignmentsRepo(self.repo.db), OlympiadsRepo(self.repo.db))
+            bundle = await pools.load_bundle(pool_id, lock="share", full=False)
+            chosen = await service.chosen_variant(user, bundle, now=self._now_utc())
+            if chosen.id != olympiad_id:
+                raise ValueError(codes.OLYMPIAD_NOT_ASSIGNED)
+            olympiad = chosen
 
         # Loading task metadata must not let a start slip past the closing time.
         now = self._now_utc()
         if now < olympiad.available_from or now > olympiad.available_to:
             raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
         deadline = now + timedelta(seconds=int(olympiad.duration_sec))
-        await service.remember(user.id, pool_id, olympiad_id)
+        if not by_code and not getattr(olympiad, "is_standalone", False):
+            await service.remember(user.id, pool_id, olympiad_id)
         attempt = await self.repo.create_attempt(
             user_id=user.id,
             olympiad_id=olympiad_id,
@@ -419,6 +456,10 @@ class AttemptsService:
             deadline_at=deadline,
             duration_sec=int(olympiad.duration_sec),
         )
+        if by_code:
+            add_audit_event(self.repo.db, actor_user_id=user.id, action="attempt_started_by_code",
+                            method="POST", path="/api/v1/attempts/start-by-code",
+                            details={"olympiad_id": olympiad_id, "attempt_id": attempt.id})
         await self.repo.db.commit()
         ATTEMPTS_STARTED_TOTAL.inc()
         return attempt, olympiad

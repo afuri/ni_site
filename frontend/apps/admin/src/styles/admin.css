@@ -910,6 +910,86 @@
   width: min(1200px, 100%);
   max-height: 85vh;
   overflow-y: auto;
+  border: 1px solid #c5b6ee;
+  border-radius: 16px;
+  background: #fff;
+  color: #30264b;
+  box-shadow: 0 16px 48px rgba(86, 52, 187, 0.16);
+  font: 500 14px/1.5 "Manrope Platform", "Manrope", Arial, sans-serif;
+}
+
+.admin-olympiad-modal .modal-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8e1f8;
+}
+
+.admin-olympiad-modal .modal-title {
+  margin: 0;
+  color: #5634bb;
+  font: 700 22px/1.35 "Manrope Platform", "Manrope", Arial, sans-serif;
+}
+
+.admin-olympiad-modal :is(.field, .admin-class-option, .table) {
+  font-size: 13px;
+}
+
+.admin-olympiad-modal :is(.field-label, .admin-options-header, .table th) {
+  color: #5634bb;
+}
+
+.admin-olympiad-modal .field-input {
+  min-width: 0;
+  padding: 8px 10px;
+  border-color: #c5b6ee;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+}
+
+.admin-olympiad-modal .field-input:focus {
+  border-color: #6542dc;
+  box-shadow: 0 0 0 3px rgba(101, 66, 220, 0.12);
+}
+
+.admin-olympiad-modal .admin-class-option {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #c5b6ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #5634bb;
+  cursor: pointer;
+}
+
+.admin-olympiad-modal .admin-class-option:has(input:checked) {
+  border-color: #6542dc;
+  background: #f5f2ff;
+}
+
+.admin-olympiad-modal input[type="checkbox"] {
+  accent-color: #6542dc;
+}
+
+.admin-olympiad-modal .admin-olympiad-tasks {
+  min-width: 0;
+  border-color: #e8e1f8;
+  background: #f9f7ff;
+}
+
+.admin-olympiad-modal .admin-olympiad-tasks-list {
+  border-color: #e8e1f8;
+}
+
+.admin-olympiad-modal .admin-modal-actions {
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid #e8e1f8;
+}
+
+@media (max-width: 640px) {
+  .admin-olympiad-modal .admin-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .admin-olympiad-tasks {

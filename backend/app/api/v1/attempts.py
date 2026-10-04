@@ -33,6 +33,7 @@ from app.api.v1.openapi_examples import (
 )
 from app.schemas.attempt import (
     AttemptStartRequest,
+    AttemptStartByCodeRequest,
     AttemptRead,
     AttemptView,
     AttemptAnswerUpsertRequest,
@@ -46,11 +47,43 @@ router = APIRouter(prefix="/attempts")
 
 
 @router.post(
+    "/start-by-code", response_model=AttemptRead, status_code=201, tags=["attempts"],
+    description=("Начать или продолжить попытку по коду (1000000 + ID). Пул и назначение не учитываются; "
+                 "одна попытка на олимпиаду и одна активная попытка на пользователя. "
+                 "Завершённая/истёкшая попытка повторно не запускается."),
+    responses={
+        201: response_model_example(AttemptRead, EXAMPLE_ATTEMPT_READ),
+        401: response_example(codes.MISSING_TOKEN),
+        403: response_examples(codes.FORBIDDEN, codes.EMAIL_NOT_VERIFIED, codes.SCHOOL_PROFILE_REQUIRED),
+        404: response_example(codes.OLYMPIAD_NOT_FOUND),
+        409: response_examples(codes.OLYMPIAD_NOT_AVAILABLE, codes.OLYMPIAD_NOT_PUBLISHED,
+                               codes.OLYMPIAD_AGE_GROUP_MISMATCH, codes.OLYMPIAD_HAS_NO_TASKS,
+                               codes.ACTIVE_ATTEMPT_EXISTS, codes.ATTEMPT_ALREADY_USED),
+        422: response_examples(codes.INVALID_OLYMPIAD_CODE, codes.VALIDATION_ERROR),
+    },
+)
+async def start_attempt_by_code(
+    payload: AttemptStartByCodeRequest,
+    db: AsyncSession = Depends(get_db),
+    student: User = Depends(require_role(UserRole.student)),
+):
+    try:
+        attempt, _ = await AttemptsService(AttemptsRepo(db)).start_attempt_by_code(user=student, code=payload.code)
+        return attempt
+    except ValueError as exc:
+        code = str(exc)
+        status = (422 if code == codes.INVALID_OLYMPIAD_CODE else
+                  404 if code == codes.OLYMPIAD_NOT_FOUND else
+                  403 if code in {codes.FORBIDDEN, codes.EMAIL_NOT_VERIFIED, codes.SCHOOL_PROFILE_REQUIRED} else 409)
+        raise http_error(status, code)
+
+
+@router.post(
     "/start",
     response_model=AttemptRead,
     status_code=201,
     tags=["attempts"],
-    description="Старт попытки прохождения олимпиады",
+    description="Старт выбранного варианта активного пула или общей олимпиады без пула. Класс 0 поддерживается; дедлайн = старт + длительность (до 360 минут).",
     responses={
         201: response_model_example(AttemptRead, EXAMPLE_ATTEMPT_READ),
         401: response_example(codes.MISSING_TOKEN),

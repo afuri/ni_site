@@ -15,6 +15,8 @@ def validate_pool(pool, items, variants, compositions, *, now: datetime | None =
     ordered = [variants[item.olympiad_id] for item in items]
     first = ordered[0]
     for olympiad in ordered:
+        if getattr(olympiad, "is_standalone", False):
+            raise ValueError(codes.STANDALONE_OLYMPIAD_IN_POOL)
         if olympiad.archived_at or not olympiad.is_published:
             raise ValueError(codes.OLYMPIAD_NOT_AVAILABLE)
         if (normalize_age_group(olympiad.age_group) != normalize_age_group(pool.grade_group)

@@ -108,6 +108,7 @@ class Settings(BaseSettings):
 
     STORAGE_ENDPOINT: str | None = None
     STORAGE_BUCKET: str = "ni-site"
+    STORAGE_PRIVATE_BUCKET: str | None = None  # Default: <STORAGE_BUCKET>-private; never anonymous.
     STORAGE_ACCESS_KEY: str | None = None
     STORAGE_SECRET_KEY: str | None = None
     STORAGE_REGION: str = "us-east-1"

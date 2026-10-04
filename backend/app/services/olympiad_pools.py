@@ -15,6 +15,7 @@ from app.repos.users import UsersRepo
 from app.models.user import UserRole
 from app.schemas.olympiads import OlympiadPublicRead
 from app.services.olympiad_availability import validate_pool
+from app.services.audit_events import add_audit_event
 
 
 class OlympiadPoolsService:
@@ -45,6 +46,8 @@ class OlympiadPoolsService:
             .order_by(Olympiad.id).with_for_update())).all())
         if len(variants) != 4:
             raise ValueError(codes.OLYMPIAD_NOT_FOUND)
+        if any(o.is_standalone for o in variants):
+            raise ValueError(codes.STANDALONE_OLYMPIAD_IN_POOL)
         if await self.db.scalar(select(OlympiadPoolItem.id).where(OlympiadPoolItem.olympiad_id.in_(olympiad_ids)).limit(1)):
             raise ValueError("olympiad_variant_already_used")
         pool = OlympiadPool(subject=subject, grade_group=grade_group, is_active=False,
@@ -68,6 +71,36 @@ class OlympiadPoolsService:
         pool.is_active = True
         await self.db.commit()
         return self.read(pool, items)
+
+    async def delete_pool(self, pool_id: int, admin_id: int) -> None:
+        # Start/assignment hold a shared pool lock through their commit. An
+        # exclusive lock makes the attempt check and deletion one admission decision.
+        pool = await self.db.scalar(
+            select(OlympiadPool).where(OlympiadPool.id == pool_id)
+            .with_for_update().execution_options(populate_existing=True)
+        )
+        if pool is None:
+            raise ValueError(codes.OLYMPIAD_POOL_NOT_FOUND)
+
+        items = await self.pools_repo.list_items(pool_id)
+        olympiad_ids = [item.olympiad_id for item in items]
+        has_attempts = await self.db.scalar(select(
+            select(Attempt.id).where(Attempt.olympiad_id.in_(olympiad_ids)).exists()
+        ))
+        if has_attempts:
+            raise ValueError(codes.OLYMPIAD_POOL_HAS_ATTEMPTS)
+
+        # Only pool items and assignments cascade; the variants and tasks remain.
+        await self.db.delete(pool)
+        add_audit_event(
+            self.db,
+            actor_user_id=admin_id,
+            action="olympiad_pool_deleted",
+            method="DELETE",
+            path=f"/api/v1/admin/olympiad-pools/{pool_id}",
+            details={"pool_id": pool_id, "olympiad_ids": olympiad_ids},
+        )
+        await self.db.commit()
 
     async def chosen_variant(self, user, bundle, *, now=None):
         pool, items, variants, compositions = bundle
@@ -94,7 +127,7 @@ class OlympiadPoolsService:
         return OlympiadPublicRead.model_validate(olympiad).model_dump() | dict(pool_id=pool_id, subject=bundle[0].subject, is_trial=bundle[0].is_trial)
 
     async def list_for_user(self, user):
-        # Five batched reads regardless of the number of available works.
+        # Batched reads for pools and common works; no per-olympiad queries.
         pools = list((await self.db.scalars(select(OlympiadPool).where(OlympiadPool.is_active.is_(True)))).all())
         eligible = []
         for pool in pools:
@@ -104,9 +137,27 @@ class OlympiadPoolsService:
             except ValueError:
                 continue  # Keep malformed historical pools out of new admission.
         pools = eligible
-        if not pools:
-            return []
         now = datetime.now(timezone.utc)
+        attempts = {a.olympiad_id: a for a in (await self.db.scalars(select(Attempt).where(Attempt.user_id == user.id))).all()}
+        # Also retain a common work after its window closes while the attempt lives.
+        active_ids = [a.olympiad_id for a in attempts.values() if a.status == AttemptStatus.active and a.deadline_at >= now]
+        common = (await self.db.scalars(select(Olympiad).where(
+            Olympiad.is_standalone.is_(True), Olympiad.is_published.is_(True), Olympiad.archived_at.is_(None),
+            (Olympiad.available_to >= now) | Olympiad.id.in_(active_ids),
+        ))).all()
+        result = []
+        for olympiad in common:
+            try:
+                if not class_grades_allow(olympiad.age_group, user.class_grade):
+                    continue
+            except ValueError:
+                continue
+            attempt = attempts.get(olympiad.id)
+            if attempt and (attempt.status != AttemptStatus.active or attempt.deadline_at < now):
+                continue
+            result.append(OlympiadPublicRead.model_validate(olympiad).model_dump())
+        if not pools:
+            return sorted(result, key=lambda value: (value['available_from'], value['id']))
         rows = (await self.db.execute(select(OlympiadPoolItem, Olympiad).join(Olympiad, Olympiad.id == OlympiadPoolItem.olympiad_id)
             .where(OlympiadPoolItem.pool_id.in_([p.id for p in pools]), Olympiad.available_to >= now)
             .order_by(OlympiadPoolItem.position))).all()
@@ -119,8 +170,6 @@ class OlympiadPoolsService:
                 .options(load_only(Task.id, Task.subject)).where(OlympiadTask.olympiad_id.in_(variant_ids)))).all():
             compositions.setdefault(link.olympiad_id, []).append((link, task))
         assignments = {a.pool_id: a.olympiad_id for a in (await self.db.scalars(select(OlympiadAssignment).where(OlympiadAssignment.user_id == user.id))).all()}
-        attempts = {a.olympiad_id: a for a in (await self.db.scalars(select(Attempt).where(Attempt.user_id == user.id))).all()}
-        result = []
         for pool in pools:
             selected = grouped.get(pool.id, [])
             items = [item for item, _ in selected]

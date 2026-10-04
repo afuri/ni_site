@@ -11,14 +11,15 @@ from app.core.request_id import get_request_id
 class AttemptBodyLimitMiddleware:
     def __init__(self, app: ASGIApp, max_bytes: int, *,
                  path_pattern: str = r"/api/v1/attempts/\d+/(answers|submit)/?",
-                 error_code: str = "attempt_payload_too_large"):
+                 error_code: str = "attempt_payload_too_large", methods: tuple[str, ...] = ("POST",)):
         self.app = app
         self.max_bytes = max_bytes
         self.path_pattern = re.compile(path_pattern)
         self.error_code = error_code
+        self.methods = methods
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if (scope["type"] != "http" or scope["method"] != "POST"
+        if (scope["type"] != "http" or scope["method"] not in self.methods
                 or not self.path_pattern.fullmatch(scope["path"])):
             await self.app(scope, receive, send)
             return
