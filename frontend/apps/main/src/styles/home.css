@@ -270,15 +270,94 @@
   margin-top: -8rem;
 }
 
-.home-hero-message {
-  width: fit-content;
-  margin: 0 auto;
+.home-hero-message-offset {
+  display: grid;
+  grid-template-rows: 0 1fr;
   margin-top: 12rem;
+}
+
+.home-hero-message {
+  grid-row: 2;
+  width: min(100%, 660px);
+  margin: 0 auto;
   padding: 16px 24px;
 
   background: rgba(0, 33, 75, 0.6);
   border-radius: 16px;
   backdrop-filter: blur(6px);
+}
+
+.home-hero-message .home-tour-title {
+  margin: 0 0 18px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.home-hero-message .home-tour-schedule-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.home-tour-schedule {
+  display: grid;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.home-tour-schedule li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.home-tour-checkbox {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.home-tour-checkbox.is-checked {
+  color: #269e60;
+}
+
+.home-tour-hours,
+.home-tour-wish {
+  margin: 18px 0 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.home-tour-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.home-tour-start.btn {
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+  min-height: 46px;
+  max-width: 100%;
+  padding: 9px 20px;
+  border-radius: 11px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.home-tour-start .btn-label {
+  width: 100%;
+  text-align: center;
 }
 
 .home-hero-title h2 {
@@ -317,18 +396,6 @@
 .home-hero-panel .btn {
   width: 100%;
   justify-content: center;
-}
-
-.home-hero-countdown {
-  width: 100%;
-  padding: 16px 24px;
-}
-
-.home-hero-countdown .countdown-timer {
-  gap: 16px;
-  font-size: clamp(1rem, 5vw, 2rem);
-  font-weight: 300;
-  line-height: 1;
 }
 
 .countdown {
@@ -1218,6 +1285,14 @@
   .home-hero-title h1 {
     margin-top: 0;
     font-size: clamp(2rem, 6vw, 2.6rem);
+  }
+
+  .home-hero-message-offset {
+    margin-top: 4rem;
+  }
+
+  .home-hero-message {
+    padding: 20px 16px;
   }
 
   .home-hero-panel {

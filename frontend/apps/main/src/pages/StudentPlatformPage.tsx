@@ -15,6 +15,7 @@ import { CoinsBalance } from "../platform/CoinsBalance";
 import { getSchoolNotifications } from "../platform/schoolNotifications";
 import { resolvePlatformSection } from "../platform/platformSection";
 import { createMainAuthStorage } from "../utils/authStorage";
+import { STUDENT_OLYMPIADS_SECTION_ID } from "../routes/accountHome";
 import "../styles/platform.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
@@ -49,6 +50,13 @@ export function StudentPlatformPage() {
   useEffect(() => {
     if (activeSection === "profile" && tokens) void refreshUser();
   }, [activeSection, tokens, refreshUser]);
+
+  useEffect(() => {
+    if (!user || activeSection !== "home" || location.hash !== `#${STUDENT_OLYMPIADS_SECTION_ID}`) return;
+    const hero = document.getElementById(STUDENT_OLYMPIADS_SECTION_ID);
+    hero?.focus({ preventScroll: true });
+    hero?.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [activeSection, location.hash, user?.id]);
 
   if (!user) {
     return null;
