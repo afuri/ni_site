@@ -4,6 +4,7 @@ import type { ResourceState } from "./usePlatformOverview";
 import { getOlympiadScheduleState, resolveOlympiadAction, type OlympiadAction } from "./olympiadAction";
 import { PlatformIcon } from "./PlatformIcon";
 import { SubjectVisual } from "./SubjectVisual";
+import { STUDENT_OLYMPIADS_SECTION_ID } from "../routes/accountHome";
 
 type Props = {
   olympiads: ResourceState<OlympiadPublic[]>;
@@ -86,7 +87,7 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
       ? "Вы прошли все доступные олимпиады."
       : "Сейчас нет открытых олимпиад для вашего класса.";
 
-  return <section className="student-now-card" aria-label="Доступные олимпиады">
+  return <section id={STUDENT_OLYMPIADS_SECTION_ID} className="student-now-card" aria-label="Доступные олимпиады" tabIndex={-1}>
     <div className="student-now-content">
       <span className="student-now-label">Невский интеграл</span>
       <h2>Время новых открытий</h2>

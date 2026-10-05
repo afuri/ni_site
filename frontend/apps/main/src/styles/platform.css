@@ -75,7 +75,7 @@
 
 /* Dashboard and illustrated participation card. */
 .student-dashboard { display: grid; gap: 25px; }
-.student-now-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 240px; min-height: 278px; overflow: hidden; border: 1px solid #d6d8fb; border-radius: 20px; background: #f1f1ff; box-shadow: 0 8px 22px rgba(32, 48, 105, .07); }
+.student-now-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 240px; min-height: 278px; overflow: hidden; border: 1px solid #d6d8fb; border-radius: 20px; background: #f1f1ff; box-shadow: 0 8px 22px rgba(32, 48, 105, .07); scroll-margin-top: 24px; }
 .student-now-content { position: relative; z-index: 2; min-width: 0; padding: 27px 0 30px 30px; }
 .student-now-label { display: inline-flex; padding: 5px 11px; border-radius: 99px; background: #e5e0ff; color: #5a3dd3; font-size: .68rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
 .student-now-content h2 { margin: 14px 0 0; font-size: clamp(1.45rem, 2.5vw, 1.85rem); line-height: 1.14; overflow-wrap: anywhere; }
