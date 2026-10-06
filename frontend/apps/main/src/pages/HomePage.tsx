@@ -1404,9 +1404,9 @@ export function HomePage() {
                   <ul className="home-tour-schedule" aria-labelledby="home-tour-schedule-title">
                     {AUTUMN_TOUR_SCHEDULE.map((item, index) => (
                       <li key={item.date}>
-                        <svg className={`home-tour-checkbox${index === 0 ? " is-checked" : ""}`} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                          <rect x="2" y="2" width="20" height="20" rx="4" fill={index === 0 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" />
-                          {index === 0 ? <path d="m6.5 12 3.5 3.5 7.5-7.5" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
+                        <svg className={`home-tour-checkbox${index <= 1 ? " is-checked" : ""}`} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <rect x="2" y="2" width="20" height="20" rx="4" fill={index <= 1 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" />
+                          {index <= 1 ? <path d="m6.5 12 3.5 3.5 7.5-7.5" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
                         </svg>
                         <span><strong>{item.date}</strong> — {item.participants}</span>
                       </li>
