@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 import asyncio
 from dataclasses import dataclass
+import logging
+from typing import NoReturn
 from sqlalchemy import select, update
 from app.models.auth_token import RefreshToken, RefreshRotation, EmailVerification, PasswordResetToken
 
@@ -23,6 +25,13 @@ from app.repos.users import UsersRepo
 from app.tasks.email import send_email_task
 from app.core import error_codes as codes
 from app.services.school_profile import SchoolProfileService
+
+logger = logging.getLogger(__name__)
+
+
+def _reject_link(operation: str, code: str, reason: str) -> NoReturn:
+    logger.info("auth_link_rejected operation=%s reason=%s", operation, reason)
+    raise ValueError(code)
 
 
 @dataclass(frozen=True)
@@ -228,10 +237,16 @@ class AuthService:
         user = await self.users_repo.get_by_email(email)
         if not user:
             return
+        # Registration returns this same identity-map object; preserve its
+        # loaded school/region relationships for the UserRead response.
+        user = await self.users_repo.get_by_id(user.id, for_update=True)
+        if not user:
+            return
         if user.is_email_verified:
             return
 
-        await self.tokens_repo.delete_email_verifications(user.id)
+        # Resending must not invalidate a letter still in transit. The user lock
+        # serializes issuing and consuming links; commit precedes broker access.
         token = generate_token()
         token_hash = hash_token(token)
         now = self._now_utc()
@@ -261,32 +276,40 @@ class AuthService:
         token_hash = hash_token(token)
         record = await self.tokens_repo.get_email_verification_by_hash(token_hash)
         if not record:
-            raise ValueError(codes.INVALID_TOKEN)
+            _reject_link("verify_email", codes.INVALID_TOKEN, "not_found")
 
         now = self._now_utc()
-        if record.used_at is not None:
-            return
-        if record.expires_at < now:
-            raise ValueError(codes.INVALID_TOKEN)
+        if record.expires_at <= now:
+            _reject_link("verify_email", codes.TOKEN_EXPIRED, "expired")
 
         db = self.tokens_repo.db
         user = await self.users_repo.get_by_id(record.user_id, for_update=True, minimal=True)
         record = await db.scalar(select(EmailVerification).where(EmailVerification.token_hash == token_hash)
             .with_for_update().execution_options(populate_existing=True))
         now = self._now_utc()
-        if not user or not record or record.expires_at <= now:
-            raise ValueError(codes.INVALID_TOKEN)
+        if not user or not record:
+            _reject_link("verify_email", codes.INVALID_TOKEN, "not_found")
+        if record.expires_at <= now:
+            _reject_link("verify_email", codes.TOKEN_EXPIRED, "expired")
+        if record.used_at is not None and not user.is_email_verified:
+            _reject_link("verify_email", codes.INVALID_TOKEN, "verification_revoked")
         if record.used_at is None:
             record.used_at = now
             user.is_email_verified = True
+            await db.execute(update(EmailVerification).where(
+                EmailVerification.user_id == user.id,
+                EmailVerification.used_at.is_(None),
+                EmailVerification.expires_at > now,
+            ).values(used_at=now))
         await db.commit()
 
     async def request_password_reset(self, *, email: str) -> None:
         user = await self.users_repo.get_by_email(email)
         if not user:
             raise ValueError(codes.USER_NOT_FOUND)
-
-        await self.tokens_repo.delete_password_resets(user.id)
+        user = await self.users_repo.get_by_id(user.id, for_update=True, minimal=True)
+        if not user:
+            raise ValueError(codes.USER_NOT_FOUND)
         token = generate_token()
         token_hash = hash_token(token)
         now = self._now_utc()
@@ -304,24 +327,28 @@ class AuthService:
                 "Здравствуйте, вы отправили запрос на восстановление пароля "
                 f"для пользователя {user.login} на платформе олимпиады "
                 "\"Невский интеграл\".\n\n"
-                f"Для восстановления пароля перейдите по ссылке {link}.\n\n"
+                "Для восстановления пароля перейдите по ссылке:\n\n"
+                f"{link}\n\n"
                 "С уважением,\n"
                 "команда проекта \"Невский интеграл\""
             )
             send_email_task.delay(user.email, "Сброс пароля", body)
 
     async def confirm_password_reset(self, *, token: str, new_password: str) -> None:
-        validate_password_policy(new_password)
+        try:
+            validate_password_policy(new_password)
+        except ValueError:
+            _reject_link("reset_password", codes.WEAK_PASSWORD, "weak_password")
         token_hash = hash_token(token)
         record = await self.tokens_repo.get_password_reset_by_hash(token_hash)
         if not record:
-            raise ValueError(codes.INVALID_TOKEN)
+            _reject_link("reset_password", codes.INVALID_TOKEN, "not_found")
 
         now = self._now_utc()
         if record.used_at is not None:
-            raise ValueError(codes.INVALID_TOKEN)
-        if record.expires_at < now:
-            raise ValueError(codes.INVALID_TOKEN)
+            _reject_link("reset_password", codes.TOKEN_ALREADY_USED, "used")
+        if record.expires_at <= now:
+            _reject_link("reset_password", codes.TOKEN_EXPIRED, "expired")
 
         # Password hashing does not hold database row locks.
         password_hash = await asyncio.to_thread(hash_password, new_password)
@@ -330,9 +357,20 @@ class AuthService:
         record = await db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
             .with_for_update().execution_options(populate_existing=True))
         now = self._now_utc()
-        if not user or not record or record.used_at is not None or record.expires_at <= now:
-            raise ValueError(codes.INVALID_TOKEN)
+        if not user or not record:
+            _reject_link("reset_password", codes.INVALID_TOKEN, "not_found")
+        if record.used_at is not None:
+            _reject_link("reset_password", codes.TOKEN_ALREADY_USED, "used")
+        if record.expires_at <= now:
+            _reject_link("reset_password", codes.TOKEN_EXPIRED, "expired")
         record.used_at = now
+        # A successful reset consumes every outstanding link. Two concurrent
+        # requests for one account cannot both set a different password.
+        await db.execute(update(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
+        ).values(used_at=now))
         user.password_hash = password_hash
         user.must_change_password = False
         user.temp_password_expires_at = None

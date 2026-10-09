@@ -1,5 +1,7 @@
 MISSING_TOKEN = "missing_token"
 INVALID_TOKEN = "invalid_token"
+TOKEN_EXPIRED = "token_expired"
+TOKEN_ALREADY_USED = "token_already_used"
 INVALID_TOKEN_TYPE = "invalid_token_type"
 INVALID_ROLE = "invalid_role"
 INVALID_STATE = "invalid_state"

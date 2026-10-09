@@ -117,11 +117,16 @@ function buildApiError(
   payload: ApiErrorResponse | null
 ): ApiError {
   const fallbackCode = response.status >= 500 ? "server_error" : "request_error";
+  let details = payload?.error?.details ?? {};
+  const retryAfter = response.headers?.get?.("Retry-After");
+  if (response.status === 429 && retryAfter && /^\d+$/.test(retryAfter) && !Array.isArray(details)) {
+    details = { ...details, retry_after_seconds: Number(retryAfter) };
+  }
   return {
     status: response.status,
     code: payload?.error?.code ?? fallbackCode,
     message: payload?.error?.message ?? payload?.error?.code ?? fallbackCode,
-    details: payload?.error?.details ?? {},
+    details,
     request_id: payload?.request_id
   };
 }

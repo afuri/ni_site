@@ -104,6 +104,11 @@ class EmailVerificationRequest(BaseModel):
 class EmailVerificationConfirm(BaseModel):
     token: str = Field(min_length=10, max_length=512)
 
+    @field_validator("token", mode="before")
+    @classmethod
+    def trim_token(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
@@ -119,6 +124,13 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str = Field(min_length=10, max_length=512)
     new_password: str = Field(min_length=6, max_length=128)
+
+    @field_validator("token", mode="before")
+    @classmethod
+    def trim_token(cls, value: object) -> object:
+        # Older plaintext reset letters appended a sentence-ending dot to the
+        # URL. Opaque URL-safe reset tokens never contain a trailing dot.
+        return value.strip().removesuffix(".") if isinstance(value, str) else value
 
 
 class PasswordChangeRequest(BaseModel):
