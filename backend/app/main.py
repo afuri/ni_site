@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -105,6 +106,12 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(_request: Request, exc: RequestValidationError):
+    operation = {
+        "/api/v1/auth/verify/confirm": "verify_email",
+        "/api/v1/auth/password/reset/confirm": "reset_password",
+    }.get(_request.url.path)
+    if operation:
+        logging.getLogger(__name__).info("auth_link_rejected operation=%s reason=validation_error", operation)
     payload = api_error("validation_error", details=jsonable_encoder(exc.errors()))
     return JSONResponse(
         status_code=422,

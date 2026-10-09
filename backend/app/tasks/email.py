@@ -1,10 +1,11 @@
 from app.core.celery_app import celery_app
-from app.core.email import send_email
+from app.core.email import send_email, EmailDeliveryRejected
 
 
 @celery_app.task(
     name="send_email",
     autoretry_for=(Exception,),
+    dont_autoretry_for=(EmailDeliveryRejected,),
     retry_backoff=True,
     retry_jitter=True,
     retry_kwargs={"max_retries": 5},

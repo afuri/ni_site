@@ -48,10 +48,14 @@ async def _cleanup_expired_auth(
     async with session_maker() as session:
         counts = {}
         for model, terminal in ((RefreshToken, RefreshToken.revoked_at),
-            (EmailVerification, EmailVerification.used_at), (PasswordResetToken, PasswordResetToken.used_at)):
+            (EmailVerification, None), (PasswordResetToken, None)):
             deleted = 0
             # Two indexed bounded searches; no unbounded OR scan.
-            for column, condition in ((model.expires_at, model.expires_at <= now), (terminal, terminal.is_not(None))):
+            conditions = [(model.expires_at, model.expires_at <= now)]
+            # Consumed links remain distinguishable until their original expiry.
+            if terminal is not None:
+                conditions.append((terminal, terminal.is_not(None)))
+            for column, condition in conditions:
                 candidates = select(model.id).where(condition).order_by(column, model.id).limit(1000 - deleted).with_for_update(skip_locked=True)
                 res = await session.execute(delete(model).where(model.id.in_(candidates)))
                 deleted += res.rowcount or 0
@@ -178,9 +182,12 @@ async def _maintenance_backlog(name, session_maker):
                 "oldest_due_at": deadlines[0].timestamp() if deadlines else None}
         elif name == "cleanup_expired_auth":
             for model, terminal in ((RefreshToken, RefreshToken.revoked_at),
-                (EmailVerification, EmailVerification.used_at), (PasswordResetToken, PasswordResetToken.used_at)):
+                                   (EmailVerification, None), (PasswordResetToken, None)):
                 pending = {}
-                for column, condition in ((model.expires_at, model.expires_at <= now), (terminal, terminal.is_not(None))):
+                conditions = [(model.expires_at, model.expires_at <= now)]
+                if terminal is not None:
+                    conditions.append((terminal, terminal.is_not(None)))
+                for column, condition in conditions:
                     rows = (await db.execute(select(model.id, column).where(condition)
                         .order_by(column, model.id).limit(1001))).all()
                     for row_id, due_at in rows:

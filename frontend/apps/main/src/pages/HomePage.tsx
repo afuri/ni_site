@@ -23,6 +23,7 @@ import prosvLogo from "../assets/znanie.png";
 import studentAgreement from "../../../../students_agreement.txt?raw";
 import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
+import { authLinkErrorMessage, OPEN_RECOVERY_STORAGE_KEY, useAuthRetryDelay } from "../utils/authMessages";
 
 const AUTUMN_TOUR_SCHEDULE = [
   { date: "5–10 октября", participants: "дошкольники" },
@@ -601,12 +602,14 @@ export function HomePage() {
   const [recoveryEmail, setRecoveryEmail] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoveryStatus, setRecoveryStatus] = useState<"idle" | "loading" | "error">("idle");
+  const recoveryRetry = useAuthRetryDelay();
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [resetMode, setResetMode] = useState<"email" | "temporary">("email");
   const [resetPassword, setResetPassword] = useState("");
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [resetErrors, setResetErrors] = useState<ResetErrors>({});
   const [resetStatus, setResetStatus] = useState<"idle" | "loading" | "error">("idle");
+  const resetRetry = useAuthRetryDelay();
   const [continueAttemptId, setContinueAttemptId] = useState<number | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [isInstructionOpen, setIsInstructionOpen] = useState(false);
@@ -1048,11 +1051,20 @@ export function HomePage() {
     setRecoveryEmail("");
     setIsRecoverySentOpen(false);
     setIsRecoveryNotFoundOpen(false);
+    setIsResetOpen(false);
     setIsRecoveryOpen(true);
   };
 
+  useEffect(() => {
+    if (window.localStorage.getItem(OPEN_RECOVERY_STORAGE_KEY)) {
+      window.localStorage.removeItem(OPEN_RECOVERY_STORAGE_KEY);
+      openRecovery();
+    }
+  }, []);
+
   const handleRecoverySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (recoveryStatus === "loading" || recoveryRetry.remaining) return;
     setRecoveryError(null);
     const trimmedEmail = recoveryEmail.trim();
     setRecoveryEmail(trimmedEmail);
@@ -1085,15 +1097,17 @@ export function HomePage() {
         return;
       }
       setRecoveryStatus("error");
-      setRecoveryError("Не удалось отправить письмо. Попробуйте позже.");
+      recoveryRetry.handleError(error);
+      setRecoveryError(authLinkErrorMessage(error, "request"));
     }
   };
 
   const handleResetSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (resetStatus === "loading" || resetRetry.remaining) return;
     setResetErrors({});
     if (!resetToken) {
-      setResetErrors({ form: "Токен смены пароля недействителен." });
+      setResetErrors({ form: "Ссылка смены пароля недействительна. Запросите новое письмо." });
       return;
     }
     const errors = validateResetPassword();
@@ -1120,11 +1134,11 @@ export function HomePage() {
       const apiError = error as ApiError;
       if (apiError?.code === "weak_password") {
         setResetErrors({ password: buildPasswordRequirementMessage(resetPassword) });
-      } else if (apiError?.code === "invalid_token") {
-        setResetErrors({ form: "Токен смены пароля уже использован или устарел. Войдите с временным паролем снова." });
       } else {
-        setResetErrors({ form: "Не удалось изменить пароль. Попробуйте позже." });
+        setResetErrors({ form: authLinkErrorMessage(error, "reset", resetMode === "temporary") });
+        if (["invalid_token", "token_expired", "token_already_used"].includes(apiError?.code)) setResetToken(null);
       }
+      resetRetry.handleError(error);
       setResetStatus("error");
     }
   };
@@ -1404,9 +1418,9 @@ export function HomePage() {
                   <ul className="home-tour-schedule" aria-labelledby="home-tour-schedule-title">
                     {AUTUMN_TOUR_SCHEDULE.map((item, index) => (
                       <li key={item.date}>
-                        <svg className={`home-tour-checkbox${index <= 1 ? " is-checked" : ""}`} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                          <rect x="2" y="2" width="20" height="20" rx="4" fill={index <= 1 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" />
-                          {index <= 1 ? <path d="m6.5 12 3.5 3.5 7.5-7.5" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
+                        <svg className={`home-tour-checkbox${index <= 4 ? " is-checked" : ""}`} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <rect x="2" y="2" width="20" height="20" rx="4" fill={index <= 4 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" />
+                          {index <= 4 ? <path d="m6.5 12 3.5 3.5 7.5-7.5" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
                         </svg>
                         <span><strong>{item.date}</strong> — {item.participants}</span>
                       </li>
@@ -2104,8 +2118,8 @@ export function HomePage() {
               />
             </div>
             <div className="auth-actions auth-actions-centered">
-              <Button type="submit" isLoading={recoveryStatus === "loading"}>
-                Отправить
+              <Button type="submit" isLoading={recoveryStatus === "loading"} disabled={recoveryRetry.remaining > 0}>
+                {recoveryRetry.remaining ? `Повторить через ${recoveryRetry.remaining} сек.` : "Отправить"}
               </Button>
               <button type="button" className="auth-link" onClick={openLogin}>
                 Назад к входу
@@ -2196,9 +2210,12 @@ export function HomePage() {
               </div>
             ) : null}
             <div className="auth-actions auth-actions-centered">
-              <Button type="submit" isLoading={resetStatus === "loading"}>
-                Сохранить пароль
+              <Button type="submit" isLoading={resetStatus === "loading"} disabled={!resetToken || resetRetry.remaining > 0}>
+                {resetRetry.remaining ? `Повторить через ${resetRetry.remaining} сек.` : "Сохранить пароль"}
               </Button>
+              {!resetToken ? <Button type="button" variant="outline" onClick={resetMode === "temporary" ? openLogin : openRecovery}>
+                {resetMode === "temporary" ? "Войти снова" : "Запросить новую ссылку"}
+              </Button> : null}
             </div>
           </form>
         </Modal>

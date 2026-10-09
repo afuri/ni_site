@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,12 +26,13 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserRead
 from app.core.deps_auth import get_current_user, get_current_user_allow_password_change
-from app.core.security import verify_password, hash_password, validate_password_policy, decode_token
+from app.core.security import verify_password, hash_password, validate_password_policy, decode_token, hash_token
 from app.api.v1.openapi_errors import response_example, response_examples
 from app.api.v1.openapi_examples import EXAMPLE_TOKEN_PAIR, EXAMPLE_USER_READ, response_model_example
 from app.core import error_codes as codes
 
 router = APIRouter(prefix="/auth")
+logger = logging.getLogger(__name__)
 
 
 async def _apply_rate_limit(
@@ -64,6 +66,7 @@ async def _apply_rate_limit(
 
     if not rl.allowed:
         RATE_LIMIT_BLOCKS.labels(scope=key_prefix).inc()
+        logger.info("auth_rate_limited scope=%s", key_prefix)
         error = http_error(status.HTTP_429_TOO_MANY_REQUESTS, codes.RATE_LIMITED,
                            details={"retry_after_seconds": rl.retry_after_sec})
         error.headers = {"Retry-After": str(rl.retry_after_sec)}
@@ -250,7 +253,7 @@ async def request_email_verification(
     tags=["auth"],
     description="Подтвердить email по токену",
     responses={
-        422: response_example(codes.INVALID_TOKEN),
+        422: response_examples(codes.INVALID_TOKEN, codes.TOKEN_EXPIRED),
     },
 )
 async def confirm_email_verification(
@@ -260,8 +263,10 @@ async def confirm_email_verification(
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
         await service.verify_email(token=payload.token)
-    except ValueError:
-        raise http_error(422, codes.INVALID_TOKEN)
+    except ValueError as exc:
+        if str(exc) == codes.TOKEN_EXPIRED:
+            raise http_error(422, codes.TOKEN_EXPIRED, "Срок действия ссылки истёк. Запросите новое письмо подтверждения.")
+        raise http_error(422, codes.INVALID_TOKEN, "Ссылка подтверждения недействительна. Запросите новое письмо.")
     return {"status": "ok"}
 
 
@@ -344,7 +349,8 @@ async def request_password_reset(
     tags=["auth"],
     description="Сбросить пароль по токену",
     responses={
-        422: response_examples(codes.INVALID_TOKEN, codes.WEAK_PASSWORD),
+        422: response_examples(codes.INVALID_TOKEN, codes.TOKEN_EXPIRED, codes.TOKEN_ALREADY_USED, codes.WEAK_PASSWORD),
+        429: response_example(codes.RATE_LIMITED),
     },
 )
 async def confirm_password_reset(
@@ -354,10 +360,17 @@ async def confirm_password_reset(
 ):
     await _apply_rate_limit(
         request,
+        key_prefix="auth:reset-confirm-ip",
+        limit=settings.AUTH_RESET_CONFIRM_IP_RL_LIMIT,
+        window_sec=settings.AUTH_RESET_CONFIRM_IP_RL_WINDOW_SEC,
+    )
+    await _apply_rate_limit(
+        request,
         key_prefix="auth:reset-confirm",
-        limit=settings.AUTH_RESET_RL_LIMIT,
-        window_sec=settings.AUTH_RESET_RL_WINDOW_SEC,
-        identity="token",
+        limit=settings.AUTH_RESET_CONFIRM_RL_LIMIT,
+        window_sec=settings.AUTH_RESET_CONFIRM_RL_WINDOW_SEC,
+        identity=hash_token(payload.token),
+        by_ip=False,
     )
     service = AuthService(UsersRepo(db), AuthTokensRepo(db))
     try:
@@ -365,7 +378,11 @@ async def confirm_password_reset(
     except ValueError as e:
         if str(e) == codes.WEAK_PASSWORD:
             raise http_error(422, codes.WEAK_PASSWORD)
-        raise http_error(422, codes.INVALID_TOKEN)
+        if str(e) == codes.TOKEN_EXPIRED:
+            raise http_error(422, codes.TOKEN_EXPIRED, "Срок действия ссылки истёк. Запросите новую ссылку для смены пароля.")
+        if str(e) == codes.TOKEN_ALREADY_USED:
+            raise http_error(422, codes.TOKEN_ALREADY_USED, "Пароль уже изменён по этой ссылке. Войдите с новым паролем.")
+        raise http_error(422, codes.INVALID_TOKEN, "Ссылка смены пароля недействительна. Запросите новую ссылку.")
     return {"status": "ok"}
 
 

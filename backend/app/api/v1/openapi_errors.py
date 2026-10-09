@@ -11,6 +11,8 @@ ERROR_EXAMPLES = {
     codes.ROLE_TRANSITION_NOT_ALLOWED: {"error": {"code": codes.ROLE_TRANSITION_NOT_ALLOWED, "message": codes.ROLE_TRANSITION_NOT_ALLOWED}},
     codes.MISSING_TOKEN: {"error": {"code": codes.MISSING_TOKEN, "message": codes.MISSING_TOKEN}},
     codes.INVALID_TOKEN: {"error": {"code": codes.INVALID_TOKEN, "message": codes.INVALID_TOKEN, "details": {}}},
+    codes.TOKEN_EXPIRED: {"error": {"code": codes.TOKEN_EXPIRED, "message": "Срок действия ссылки истёк. Запросите новую ссылку."}},
+    codes.TOKEN_ALREADY_USED: {"error": {"code": codes.TOKEN_ALREADY_USED, "message": "Эта ссылка уже использована."}},
     codes.INVALID_CREDENTIALS: {"error": {"code": codes.INVALID_CREDENTIALS, "message": codes.INVALID_CREDENTIALS}},
     codes.INVALID_CURRENT_PASSWORD: {"error": {"code": codes.INVALID_CURRENT_PASSWORD, "message": codes.INVALID_CURRENT_PASSWORD}},
     codes.EMAIL_NOT_VERIFIED: {"error": {"code": codes.EMAIL_NOT_VERIFIED, "message": codes.EMAIL_NOT_VERIFIED}},
