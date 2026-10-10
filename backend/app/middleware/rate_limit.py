@@ -50,7 +50,8 @@ def _extract_user_id(request: Request) -> str | None:
 class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path
-        if path.startswith("/api/v1/health") or path == "/metrics":
+        if (path.startswith("/api/v1/health") or path == "/metrics"
+                or (request.method == "GET" and path.rstrip("/") == "/api/v1/time")):
             return await call_next(request)
 
         redis = await safe_redis()

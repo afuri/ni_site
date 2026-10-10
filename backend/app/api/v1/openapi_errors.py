@@ -78,6 +78,7 @@ ERROR_EXAMPLES = {
     codes.INVALID_PREFIX: {"error": {"code": codes.INVALID_PREFIX, "message": codes.INVALID_PREFIX}},
     codes.CONTENT_TYPE_NOT_ALLOWED: {"error": {"code": codes.CONTENT_TYPE_NOT_ALLOWED, "message": codes.CONTENT_TYPE_NOT_ALLOWED}},
     codes.STORAGE_UNAVAILABLE: {"error": {"code": codes.STORAGE_UNAVAILABLE, "message": codes.STORAGE_UNAVAILABLE}},
+    codes.DATABASE_UNAVAILABLE: {"error": {"code": codes.DATABASE_UNAVAILABLE, "message": "Сервис временно недоступен. Повторите запрос."}},
     codes.STUDENT_NOT_FOUND: {"error": {"code": codes.STUDENT_NOT_FOUND, "message": codes.STUDENT_NOT_FOUND}},
     codes.LINK_NOT_FOUND: {"error": {"code": codes.LINK_NOT_FOUND, "message": codes.LINK_NOT_FOUND}},
     codes.CANNOT_ATTACH_SELF: {"error": {"code": codes.CANNOT_ATTACH_SELF, "message": codes.CANNOT_ATTACH_SELF}},

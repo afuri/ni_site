@@ -37,7 +37,6 @@ class AuditLogsRepo:
         )
         self.db.add(obj)
         await self.db.commit()
-        await self.db.refresh(obj)
         return obj
 
     async def list(

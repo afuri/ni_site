@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Modal, Table } from "@ui";
 import { adminApiClient } from "../lib/adminClient";
+import { useUploadImageUrls } from "../hooks/useUploadImageUrls";
 
 const escapeHtml = (value: string) =>
   value
@@ -258,6 +259,8 @@ const escapeCsv = (value: string | number | null | undefined) => {
   return raw;
 };
 
+const resolveMockImage = (key: string) => loadMockS3()[key];
+
 export function ResultsPage() {
   const [olympiads, setOlympiads] = useState<OlympiadItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -270,7 +273,7 @@ export function ResultsPage() {
   const [attemptView, setAttemptView] = useState<AttemptView | null>(null);
   const [attemptViewStatus, setAttemptViewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [attemptViewError, setAttemptViewError] = useState<string | null>(null);
-  const [attemptImageUrls, setAttemptImageUrls] = useState<Record<string, string>>({});
+  const attemptImageUrls = useUploadImageUrls(attemptView?.tasks.map((task) => task.image_key) ?? [], resolveMockImage);
 
   useEffect(() => {
     const loadOlympiads = async () => {
@@ -323,59 +326,6 @@ export function ResultsPage() {
     return () => controller.abort();
   }, [selectedId, attemptPage]);
 
-  useEffect(() => {
-    if (!attemptView) {
-      setAttemptImageUrls((current) => (Object.keys(current).length > 0 ? {} : current));
-      return;
-    }
-    const missingKeys = attemptView.tasks
-      .map((task) => task.image_key)
-      .filter((key): key is string => Boolean(key))
-      .filter((key) => !attemptImageUrls[key]);
-    if (missingKeys.length === 0) {
-      return;
-    }
-    let isMounted = true;
-    const loadImages = async () => {
-      const entries = await Promise.all(
-        missingKeys.map(async (key) => {
-          if (key.startsWith("http") || key.startsWith("data:")) {
-            return [key, key] as const;
-          }
-          const mockData = loadMockS3()[key];
-          if (mockData) {
-            return [key, mockData] as const;
-          }
-          try {
-            const safeKey = key.split("/").map(encodeURIComponent).join("/");
-            const payload = await adminApiClient.request<{ url: string; public_url?: string | null }>({
-              path: `/uploads/${safeKey}`,
-              method: "GET"
-            });
-            return [key, payload.public_url ?? payload.url] as const;
-          } catch {
-            return [key, ""] as const;
-          }
-        })
-      );
-      if (!isMounted) {
-        return;
-      }
-      setAttemptImageUrls((prev) => {
-        const next = { ...prev };
-        entries.forEach(([key, url]) => {
-          if (url) {
-            next[key] = url;
-          }
-        });
-        return next;
-      });
-    };
-    void loadImages();
-    return () => {
-      isMounted = false;
-    };
-  }, [attemptView, attemptImageUrls]);
 
   const handleAttemptOpen = async (attemptId: number) => {
     setAttemptViewStatus("loading");
@@ -398,7 +348,6 @@ export function ResultsPage() {
     setAttemptView(null);
     setAttemptViewError(null);
     setAttemptViewStatus("idle");
-    setAttemptImageUrls({});
   };
 
   const exportCsv = async () => {

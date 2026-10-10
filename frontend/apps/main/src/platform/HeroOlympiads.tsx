@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { AttemptResult, AttemptView, OlympiadPublic, UserRead } from "@api";
 import type { ResourceState } from "./usePlatformOverview";
-import { getOlympiadScheduleState, resolveOlympiadAction, type OlympiadAction } from "./olympiadAction";
+import { ageGroupAllows, getOlympiadScheduleState, resolveOlympiadAction, type OlympiadAction } from "./olympiadAction";
+import { useServerTime } from "./useServerTime";
 import { PlatformIcon } from "./PlatformIcon";
 import { SubjectVisual } from "./SubjectVisual";
 import { STUDENT_OLYMPIADS_SECTION_ID } from "../routes/accountHome";
@@ -32,24 +33,15 @@ export function countdown(until: string, now: number): string {
 }
 
 export function HeroOlympiads({ olympiads, results, activeAttempt, user, startingId, onAction, onRefresh, downloadingPdfId, onDownloadPdf }: Props) {
-  const [now, setNow] = useState(Date.now);
+  const active = activeAttempt.data?.attempt;
+  const clock = useServerTime((olympiads.status === "ready" && olympiads.data.length > 0) || active?.status === "active");
+  const now = clock.now;
   const [expanded, setExpanded] = useState(false);
   const refreshedBoundaries = useRef(new Set<string>());
-  const active = activeAttempt.data?.attempt;
   const deadline = active?.status === "active" ? Date.parse(active.deadline_at) : null;
 
   useEffect(() => {
-    setNow(Date.now());
-    if (!olympiads.data.length && deadline === null) return;
-    // One shared browser ticker; only this card rerenders. No network polling.
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    const update = () => setNow(Date.now());
-    document.addEventListener("visibilitychange", update);
-    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", update); };
-  }, [olympiads.data, deadline]);
-
-  useEffect(() => {
-    if (!onRefresh) return;
+    if (!onRefresh || now === null) return;
     const boundaries = [
       ...olympiads.data.map((item) => ({ key: `window:${item.id}:${item.available_to}`, at: Date.parse(item.available_to) })),
       ...(deadline !== null ? [{ key: `attempt:${active?.id}:${deadline}`, at: deadline }] : [])
@@ -65,13 +57,13 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
   }, [now, olympiads.data, active?.id, deadline, onRefresh]);
 
   const candidates = olympiads.data.filter((item) => {
-    if (!item.is_published) return false;
-    const schedule = getOlympiadScheduleState(item, user.class_grade, now);
-    const continuingCommon = item.is_standalone && item.id === active?.olympiad_id && deadline !== null && now <= deadline;
-    if ((schedule === "finished" && !continuingCommon) || schedule === "other-grade") return false;
+    if (!item.is_published || !ageGroupAllows(item.age_group, user.class_grade)) return false;
+    if (!Number.isFinite(Date.parse(item.available_from)) || !Number.isFinite(Date.parse(item.available_to))) return false;
+    const continuingCommon = item.is_standalone && item.id === active?.olympiad_id && deadline !== null && (now === null || now <= deadline);
+    if (now !== null && getOlympiadScheduleState(item, user.class_grade, now) === "finished" && !continuingCommon) return false;
     const attempt = results.data.find((result) => result.olympiad_id === item.id);
     if (attempt && attempt.status !== "active") return false;
-    return !(attempt?.attempt_id === active?.id && deadline !== null && now > deadline);
+    return !(attempt?.attempt_id === active?.id && deadline !== null && now !== null && now > deadline);
   }).sort((a, b) => Date.parse(a.available_from) - Date.parse(b.available_from) || a.id - b.id);
   // Keep the current work visible even when it would fall outside the first three.
   const activeIndex = candidates.findIndex((item) => item.id === active?.olympiad_id);
@@ -79,7 +71,7 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
   const visible = expanded ? candidates : candidates.slice(0, 3);
   const loading = olympiads.status === "idle" || olympiads.status === "loading";
   const failed = olympiads.status === "error";
-  const matchingPublished = olympiads.data.filter((item) => item.is_published && getOlympiadScheduleState(item, user.class_grade, now) !== "other-grade");
+  const matchingPublished = olympiads.data.filter((item) => item.is_published && ageGroupAllows(item.age_group, user.class_grade));
   const completedIds = new Set(results.data.filter((item) => item.status !== "active").map((item) => item.olympiad_id));
   const emptyMessage = matchingPublished.length === 0
     ? "Для вашего класса пока нет опубликованных олимпиад."
@@ -93,13 +85,20 @@ export function HeroOlympiads({ olympiads, results, activeAttempt, user, startin
       <h2>Время новых открытий</h2>
       <p className="student-now-subtitle">Математика и информатика — твой следующий шаг к открытиям.</p>
       <div className="student-hero-olympiads">
+        {!loading && !failed && candidates.length > 0 && clock.status === "error" ? <div className="student-hero-empty">
+          <p role="alert">Не удалось проверить время. Повторите проверку.</p>
+          <button type="button" className="student-secondary-action" disabled={clock.retryAfterSeconds > 0}
+            onClick={() => void clock.retry()}>{clock.retryAfterSeconds > 0 ? `Повторить через ${clock.retryAfterSeconds} с` : "Проверить время"}</button>
+        </div> : null}
         {loading ? <p role="status" className="student-hero-empty">Загружаем олимпиады…</p> : failed ? <div className="student-hero-empty"><p role="alert">Не удалось загрузить олимпиады.</p>{onRefresh ? <button type="button" className="student-secondary-action" onClick={onRefresh}>Повторить загрузку</button> : null}</div> : !visible.length ? <div className="student-hero-empty"><p>{emptyMessage}</p>{results.status === "ready" && completedIds.size > 0 ? <a href="/platform/results">Посмотреть свои результаты</a> : null}</div> : visible.map((item) => {
-          const action = resolveOlympiadAction({ olympiad: item, results: results.data, resultsStatus: results.status, user, now });
-          const soon = getOlympiadScheduleState(item, user.class_grade, now) === "soon";
+          const action: OlympiadAction = now === null
+            ? { kind: "disabled", label: "Проверяем время…", reason: "Дождитесь проверки времени." }
+            : resolveOlympiadAction({ olympiad: item, results: results.data, resultsStatus: results.status, user, now });
+          const soon = now !== null && getOlympiadScheduleState(item, user.class_grade, now) === "soon";
           const busy = startingId !== null;
           const checkingActive = action.kind === "continue" && activeAttempt.status !== "ready";
           const label = startingId === item.id ? "Запускаем…" : soon ? countdown(item.available_from, now) : action.label;
-          const pdfAvailable = item.is_standalone && item.has_participant_pdf && onDownloadPdf
+          const pdfAvailable = now !== null && item.is_standalone && item.has_participant_pdf && onDownloadPdf
             && (getOlympiadScheduleState(item, user.class_grade, now) === "available"
                 || (item.id === active?.olympiad_id && deadline !== null && now <= deadline));
           return <article className="student-hero-olympiad" key={item.id}>

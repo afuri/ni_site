@@ -1,15 +1,63 @@
 from __future__ import annotations
 
+import logging
+import os
+import threading
+import time
 import uuid
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import Any, Callable, TypeVar
 from urllib.parse import urlparse
 
 import boto3
+from anyio import CapacityLimiter, to_thread
 from botocore.client import Config
 
 from app.core.config import settings
 from app.core import error_codes as codes
+
+T = TypeVar("T")
+logger = logging.getLogger(__name__)
+_io_limiter: CapacityLimiter | None = None
+_client_lock = threading.Lock()
+_client: Any = None
+_client_signature: tuple[Any, ...] | None = None
+_client_retry_at = 0.0
+
+
+async def storage_work(function: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    """Keep synchronous storage I/O outside the API event loop."""
+    global _io_limiter
+    if _io_limiter is None:
+        _io_limiter = CapacityLimiter(4)
+    started = time.monotonic()
+    try:
+        return await to_thread.run_sync(lambda: function(*args, **kwargs), limiter=_io_limiter)
+    finally:
+        elapsed = time.monotonic() - started
+        if elapsed >= 1:
+            logger.info("storage_work_slow operation=%s elapsed_ms=%d",
+                        getattr(function, "__name__", "storage"), elapsed * 1000)
+
+
+def _client_config(*, probe: bool = False) -> Config:
+    return Config(signature_version="s3v4", connect_timeout=2, read_timeout=5,
+                  retries={"mode": "standard", "total_max_attempts": 1 if probe else 2},
+                  max_pool_connections=8)
+
+
+def _reset_after_fork() -> None:
+    global _client_lock, _client, _client_signature, _client_retry_at, _io_limiter
+    _client_lock = threading.Lock()
+    _client = None
+    _client_signature = None
+    _client_retry_at = 0
+    _io_limiter = None
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_after_fork)
 
 
 ALLOWED_CONTENT_TYPES = {t.strip() for t in settings.STORAGE_ALLOWED_CONTENT_TYPES.split(",") if t.strip()}
@@ -39,21 +87,38 @@ class PresignPostResult:
     max_size_bytes: int
 
 
-def _get_s3_client():
-    endpoint = _resolve_working_storage_endpoint()
-    if not endpoint or not settings.STORAGE_ACCESS_KEY or not settings.STORAGE_SECRET_KEY:
+def _get_s3_client() -> Any:
+    global _client, _client_signature, _client_retry_at
+    if not settings.STORAGE_ACCESS_KEY or not settings.STORAGE_SECRET_KEY:
         return None
-    scheme = urlparse(endpoint).scheme.lower()
-    use_ssl = scheme == "https" if scheme in {"http", "https"} else settings.STORAGE_USE_SSL
-    return boto3.client(
-        "s3",
-        endpoint_url=endpoint,
-        aws_access_key_id=settings.STORAGE_ACCESS_KEY,
-        aws_secret_access_key=settings.STORAGE_SECRET_KEY,
-        region_name=settings.STORAGE_REGION,
-        use_ssl=use_ssl,
-        config=Config(signature_version="s3v4"),
-    )
+    # A prefork Celery child must never reuse its parent's connection pool.
+    signature = (os.getpid(), settings.STORAGE_ENDPOINT, settings.STORAGE_BUCKET,
+                 settings.STORAGE_ACCESS_KEY, settings.STORAGE_SECRET_KEY,
+                 settings.STORAGE_REGION, settings.STORAGE_USE_SSL)
+    with _client_lock:
+        if signature == _client_signature:
+            if _client is not None:
+                return _client
+            if time.monotonic() < _client_retry_at:
+                return None
+        _client_signature = signature
+        _client = None
+        _resolve_working_storage_endpoint.cache_clear()
+        endpoint = _resolve_working_storage_endpoint()
+        if not endpoint:
+            # Coalesce failures, but recover after a temporary storage outage.
+            _client_retry_at = time.monotonic() + 5
+            return None
+        scheme = urlparse(endpoint).scheme.lower()
+        use_ssl = scheme == "https" if scheme in {"http", "https"} else settings.STORAGE_USE_SSL
+        _client = boto3.client(
+            "s3", endpoint_url=endpoint,
+            aws_access_key_id=settings.STORAGE_ACCESS_KEY,
+            aws_secret_access_key=settings.STORAGE_SECRET_KEY,
+            region_name=settings.STORAGE_REGION, use_ssl=use_ssl,
+            config=_client_config(),
+        )
+        return _client
 
 
 def _endpoint_candidates() -> list[str]:
@@ -113,13 +178,15 @@ def _resolve_working_storage_endpoint() -> str | None:
             aws_secret_access_key=settings.STORAGE_SECRET_KEY,
             region_name=settings.STORAGE_REGION,
             use_ssl=use_ssl,
-            config=Config(signature_version="s3v4"),
+            config=_client_config(probe=True),
         )
         try:
             client.head_bucket(Bucket=settings.STORAGE_BUCKET)
             return endpoint
         except Exception:
             continue
+        finally:
+            client.close()
     return None
 
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
-import { createApiClient, type ApiError } from "@api";
+import { createApiClient, serverClock, type ApiError } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
 import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
 import { getAccountHomePath, LOGIN_REDIRECT_KEY, STUDENT_OLYMPIADS_PATH } from "../routes/accountHome";
@@ -507,13 +507,12 @@ const parseOlympiadIdFromTestingCode = (value: string): number | null => {
   return olympiadId;
 };
 
-const isOlympiadAvailableNow = (olympiad: PublicOlympiad): boolean => {
+const isOlympiadAvailableNow = (olympiad: PublicOlympiad, now: number): boolean => {
   const from = Date.parse(olympiad.available_from);
   const to = Date.parse(olympiad.available_to);
   if (Number.isNaN(from) || Number.isNaN(to)) {
     return false;
   }
-  const now = Date.now();
   return now >= from && now <= to;
 };
 
@@ -667,13 +666,18 @@ export function HomePage() {
     setAssignStatus("loading");
     // Recheck the exact selected variant. Opening instructions must not start an attempt.
     void authedClient.request<PublicOlympiad[]>({ path: "/olympiads/my", method: "GET", signal: controller.signal })
-      .then((olympiads) => {
+      .then(async (olympiads) => {
+        await serverClock.ensureSynced();
         if (controller.signal.aborted) return;
         const olympiad = olympiads.find((item) => item.id === entryOlympiadId);
+        const now = serverClock.now();
         if (!olympiad) {
           setStartError("Олимпиада больше недоступна. Обновите список в личном кабинете.");
           setAssignStatus("error");
-        } else if (!isOlympiadAvailableNow(olympiad)) {
+        } else if (now === null) {
+          setStartError("Не удалось проверить время. Обновите страницу и попробуйте снова.");
+          setAssignStatus("error");
+        } else if (!isOlympiadAvailableNow(olympiad, now)) {
           setStartError("Сейчас олимпиада недоступна по времени.");
           setAssignStatus("error");
         } else {
@@ -1418,9 +1422,9 @@ export function HomePage() {
                   <ul className="home-tour-schedule" aria-labelledby="home-tour-schedule-title">
                     {AUTUMN_TOUR_SCHEDULE.map((item, index) => (
                       <li key={item.date}>
-                        <svg className={`home-tour-checkbox${index <= 4 ? " is-checked" : ""}`} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                          <rect x="2" y="2" width="20" height="20" rx="4" fill={index <= 4 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" />
-                          {index <= 4 ? <path d="m6.5 12 3.5 3.5 7.5-7.5" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
+                        <svg className={`home-tour-checkbox${index <= 5 ? " is-checked" : ""}`} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <rect x="2" y="2" width="20" height="20" rx="4" fill={index <= 5 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" />
+                          {index <= 5 ? <path d="m6.5 12 3.5 3.5 7.5-7.5" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
                         </svg>
                         <span><strong>{item.date}</strong> — {item.participants}</span>
                       </li>

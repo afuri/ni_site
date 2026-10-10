@@ -1,4 +1,6 @@
 export { createApiClient } from "./client";
+export { serverClock, ServerClock } from "./serverClock";
+export type { ServerClockSnapshot } from "./serverClock";
 export { saveDownloadedBlob, openPdfInNewTab, PdfPopupBlockedError } from "./download";
 export type {
   ApiClient,

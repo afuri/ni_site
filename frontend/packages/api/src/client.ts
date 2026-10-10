@@ -1,3 +1,4 @@
+import { serverClock } from "./serverClock";
 import type {
   ApiError,
   ApiErrorResponse,
@@ -136,6 +137,7 @@ const sharedRefreshes = new Map<string, Promise<TokenPair | null>>();
 
 export function createApiClient(options: ClientOptions): ApiClient {
   const { baseUrl, storage, onAuthError } = options;
+  serverClock.configure(baseUrl);
   const timeoutMs = options.timeoutMs ?? 15000;
   const sessionChanged = () => ({ status: 401, code: "session_changed", message: "Вход изменён в другой вкладке.", details: {} });
   const fetchBody = async <T,>(url: string, init: RequestInit, responseType: "json" | "blob" = "json", requestTimeoutMs = timeoutMs): Promise<{ response: Response; body: T | null }> => {
@@ -148,6 +150,9 @@ export function createApiClient(options: ClientOptions): ApiClient {
       return await Promise.race([
         (async () => {
           const response = await fetch(url, { ...init, signal: controller.signal });
+          if (!controller.signal.aborted && Number(response.headers?.get("Age") ?? 0) === 0) {
+            serverClock.observe(response.headers?.get("X-Server-Time"));
+          }
           return { response, body: response.ok && responseType === "blob" ? await response.blob() as T : await parseJson<T>(response) };
         })(),
         new Promise<never>((_, reject) => {

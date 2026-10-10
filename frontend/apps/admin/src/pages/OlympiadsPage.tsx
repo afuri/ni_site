@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Modal, Table, TextInput } from "@ui";
 import { adminApiClient } from "../lib/adminClient";
+import { useUploadImageUrls } from "../hooks/useUploadImageUrls";
 import { formatDate, fromDateTimeLocal, toDateTimeLocal } from "../lib/formatters";
 import { AdminIconButton } from "../components/AdminIconButton";
 import { openPdfInNewTab, PdfPopupBlockedError, type ApiError } from "@api";
@@ -104,8 +105,8 @@ const emptyForm: OlympiadForm = {
 
 const CLASS_GRADE_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 const SUBJECT_OPTIONS = [
-  { value: "math", label: "Математика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "7-8", "1-8"] },
-  { value: "cs", label: "Информатика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "7-8", "1-8"] }
+  { value: "math", label: "Математика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "6-7", "7-8", "1-8"] },
+  { value: "cs", label: "Информатика", gradeGroups: ["1", "2", "3", "4", "5", "6", "7", "8", "3-4", "5-6", "6-7", "7-8", "1-8"] }
 ];
 
 const escapeHtml = (value: string) =>
@@ -263,7 +264,7 @@ export function OlympiadsPage() {
   const [previewTasks, setPreviewTasks] = useState<OlympiadPreviewTask[]>([]);
   const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [previewImageUrls, setPreviewImageUrls] = useState<Record<string, string>>({});
+  const previewImageUrls = useUploadImageUrls(previewTarget ? previewTasks.map((item) => item.task.image_key) : []);
   const [pdfTarget, setPdfTarget] = useState<OlympiadItem | null>(null);
   const [participantPdfTarget, setParticipantPdfTarget] = useState<OlympiadItem | null>(null);
   const [participantPdfFile, setParticipantPdfFile] = useState<File | null>(null);
@@ -369,7 +370,6 @@ export function OlympiadsPage() {
     setPreviewStatus("loading");
     setPreviewError(null);
     setPreviewTasks([]);
-    setPreviewImageUrls({});
     try {
       const data = await adminApiClient.request<OlympiadPreviewTask[]>({
         path: `/admin/olympiads/${olympiad.id}/tasks?with_details=true`,
@@ -890,54 +890,6 @@ export function OlympiadsPage() {
     }
   };
 
-  useEffect(() => {
-    if (!previewTarget || previewTasks.length === 0) {
-      return;
-    }
-    const missingKeys = previewTasks
-      .map((item) => item.task.image_key)
-      .filter((key): key is string => Boolean(key))
-      .filter((key) => !previewImageUrls[key]);
-    if (missingKeys.length === 0) {
-      return;
-    }
-    let isMounted = true;
-    const loadImages = async () => {
-      const entries = await Promise.all(
-        missingKeys.map(async (key) => {
-          if (key.startsWith("http") || key.startsWith("data:")) {
-            return [key, key] as const;
-          }
-          try {
-            const safeKey = key.split("/").map(encodeURIComponent).join("/");
-            const payload = await adminApiClient.request<{ url: string; public_url?: string | null }>({
-              path: `/uploads/${safeKey}`,
-              method: "GET"
-            });
-            return [key, payload.public_url ?? payload.url] as const;
-          } catch {
-            return [key, ""] as const;
-          }
-        })
-      );
-      if (!isMounted) {
-        return;
-      }
-      setPreviewImageUrls((prev) => {
-        const next = { ...prev };
-        entries.forEach(([key, url]) => {
-          if (url) {
-            next[key] = url;
-          }
-        });
-        return next;
-      });
-    };
-    void loadImages();
-    return () => {
-      isMounted = false;
-    };
-  }, [previewTarget, previewTasks, previewImageUrls]);
 
   const normalizedFilter = taskFilter.trim().toLowerCase();
   const filteredTaskCatalog = normalizedFilter

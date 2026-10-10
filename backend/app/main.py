@@ -15,6 +15,7 @@ from app.middleware.audit import AuditMiddleware
 from app.middleware.attempt_body_limit import AttemptBodyLimitMiddleware
 from app.middleware.rate_limit import GlobalRateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
+from app.middleware.server_time import ServerTimeMiddleware
 from app.api.v1.router import router as v1_router
 
 setup_logging()
@@ -32,6 +33,10 @@ if settings.SENTRY_DSN:
     sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENV, release=settings.APP_VERSION)
 
 APP_DESCRIPTION = """
+## Серверное время
+Ответы /api/v1/ содержат X-Server-Time: UTC Unix timestamp в миллисекундах.
+Клиент использует его для локального отсчёта без опроса сервера каждую секунду.
+
 ## Формат ошибок
 Все ошибки возвращаются единообразно:
 
@@ -70,6 +75,7 @@ app.add_middleware(AttemptBodyLimitMiddleware, max_bytes=20 * 1024 * 1024 + 6553
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(GlobalRateLimitMiddleware)
 app.add_middleware(AuditMiddleware)
+app.add_middleware(ServerTimeMiddleware)
 app.include_router(v1_router)
 if settings.OTEL_ENABLED:
     FastAPIInstrumentor.instrument_app(app)

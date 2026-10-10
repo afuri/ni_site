@@ -1,20 +1,23 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import OperationalError, TimeoutError as PoolTimeoutError
+from fastapi.security import HTTPAuthorizationCredentials
+import logging
 
-from app.core.deps_auth import require_admin_or_moderator, get_current_user
+from app.core.deps_auth import require_admin_or_moderator, get_current_user, bearer_scheme
 from app.core.deps import get_db
 import re
 
 from app.core.errors import http_error
-from app.core.storage import presign_get, presign_put, presign_post, public_url_for_key
+from app.core.storage import presign_get, presign_put, presign_post, public_url_for_key, storage_work
 from app.core.config import settings
 from app.core import error_codes as codes
 from app.models.content import ContentItem, ContentStatus
 from app.models.olympiad import Olympiad
 from app.models.olympiad_task import OlympiadTask
 from app.models.task import Task
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 from app.models.attempt import Attempt, AttemptStatus
 from app.schemas.uploads import (
     UploadPresignRequest,
@@ -34,6 +37,24 @@ from app.api.v1.openapi_examples import (
 
 
 router = APIRouter(prefix="/uploads")
+logger = logging.getLogger(__name__)
+
+
+def _database_unavailable(exc: Exception) -> HTTPException:
+    logger.warning("upload_database_unavailable reason=%s", type(exc).__name__)
+    return http_error(503, codes.DATABASE_UNAVAILABLE,
+                      "Сервис временно недоступен. Повторите запрос.")
+
+
+async def _get_upload_user(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    try:
+        return await get_current_user(creds, db)
+    except (TimeoutError, PoolTimeoutError, OperationalError) as exc:
+        raise _database_unavailable(exc) from exc
+
 
 ALLOWED_PREFIXES = ("tasks", "content")
 PREFIX_RE = re.compile(r"^[a-z0-9][a-z0-9/_-]*$")
@@ -125,7 +146,7 @@ async def presign_upload(
     if len(normalized.split("/")) > MAX_PREFIX_SEGMENTS:
         raise http_error(422, codes.INVALID_PREFIX)
     try:
-        result = presign_put(prefix=normalized, content_type=payload.content_type)
+        result = await storage_work(presign_put, prefix=normalized, content_type=payload.content_type)
     except ValueError:
         raise http_error(422, codes.CONTENT_TYPE_NOT_ALLOWED)
     except RuntimeError:
@@ -165,7 +186,7 @@ async def presign_upload_post(
     if len(normalized.split("/")) > MAX_PREFIX_SEGMENTS:
         raise http_error(422, codes.INVALID_PREFIX)
     try:
-        result = presign_post(
+        result = await storage_work(presign_post,
             prefix=normalized,
             content_type=payload.content_type,
             max_size_bytes=settings.STORAGE_MAX_UPLOAD_MB * 1024 * 1024,
@@ -221,29 +242,34 @@ async def upload_image(image: UploadFile = File(...), width: str = Form("origina
     responses={
         200: response_model_example(UploadGetResponse, EXAMPLE_UPLOAD_GET),
         401: response_example(codes.MISSING_TOKEN),
-        503: response_example(codes.STORAGE_UNAVAILABLE),
+        503: response_examples(codes.STORAGE_UNAVAILABLE, codes.DATABASE_UNAVAILABLE),
     },
 )
 async def get_upload_url(
     key: str,
-    user=Depends(get_current_user),
+    user=Depends(_get_upload_user),
     db: AsyncSession = Depends(get_db),
 ):
     normalized = _validate_key(key)
     allow_unpublished = _is_admin_or_moderator(user)
     prefix = normalized.split("/", 1)[0]
-    if prefix == "tasks":
-        allowed = await _task_image_access(db, normalized, allow_unpublished=allow_unpublished,
-                                          student_id=user.id if user.role == UserRole.student else None)
-        if not allowed:
-            raise http_error(404, codes.TASK_NOT_FOUND)
-    elif prefix == "content":
-        allowed = await _content_image_access(db, normalized, allow_unpublished=allow_unpublished)
-        if not allowed:
-            raise http_error(404, codes.CONTENT_NOT_FOUND)
     try:
-        url = presign_get(key=normalized)
-    except RuntimeError:
+        if prefix == "tasks":
+            allowed = await _task_image_access(db, normalized, allow_unpublished=allow_unpublished,
+                                              student_id=user.id if user.role == UserRole.student else None)
+            if not allowed:
+                raise http_error(404, codes.TASK_NOT_FOUND)
+        elif prefix == "content":
+            allowed = await _content_image_access(db, normalized, allow_unpublished=allow_unpublished)
+            if not allowed:
+                raise http_error(404, codes.CONTENT_NOT_FOUND)
+        # Release the read-only transaction before waiting for storage I/O.
+        await db.rollback()
+    except (TimeoutError, PoolTimeoutError, OperationalError) as exc:
+        raise _database_unavailable(exc) from exc
+    try:
+        url = await storage_work(presign_get, key=normalized)
+    except Exception:
         raise http_error(503, codes.STORAGE_UNAVAILABLE)
     public_url = public_url_for_key(normalized)
     return UploadGetResponse(url=url, public_url=public_url, expires_in=settings.STORAGE_PRESIGN_EXPIRES_SEC)
