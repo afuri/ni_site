@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Modal, Table, TextInput, useAuth } from "@ui";
 import type { UserRead } from "@api";
 import { adminApiClient } from "../lib/adminClient";
+import { useUploadImageUrls } from "../hooks/useUploadImageUrls";
 import { TaskArchiveUpload } from "../components/TaskArchiveUpload";
 import { AdminIconButton } from "../components/AdminIconButton";
 import { useTaskImageUpload } from "../hooks/useTaskImageUpload";
@@ -245,7 +246,7 @@ export function TasksPage() {
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<TaskPreview | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const imageUrls = useUploadImageUrls(tasks.map((task) => task.image_key), getMockS3Object);
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
   const [totalTasks, setTotalTasks] = useState(0);
@@ -356,58 +357,6 @@ export function TasksPage() {
     void loadTasks(target);
   };
 
-  useEffect(() => {
-    if (tasks.length === 0) {
-      return;
-    }
-    const missingKeys = tasks
-      .map((task) => task.image_key)
-      .filter((key): key is string => Boolean(key))
-      .filter((key) => !imageUrls[key]);
-    if (missingKeys.length === 0) {
-      return;
-    }
-    let isMounted = true;
-    const loadImages = async () => {
-      const entries = await Promise.all(
-        missingKeys.map(async (key) => {
-          if (key.startsWith("http") || key.startsWith("data:")) {
-            return [key, key] as const;
-          }
-          const mockData = getMockS3Object(key);
-          if (mockData) {
-            return [key, mockData] as const;
-          }
-          try {
-            const safeKey = key.split("/").map(encodeURIComponent).join("/");
-            const payload = await adminApiClient.request<{ url: string; public_url?: string | null }>({
-              path: `/uploads/${safeKey}`,
-              method: "GET"
-            });
-            return [key, payload.public_url ?? payload.url] as const;
-          } catch {
-            return [key, ""] as const;
-          }
-        })
-      );
-      if (!isMounted) {
-        return;
-      }
-      setImageUrls((prev) => {
-        const next = { ...prev };
-        entries.forEach(([key, url]) => {
-          if (url) {
-            next[key] = url;
-          }
-        });
-        return next;
-      });
-    };
-    void loadImages();
-    return () => {
-      isMounted = false;
-    };
-  }, [tasks, imageUrls]);
 
   const openCreate = () => {
     setFormMode("create");

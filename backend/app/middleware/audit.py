@@ -24,7 +24,8 @@ class AuditMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         path = request.url.path
-        if path.endswith("/health") or path.endswith("/health/ready"):
+        if (path.endswith("/health") or path.endswith("/health/ready")
+                or (request.method == "GET" and path.rstrip("/") == "/api/v1/time")):
             return await call_next(request)
 
         user_id = None

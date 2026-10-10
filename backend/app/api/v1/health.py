@@ -14,7 +14,7 @@ from app.core.metrics import (
     READ_DB_HEALTH_ERRORS_TOTAL,
     REDIS_HEALTH_LATENCY_SECONDS,
 )
-from app.core.storage import storage_health
+from app.core.storage import storage_health, storage_work
 from app.api.v1.openapi_examples import (
     EXAMPLE_HEALTH_DEPS_OK,
     EXAMPLE_HEALTH_OK,
@@ -139,7 +139,7 @@ async def queues():
 )
 async def deps():
     storage_required = bool(settings.STORAGE_ENDPOINT and settings.STORAGE_ACCESS_KEY and settings.STORAGE_SECRET_KEY)
-    storage_ok = True if not storage_required else storage_health()
+    storage_ok = True if not storage_required else await storage_work(storage_health)
 
     email_required = settings.EMAIL_SEND_ENABLED
     if not email_required:

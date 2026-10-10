@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from .account_deletion import router as account_deletion_router
 from .health import router as health_router
+from .server_time import router as server_time_router
 from .auth import router as auth_router
 from .attempts import router as attempts_router
 from .teacher import router as teacher_router
@@ -32,6 +33,7 @@ from app.api.v1.admin_school_submissions import router as admin_school_submissio
 router = APIRouter(prefix="/api/v1")
 router.include_router(account_deletion_router)
 router.include_router(health_router)
+router.include_router(server_time_router)
 router.include_router(auth_router)
 router.include_router(attempts_router)
 router.include_router(teacher_router, tags=["teacher"])
