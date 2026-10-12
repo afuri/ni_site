@@ -3,7 +3,7 @@ import { Button, Card, LayoutShell, Modal, TextInput, useAuth } from "@ui";
 import { createApiClient, serverClock, type ApiError } from "@api";
 import { createMainAuthStorage } from "../utils/authStorage";
 import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
-import { getAccountHomePath, LOGIN_REDIRECT_KEY, STUDENT_OLYMPIADS_PATH } from "../routes/accountHome";
+import { getAccountHomePath, LOGIN_REDIRECT_KEY } from "../routes/accountHome";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Countdown } from "../components/Countdown";
 import bannerImage from "../assets/main_banner_3.png";
@@ -25,15 +25,6 @@ import teacherAgreement from "../../../../teacher_agreement.txt?raw";
 import "../styles/home.css";
 import { authLinkErrorMessage, OPEN_RECOVERY_STORAGE_KEY, useAuthRetryDelay } from "../utils/authMessages";
 
-const AUTUMN_TOUR_SCHEDULE = [
-  { date: "5–10 октября", participants: "дошкольники" },
-  { date: "6 октября", participants: "1 класс" },
-  { date: "7 октября", participants: "2 класс" },
-  { date: "8 октября", participants: "3 класс" },
-  { date: "9 октября", participants: "4 класс" },
-  { date: "10 октября", participants: "5 класс" },
-  { date: "11 октября", participants: "6–7 классы" }
-];
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const registerClient = createApiClient({ baseUrl: API_BASE_URL });
 const publicClient = createApiClient({ baseUrl: API_BASE_URL });
@@ -963,16 +954,6 @@ export function HomePage() {
     setIsLoginOpen(true);
   };
 
-  const handleTourStart = () => {
-    if (isAuthenticated && user) {
-      navigate(user.role === "student" ? STUDENT_OLYMPIADS_PATH : getAccountHomePath(user));
-      return;
-    }
-    // Use the existing login redirect, including password recovery and temporary passwords.
-    window.localStorage.setItem(LOGIN_REDIRECT_KEY, STUDENT_OLYMPIADS_PATH);
-    openLogin();
-  };
-
   const openRegister = () => {
     setIsLoginOpen(false);
     setIsRecoveryOpen(false);
@@ -1417,24 +1398,20 @@ export function HomePage() {
               </h1>
               <div className="home-hero-message-offset">
                 <div className="home-hero-message">
-                  <h3 className="home-tour-title">Осенний математический тур стартовал!</h3>
-                  <h3 className="home-tour-schedule-title" id="home-tour-schedule-title">Расписание тура</h3>
-                  <ul className="home-tour-schedule" aria-labelledby="home-tour-schedule-title">
-                    {AUTUMN_TOUR_SCHEDULE.map((item, index) => (
-                      <li key={item.date}>
-                        <svg className={`home-tour-checkbox${index <= 5 ? " is-checked" : ""}`} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                          <rect x="2" y="2" width="20" height="20" rx="4" fill={index <= 5 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" />
-                          {index <= 5 ? <path d="m6.5 12 3.5 3.5 7.5-7.5" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /> : null}
-                        </svg>
-                        <span><strong>{item.date}</strong> — {item.participants}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="home-tour-hours">Задания доступны в указанные дни <strong>с 8:00 до 21:00 МСК</strong>.</p>
-                  <p className="home-tour-wish"><strong>Интегралик желает всем участникам удачи!</strong></p>
-                  <div className="home-tour-actions">
-                    <Button className="home-tour-start" onClick={handleTourStart} disabled={status === "idle" || status === "loading"}>Начать</Button>
-                  </div>
+                  <h3 className="home-tour-title">🍂 Осенний математический тур завершён!</h3>
+                  <p className="home-tour-text">Спасибо всем участникам, педагогам и родителям, которые провели эту математическую неделю вместе с нами!</p>
+                  <p className="home-tour-text">
+                    <strong>13 октября</strong> — результаты будут опубликованы в личных кабинетах участников.
+                    <br />
+                    <strong>20 октября</strong> — станут доступны дипломы.
+                  </p>
+                  <p className="home-tour-text">
+                    А «Невский интеграл» продолжается!
+                    <br />
+                    Увидимся в феврале — «Невскому интегралу» исполняется 15 лет! 🎉
+                    <br />
+                    Интегралик уже ждёт новой встречи с вами!
+                  </p>
                 </div>
               </div>
             </div>
