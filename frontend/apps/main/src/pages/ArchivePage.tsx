@@ -14,6 +14,7 @@ type YearEntry = {
 };
 
 const OPEN_LOGIN_STORAGE_KEY = "ni_open_login";
+const LATEST_ARCHIVE_YEAR = 2026;
 
 const NAV_ITEMS = [
   { label: "Об олимпиаде", href: "/#about" },
@@ -24,7 +25,7 @@ const NAV_ITEMS = [
 
 const buildYears = (): YearEntry[] => {
   const entries: YearEntry[] = [];
-  for (let start = 2025; start >= 2013; start -= 1) {
+  for (let start = LATEST_ARCHIVE_YEAR; start >= 2013; start -= 1) {
     const end = start + 1;
     entries.push({
       label: `${start}-${end}`,
@@ -253,7 +254,7 @@ export function ArchivePage() {
                   </ul>
             <div className="results-archive">
               {years.map((year) => (
-                <details key={year.label} className="results-year" open={year.startYear === 2025}>
+                <details key={year.label} className="results-year" open={year.startYear === LATEST_ARCHIVE_YEAR}>
                   <summary className="results-year-summary">{year.label}</summary>
                   <div className="results-year-body">
                     <h3>Задания и решения</h3>
