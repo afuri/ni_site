@@ -1406,6 +1406,9 @@ export function HomePage() {
                     <strong>20 октября</strong> — станут доступны дипломы.
                   </p>
                   <p className="home-tour-text">
+                    <a className="home-tour-link" href="/docs/results/math_first_2026_2027.pdf" target="_blank" rel="noopener noreferrer">Скачать решения</a>
+                  </p>
+                  <p className="home-tour-text">
                     А «Невский интеграл» продолжается!
                     <br />
                     Увидимся в феврале — «Невскому интегралу» исполняется 15 лет! 🎉
