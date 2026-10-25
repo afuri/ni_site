@@ -14,6 +14,7 @@ import { createMainAuthStorage } from "../utils/authStorage";
 import { SchoolDirectoryPicker, type SchoolSelectionValue } from "../components/SchoolDirectoryPicker";
 import { renderMarkdown } from "../utils/markdown";
 import { attemptAnswerLabels, formatAttemptElapsed } from "../platform/attemptReview";
+import { downloadAttemptDiploma } from "../platform/diploma";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import logoImage from "../assets/logo2.png";
 import "../styles/cabinet.css";
@@ -1130,62 +1131,9 @@ export function CabinetPage() {
 
     const attemptId = attempt.attempt_id;
     setDiplomaDownloadAttemptId(attemptId);
-    const diplomaWindow = window.open("", "_blank");
-
     try {
-      if (!diplomaWindow) {
-        setPendingResultsMessage("Браузер заблокировал новое окно. Разрешите всплывающие окна для сайта.");
-        return;
-      }
-      try {
-        diplomaWindow.opener = null;
-      } catch {
-        // ignore cross-browser opener assignment issues
-      }
-
-      const headers: Record<string, string> = {};
-      if (tokens?.access_token) {
-        headers.Authorization = `Bearer ${tokens.access_token}`;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/diploma`, {
-        method: "GET",
-        headers,
-        credentials: "include"
-      });
-
-      if (response.status === 404) {
-        diplomaWindow.close();
-        setPendingResultsMessage("Диплом будет загружен позже");
-        return;
-      }
-
-      if (response.status === 403) {
-        const payload = (await response.json().catch(() => null)) as { error?: { code?: string } } | null;
-        diplomaWindow.close();
-        setPendingResultsMessage(
-          payload?.error?.code === "diploma_school_pending"
-            ? "Диплом станет доступен после подтверждения школы администратором."
-            : "Недостаточно прав для скачивания диплома."
-        );
-        return;
-      }
-
-      if (!response.ok) {
-        diplomaWindow.close();
-        setPendingResultsMessage("Не удалось скачать диплом. Попробуйте позже.");
-        return;
-      }
-
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      diplomaWindow.location.href = objectUrl;
-      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 120000);
-    } catch {
-      if (diplomaWindow && !diplomaWindow.closed) {
-        diplomaWindow.close();
-      }
-      setPendingResultsMessage("Не удалось скачать диплом. Попробуйте позже.");
+      const outcome = await downloadAttemptDiploma({ client, attemptId });
+      if (!outcome.ok) setPendingResultsMessage(outcome.message);
     } finally {
       setDiplomaDownloadAttemptId(null);
     }

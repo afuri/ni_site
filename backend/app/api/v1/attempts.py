@@ -1,6 +1,7 @@
 """Attempts endpoints."""
 from datetime import datetime, timezone
 import math
+from typing import Literal
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Response
@@ -41,6 +42,7 @@ from app.schemas.attempt import (
     AttemptResult,
     AttemptSubmitRequest,
     AnswerSaveResponse,
+    DiplomaLinkResponse,
 )
 
 router = APIRouter(prefix="/attempts")
@@ -343,9 +345,15 @@ async def get_attempt_result(
 
 @router.get(
     "/{attempt_id}/diploma",
+    response_model=DiplomaLinkResponse,
     tags=["attempts"],
-    description="Скачать диплом по попытке",
+    description=(
+        "Открыть диплом по попытке. По умолчанию возвращает редирект 307; "
+        "response_mode=json возвращает адрес JPG без загрузки изображения через API. "
+        "Наличие файла в хранилище этим запросом не проверяется."
+    ),
     responses={
+        200: {"description": "Ссылка на диплом при response_mode=json"},
         307: {"description": "Temporary redirect to diploma file"},
         401: response_example(codes.MISSING_TOKEN),
         403: response_examples(codes.FORBIDDEN, codes.DIPLOMA_SCHOOL_PENDING),
@@ -355,9 +363,11 @@ async def get_attempt_result(
 )
 async def get_attempt_diploma(
     attempt_id: int,
+    response: Response,
+    response_mode: Literal["redirect", "json"] = "redirect",
     db: AsyncSession = Depends(get_read_db),
     user: User = Depends(get_current_user),
-):
+) -> DiplomaLinkResponse | RedirectResponse:
     repo = AttemptsRepo(db)
     attempt = await repo.get_attempt(attempt_id)
     if not attempt:
@@ -382,15 +392,16 @@ async def get_attempt_diploma(
             raise http_error(403, codes.DIPLOMA_SCHOOL_PENDING)
 
     key = f"attempt_{attempt_id}.jpg"
-    public_url = public_url_for_key(key)
-    if public_url:
-        return RedirectResponse(url=public_url, status_code=307)
-
-    try:
-        signed_url = presign_get(key=key)
-    except RuntimeError:
-        raise http_error(503, codes.STORAGE_UNAVAILABLE)
-    return RedirectResponse(url=signed_url, status_code=307)
+    url = public_url_for_key(key)
+    if not url:
+        try:
+            url = presign_get(key=key)
+        except RuntimeError:
+            raise http_error(503, codes.STORAGE_UNAVAILABLE)
+    if response_mode == "json":
+        response.headers["Cache-Control"] = "private, no-store"
+        return DiplomaLinkResponse(url=url, filename=key)
+    return RedirectResponse(url=url, status_code=307)
 
 
 @router.get(

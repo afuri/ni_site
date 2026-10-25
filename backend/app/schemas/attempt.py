@@ -98,6 +98,11 @@ class SubmitResponse(BaseModel):
     status: AttemptStatus
 
 
+class DiplomaLinkResponse(BaseModel):
+    url: str = Field(description="Адрес JPG для открытия непосредственно браузером")
+    filename: str
+
+
 class AttemptResult(BaseModel):
     attempt_id: int
     olympiad_id: int

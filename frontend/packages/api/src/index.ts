@@ -16,6 +16,7 @@ export type {
   AttemptStatus,
   AttemptTask,
   AttemptView,
+  DiplomaLinkResponse,
   AuthStorage,
   AuthLoginResponse,
   ManualTeacher,

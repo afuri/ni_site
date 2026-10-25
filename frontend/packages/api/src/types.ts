@@ -146,6 +146,11 @@ export type OlympiadPublic = {
 
 export type AttemptStatus = "active" | "submitted" | "expired";
 
+export type DiplomaLinkResponse = {
+  url: string;
+  filename: string;
+};
+
 export type AttemptResult = {
   attempt_id: number;
   olympiad_id: number;
