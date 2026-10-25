@@ -132,9 +132,8 @@ export function StudentPlatformPage() {
     setDownloadingAttemptId(result.attempt_id);
     setActionMessage(null);
     const outcome = await downloadAttemptDiploma({
-      apiBaseUrl: API_BASE_URL,
-      attemptId: result.attempt_id,
-      accessToken: tokens?.access_token ?? null
+      client,
+      attemptId: result.attempt_id
     });
     if (!outcome.ok) setActionMessage(outcome.message);
     setDownloadingAttemptId(null);
